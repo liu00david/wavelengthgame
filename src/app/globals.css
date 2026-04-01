@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+/**
+ * Game color palette — matches src/lib/theme.ts
+ * Edit both files together when changing the palette.
+ */
+:root {
+  --color-primary: #7862FF;
+  --color-yellow: #f6dc53;
+  --color-yellow2: #eebf2d;
+  --color-teal: #25a59f;
+  --color-teal-light: #4dd9d2;
+  --color-rose: #9a3558;
+  --color-rose-light: #c94f7a;
+  --color-bg: #081c48;
+  --color-surface: #0f2660;
+  --color-surface2: #1a3580;
+  --color-border: #2a4a8a;
+}
+
+@theme inline {
+  --color-background: var(--color-bg);
+  --color-foreground: #ffffff;
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background-color: var(--color-bg);
+  color: white;
+  font-family: Arial, Helvetica, sans-serif;
+}

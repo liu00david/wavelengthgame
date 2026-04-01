@@ -1,0 +1,5 @@
+{
+  "name": "wavelengthgame",
+  "main": "party/index.ts",
+  "compatibilityDate": "2026-03-31"
+}

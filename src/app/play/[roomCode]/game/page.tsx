@@ -1,0 +1,705 @@
+"use client";
+
+import { useEffect, useRef, useState, Suspense } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useParty } from "@/lib/useParty";
+import { t, avatarColor, avatarTextColor, playerEmoji } from "@/lib/theme";
+import type { GameState } from "@/lib/types";
+
+function useCountdown(phaseEndsAt: number | null): number {
+  const [secs, setSecs] = useState(0);
+  useEffect(() => {
+    if (!phaseEndsAt) { setSecs(0); return; }
+    const tick = () => setSecs(Math.max(0, (phaseEndsAt - Date.now()) / 1000));
+    tick();
+    const id = setInterval(tick, 50);
+    return () => clearInterval(id);
+  }, [phaseEndsAt]);
+  return secs;
+}
+
+function TimerBar({ secs, total, color = "bg-[#7862FF]" }: { secs: number; total: number; color?: string }) {
+  const pct = total > 0 ? Math.min(100, Math.max(0, (secs / total) * 100)) : 0;
+  const urgent = secs <= 5 && secs > 0;
+  return (
+    <div className={`w-full h-3 ${t.bgPage} rounded-full overflow-hidden`}>
+      <div
+        className={`h-full rounded-full transition-none ${urgent ? "bg-[#c94f7a]" : color}`}
+        style={{ width: `${pct}%` }}
+      />
+    </div>
+  );
+}
+
+// ---- Binary Input ----
+function BinaryInput({ onSubmit, disabled }: { onSubmit: (val: string) => void; disabled: boolean }) {
+  return (
+    <div className="flex flex-col gap-4 w-full">
+      <button
+        onClick={() => !disabled && onSubmit("yes")}
+        disabled={disabled}
+        className="w-full py-8 rounded-2xl bg-[#25a59f] hover:bg-[#1d8c87] active:scale-95 disabled:opacity-40 transition-all text-white text-4xl font-black shadow-xl"
+      >
+        YES
+      </button>
+      <button
+        onClick={() => !disabled && onSubmit("no")}
+        disabled={disabled}
+        className="w-full py-8 rounded-2xl bg-[#9a3558] hover:bg-[#7e2b47] active:scale-95 disabled:opacity-40 transition-all text-white text-4xl font-black shadow-xl"
+      >
+        NO
+      </button>
+    </div>
+  );
+}
+
+// ---- Multiple Choice Input ----
+function MultipleChoiceInput({ options, onSubmit, disabled }: { options: string[]; onSubmit: (val: string) => void; disabled: boolean }) {
+  return (
+    <div className="flex flex-col gap-3 w-full">
+      {options.map((opt, i) => {
+        const c = t.answerChoiceColors[i % t.answerChoiceColors.length];
+        return (
+          <button
+            key={opt}
+            onClick={() => !disabled && onSubmit(opt)}
+            disabled={disabled}
+            className={`w-full py-5 rounded-2xl ${c.bg} hover:opacity-90 active:scale-95 disabled:opacity-40 transition-all ${c.text} text-xl font-bold shadow-lg px-5 text-left`}
+          >
+            <span className="opacity-60 font-black mr-2">{String.fromCharCode(65 + i)}.</span>
+            {opt}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ---- Scale Input ----
+function ScaleInput({ onSubmit, disabled, step = 1, min = 1, max = 10, label }: {
+  onSubmit: (val: number) => void;
+  disabled: boolean;
+  step?: number;
+  min?: number;
+  max?: number;
+  label?: string;
+}) {
+  const [value, setValue] = useState(step === 1 ? 5 : 5.0);
+
+  function adjust(delta: number) {
+    setValue((v) => {
+      const next = Math.round((v + delta) / step) * step;
+      return Math.min(max, Math.max(min, next));
+    });
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-6 w-full">
+      {label && <p className={`${t.textMuted} text-base text-center`}>{label}</p>}
+      <div className={`text-8xl font-black ${t.textYellow}`}>
+        {step === 1 ? value : value.toFixed(1)}
+      </div>
+      <div className="flex items-center gap-4 w-full">
+        <button onClick={() => adjust(-step)} disabled={disabled}
+          className={`w-16 h-16 rounded-full ${t.btnGhost} text-white text-3xl font-black disabled:opacity-40 transition-all shadow`}>−</button>
+        <input type="range" min={min} max={max} step={step} value={value} disabled={disabled}
+          onChange={(e) => setValue(parseFloat(e.target.value))}
+          className="flex-1 accent-[#7862FF] h-3 cursor-pointer" />
+        <button onClick={() => adjust(step)} disabled={disabled}
+          className={`w-16 h-16 rounded-full ${t.btnGhost} text-white text-3xl font-black disabled:opacity-40 transition-all shadow`}>+</button>
+      </div>
+      <button onClick={() => !disabled && onSubmit(value)} disabled={disabled}
+        className={`w-full py-5 rounded-2xl ${t.btnYellow} text-xl shadow-xl disabled:opacity-40`}>
+        Submit
+      </button>
+    </div>
+  );
+}
+
+// ---- Binary Prediction ----
+function BinaryPrediction({ N, onSubmit, disabled }: { N: number; onSubmit: (val: number) => void; disabled: boolean }) {
+  const [value, setValue] = useState(Math.round(N / 2));
+  function adjust(delta: number) { setValue((v) => Math.min(N, Math.max(0, v + delta))); }
+
+  return (
+    <div className="flex flex-col items-center gap-6 w-full">
+      <p className={`${t.textMuted} text-base text-center`}>How many people said YES? (0 to {N})</p>
+      <div className={`text-8xl font-black ${t.textYellow}`}>{value}</div>
+      <div className="flex items-center gap-4 w-full">
+        <button onClick={() => adjust(-1)} disabled={disabled}
+          className={`w-16 h-16 rounded-full ${t.btnGhost} text-white text-3xl font-black disabled:opacity-40 transition-all shadow`}>−</button>
+        <input type="range" min={0} max={N} step={1} value={value} disabled={disabled}
+          onChange={(e) => setValue(parseInt(e.target.value))}
+          className="flex-1 accent-[#7862FF] h-3 cursor-pointer" />
+        <button onClick={() => adjust(1)} disabled={disabled}
+          className={`w-16 h-16 rounded-full ${t.btnGhost} text-white text-3xl font-black disabled:opacity-40 transition-all shadow`}>+</button>
+      </div>
+      <button onClick={() => !disabled && onSubmit(value)} disabled={disabled}
+        className={`w-full py-5 rounded-2xl ${t.btnYellow} text-xl shadow-xl disabled:opacity-40`}>
+        Submit Prediction
+      </button>
+    </div>
+  );
+}
+
+// ---- Multiple Choice Prediction ----
+function MultipleChoicePrediction({ options, onSubmit, disabled }: { options: string[]; onSubmit: (val: string) => void; disabled: boolean }) {
+  return (
+    <div className="flex flex-col gap-3 w-full">
+      <p className={`${t.textMuted} text-base text-center mb-1`}>Which option was most popular?</p>
+      {options.map((opt, i) => {
+        const c = t.answerChoiceColors[i % t.answerChoiceColors.length];
+        return (
+          <button key={opt} onClick={() => !disabled && onSubmit(opt)} disabled={disabled}
+            className={`w-full py-5 rounded-2xl ${c.bg} hover:opacity-90 active:scale-95 disabled:opacity-40 transition-all ${c.text} text-xl font-bold shadow-lg px-5 text-left`}>
+            <span className="opacity-60 font-black mr-2">{String.fromCharCode(65 + i)}.</span>
+            {opt}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ---- Double Down Toggle ----
+function DoubleDownToggle({ active, onToggle, disabled }: { active: boolean; onToggle: () => void; disabled: boolean }) {
+  return (
+    <button onClick={onToggle} disabled={disabled}
+      className={`w-full py-4 rounded-2xl font-black text-xl transition-all active:scale-95 shadow ${
+        active ? "bg-[#f6dc53] text-[#081c48]" : `${t.btnGhost} text-[#7a96c8]`
+      } ${disabled ? "opacity-40" : ""}`}>
+      {active ? "DOUBLE DOWN ON!" : "Double Down?"}
+      {active && <p className="text-[#081c48]/70 text-sm font-semibold mt-0.5">Accurate = 2× pts — Wrong = 0 pts</p>}
+    </button>
+  );
+}
+
+// ---- Score Tier ----
+function tierLabel(score: number): string {
+  if (score >= 1000) return "BULLSEYE";
+  if (score >= 750) return "Inner Circle";
+  if (score >= 400) return "Close";
+  if (score >= 100) return "Fringe";
+  return "Miss";
+}
+
+function tierColor(score: number): string {
+  if (score >= 1000) return t.textYellow;
+  if (score >= 750) return t.textTeal;
+  if (score >= 400) return t.textCyan;
+  if (score >= 100) return "text-[#7a96c8]";
+  return "text-[#c94f7a]";
+}
+
+// ---- Phase 1 view ----
+function Phase1View({ game, onSubmit, submitted }: {
+  game: GameState; nickname: string;
+  onSubmit: (val: string | number) => void; submitted: boolean;
+}) {
+  const countdown = useCountdown(game.phaseEndsAt);
+  const prompt = game.prompt!;
+  const totalTime = game.phase1Duration;
+  const displaySecs = Math.ceil(countdown);
+
+  if (submitted) {
+    return (
+      <div className="flex flex-col items-center justify-center flex-1 gap-6 text-center px-6 py-10">
+        <div className="w-20 h-20 bg-[#25a59f] rounded-full flex items-center justify-center text-white text-4xl">✓</div>
+        <p className="text-white text-2xl font-bold">Answer submitted!</p>
+        <p className={`${t.textMuted} text-lg`}>Waiting for others...</p>
+        <div className="w-full mt-4">
+          <TimerBar secs={countdown} total={totalTime} />
+          <p className={`${t.textFaint} text-base mt-2 text-center`}>{displaySecs}s left</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-6 px-5 py-6">
+      <div>
+        <p className={`${t.textCyan} text-base uppercase tracking-widest mb-2`}>
+          {prompt.type === "binary" ? "Yes / No" : prompt.type === "multiple_choice" ? "Multiple Choice" : "Scale 1–10"}
+        </p>
+        <p className="text-white text-2xl font-bold leading-snug">{prompt.text}</p>
+      </div>
+      <div>
+        <TimerBar secs={countdown} total={totalTime} />
+        <p className={`${t.textFaint} text-base mt-1 text-right`}>{displaySecs}s</p>
+      </div>
+      {prompt.type === "binary" && <BinaryInput onSubmit={onSubmit} disabled={submitted} />}
+      {prompt.type === "multiple_choice" && <MultipleChoiceInput options={prompt.options!} onSubmit={onSubmit} disabled={submitted} />}
+      {prompt.type === "scale" && <ScaleInput onSubmit={onSubmit} disabled={submitted} step={1} />}
+    </div>
+  );
+}
+
+// ---- Phase 2 view ----
+function Phase2View({ game, onSubmit, submitted }: {
+  game: GameState; nickname: string;
+  onSubmit: (val: string | number, doubleDown: boolean) => void; submitted: boolean;
+}) {
+  const countdown = useCountdown(game.phaseEndsAt);
+  const [doubleDown, setDoubleDown] = useState(false);
+  const prompt = game.prompt!;
+  const totalTime = game.phase2Duration;
+  const displaySecs = Math.ceil(countdown);
+
+  function handleSubmit(val: string | number) { onSubmit(val, doubleDown); }
+
+  if (submitted) {
+    return (
+      <div className="flex flex-col items-center justify-center flex-1 gap-6 text-center px-6 py-10">
+        <div className="w-20 h-20 bg-[#7862FF] rounded-full flex items-center justify-center text-white text-4xl">✓</div>
+        <p className="text-white text-2xl font-bold">Prediction locked!</p>
+        {doubleDown && <p className={`${t.textYellow} text-lg font-bold`}>Double Down active</p>}
+        <p className={`${t.textMuted} text-lg`}>Waiting for reveal...</p>
+        <div className="w-full mt-4">
+          <TimerBar secs={countdown} total={totalTime} color="bg-[#4dd9d2]" />
+          <p className={`${t.textFaint} text-base mt-2 text-center`}>{displaySecs}s left</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-5 px-5 py-6">
+      <div>
+        <p className={`${t.textYellow} text-base font-bold uppercase tracking-widest mb-2`}>What did the room say?</p>
+        <p className="text-white text-2xl font-bold leading-snug">{prompt.text}</p>
+      </div>
+      <div>
+        <TimerBar secs={countdown} total={totalTime} color="bg-[#4dd9d2]" />
+        <p className={`${t.textFaint} text-base mt-1 text-right`}>{displaySecs}s</p>
+      </div>
+      {prompt.type === "binary" && (
+        <div className="flex flex-col gap-4">
+          <BinaryPrediction N={game.N} onSubmit={(v) => handleSubmit(v)} disabled={submitted} />
+          <DoubleDownToggle active={doubleDown} onToggle={() => setDoubleDown((d) => !d)} disabled={submitted} />
+        </div>
+      )}
+      {prompt.type === "multiple_choice" && (
+        <div className="flex flex-col gap-4">
+          <MultipleChoicePrediction options={prompt.options!} onSubmit={(v) => handleSubmit(v)} disabled={submitted} />
+          <DoubleDownToggle active={doubleDown} onToggle={() => setDoubleDown((d) => !d)} disabled={submitted} />
+        </div>
+      )}
+      {prompt.type === "scale" && (
+        <div className="flex flex-col gap-4">
+          <ScaleInput onSubmit={(v) => handleSubmit(v)} disabled={submitted} step={0.5} min={1} max={10}
+            label="Predict the group average (1.0 – 10.0)" />
+          <DoubleDownToggle active={doubleDown} onToggle={() => setDoubleDown((d) => !d)} disabled={submitted} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---- Phase 3 view ----
+function Phase3View({ game, nickname }: { game: GameState; nickname: string }) {
+  const result = game.roundResult;
+  if (!result) return <div className={`${t.textMuted} text-center p-8 text-lg`}>Loading results...</div>;
+
+  const myScore = result.scores[nickname] ?? 0;
+  const myPrediction = result.phase2Predictions[nickname];
+  const doubled = result.phase2Wagers[nickname] ?? false;
+  const prompt = result.prompt;
+
+  let baseScore = myScore;
+  if (doubled && myScore > 0) baseScore = myScore / 2;
+  if (doubled && myScore === 0) baseScore = 0;
+
+  const tier = tierLabel(baseScore > 0 ? baseScore : myScore);
+  const color = tierColor(myScore);
+
+  // Ranking info
+  const myEntry = game.leaderboard.find((p) => p.nickname === nickname);
+  const myRank = myEntry?.rank ?? 0;
+  const personAhead = myRank > 1 ? game.leaderboard[myRank - 2] : null;
+  const pointsBehind = personAhead ? personAhead.total - (myEntry?.total ?? 0) : 0;
+
+  return (
+    <div className="flex flex-col items-center gap-6 px-5 py-8 text-center">
+      <div>
+        <p className={`${t.textMuted} text-base uppercase tracking-widest mb-2`}>Round {game.round} Score</p>
+        <p className={`text-7xl font-black ${color}`}>+{myScore}</p>
+        <p className={`text-2xl font-bold mt-2 ${color}`}>{tier}</p>
+      </div>
+
+      {doubled && (
+        <div className={`px-4 py-3 rounded-xl w-full ${myScore > 0 ? "bg-[#f6dc53]/20 border border-[#f6dc53]/30" : "bg-[#9a3558]/20 border border-[#9a3558]/30"}`}>
+          {myScore > 0
+            ? <p className={`${t.textYellow} font-bold text-lg`}>Double Down PAID OFF! 2× points</p>
+            : <p className="text-[#c94f7a] font-bold text-lg">Double Down FAILED — 0 points</p>}
+        </div>
+      )}
+
+      {result.chaosBonusAwarded && (
+        <div className="bg-[#f6dc53]/20 border border-[#f6dc53]/30 rounded-xl px-4 py-3 w-full">
+          <p className={`${t.textYellow} font-bold text-lg`}>+200 Chaos Bonus!</p>
+        </div>
+      )}
+
+      {/* Ranking message */}
+      {myEntry && (
+        <div className={`${t.bgSurface} rounded-2xl border ${t.borderSurface} px-5 py-4 w-full`}>
+          {myRank === 1 ? (
+            <p className={`${t.textYellow} font-bold text-xl`}>🏆 You're in 1st place!</p>
+          ) : (
+            <div>
+              <p className="text-white font-bold text-xl">You're in {ordinal(myRank)} place</p>
+              {personAhead && pointsBehind > 0 && (
+                <p className={`${t.textMuted} text-base mt-1`}>
+                  {pointsBehind} pts behind <span className="text-white font-semibold">{personAhead.nickname}</span>
+                </p>
+              )}
+            </div>
+          )}
+          <p className={`${t.textMuted} text-base mt-2`}>
+            Total: <span className={`${t.textYellow} font-black text-xl`}>{myEntry.total}</span> pts
+          </p>
+        </div>
+      )}
+
+      <div className={`${t.bgSurface} rounded-2xl border ${t.borderSurface} px-5 py-4 w-full text-left`}>
+        <p className={`${t.textMuted} text-sm uppercase tracking-widest mb-2`}>Result</p>
+        <p className="text-white font-bold text-lg">
+          Actual: <span className={t.textYellow}>
+            {prompt.type === "binary"
+              ? `${result.actualResult} said YES`
+              : prompt.type === "scale"
+              ? `${Number(result.actualResult).toFixed(1)} avg`
+              : String(result.actualResult).split(",").join(" & ")}
+          </span>
+        </p>
+        {myPrediction !== undefined && (
+          <p className={`${t.textMuted} text-base mt-1`}>
+            Your prediction: <span className="text-white font-semibold">
+              {prompt.type === "scale" ? Number(myPrediction).toFixed(1) : String(myPrediction)}
+            </span>
+          </p>
+        )}
+      </div>
+
+      <p className={`${t.textFaint} text-base animate-pulse`}>Waiting for host to continue...</p>
+    </div>
+  );
+}
+
+function ordinal(n: number): string {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+// ---- Leaderboard view ----
+function LeaderboardView({ game, nickname }: { game: GameState; nickname: string }) {
+  const myEntry = game.leaderboard.find((p) => p.nickname === nickname);
+  const myRank = myEntry?.rank ?? 0;
+  const personAhead = myRank > 1 ? game.leaderboard[myRank - 2] : null;
+  const pointsBehind = personAhead ? personAhead.total - (myEntry?.total ?? 0) : 0;
+
+  return (
+    <div className="flex flex-col gap-5 px-5 py-6">
+      <div className="text-center">
+        <p className={`${t.textMuted} text-base uppercase tracking-widest`}>Round {game.round} of {game.totalRounds}</p>
+        <h2 className={`text-3xl font-black ${t.textYellow} mt-1`}>Leaderboard</h2>
+      </div>
+
+      {myEntry && (
+        <div className={`rounded-2xl px-5 py-4 border-2 ${myEntry.rank === 1 ? "border-[#f6dc53] bg-[#f6dc53]/10" : "border-[#7862FF] bg-[#7862FF]/10"}`}>
+          <div className="flex items-center gap-4">
+            <span className={`text-3xl font-black ${t.textYellow}`}>#{myEntry.rank}</span>
+            <div className={`${avatarColor(nickname)} w-12 h-12 rounded-full flex items-center justify-center text-2xl`}>
+              {playerEmoji(nickname)}
+            </div>
+            <div className="flex-1">
+              <p className="text-white font-bold text-lg">{nickname}</p>
+              {myEntry.roundScore > 0 && <p className={`${t.textTeal} text-base font-bold`}>+{myEntry.roundScore} this round</p>}
+            </div>
+            <p className={`${t.textYellow} font-black text-2xl`}>{myEntry.total}</p>
+          </div>
+          {myRank === 1 ? (
+            <p className={`${t.textYellow} text-base font-semibold mt-2`}>🏆 You're in the lead!</p>
+          ) : personAhead && pointsBehind > 0 ? (
+            <p className={`${t.textMuted} text-base mt-2`}>
+              {pointsBehind} pts behind <span className="text-white font-semibold">{personAhead.nickname}</span>
+            </p>
+          ) : null}
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2">
+        {game.leaderboard.map((p) => (
+          <div key={p.nickname}
+            className={`flex items-center gap-3 rounded-xl px-4 py-3 ${p.nickname === nickname ? "bg-[#7862FF]/20 border border-[#7862FF]/30" : `${t.bgSurface} border ${t.borderSurface}`}`}>
+            <span className={`${t.textMuted} w-7 font-bold text-base`}>#{p.rank}</span>
+            <div className={`${avatarColor(p.nickname)} w-9 h-9 rounded-full flex items-center justify-center text-xl`}>
+              {playerEmoji(p.nickname)}
+            </div>
+            <span className="text-white flex-1 font-medium text-base">{p.nickname}</span>
+            {p.roundScore > 0 && <span className={`${t.textTeal} text-base font-bold`}>+{p.roundScore}</span>}
+            <span className="text-white font-black text-lg">{p.total}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---- Ended view ----
+function EndedView({ game, nickname }: { game: GameState; nickname: string }) {
+  const myEntry = game.leaderboard.find((p) => p.nickname === nickname);
+  const winner = game.leaderboard[0];
+  const isWinner = winner?.nickname === nickname;
+
+  return (
+    <div className="flex flex-col items-center gap-6 px-5 py-10 text-center">
+      <h2 className={`text-4xl font-black ${t.textYellow}`}>Game Over!</h2>
+
+      {isWinner && (
+        <div className="bg-[#f6dc53]/20 border-2 border-[#f6dc53]/60 rounded-2xl px-6 py-4 w-full">
+          <p className={`${t.textYellow} font-black text-3xl`}>🏆 YOU WON!</p>
+        </div>
+      )}
+
+      {myEntry && (
+        <div className={`flex items-center gap-4 rounded-2xl px-5 py-4 border-2 w-full ${isWinner ? "border-[#f6dc53] bg-[#f6dc53]/10" : `border-[#2a4a8a] ${t.bgSurface}`}`}>
+          <span className={`text-3xl font-black ${t.textYellow}`}>#{myEntry.rank}</span>
+          <div className={`${avatarColor(nickname)} w-12 h-12 rounded-full flex items-center justify-center text-2xl`}>
+            {playerEmoji(nickname)}
+          </div>
+          <div className="flex-1 text-left">
+            <p className="text-white font-bold text-lg">{nickname}</p>
+            <p className={`${t.textMuted} text-base`}>Final score</p>
+          </div>
+          <p className={`${t.textYellow} font-black text-2xl`}>{myEntry.total}</p>
+        </div>
+      )}
+
+      <div className="flex flex-col gap-2 w-full">
+        {game.leaderboard.map((p) => (
+          <div key={p.nickname}
+            className={`flex items-center gap-3 rounded-xl px-4 py-3 ${p.nickname === nickname ? "bg-[#7862FF]/20 border border-[#7862FF]/30" : `${t.bgSurface} border ${t.borderSurface}`}`}>
+            <span className={`${t.textMuted} w-7 font-bold text-base`}>#{p.rank}</span>
+            <div className={`${avatarColor(p.nickname)} w-9 h-9 rounded-full flex items-center justify-center text-xl`}>
+              {playerEmoji(p.nickname)}
+            </div>
+            <span className="text-white flex-1 font-medium text-base">{p.nickname}</span>
+            <span className="text-white font-black text-lg">{p.total}</span>
+          </div>
+        ))}
+      </div>
+
+      <p className={`${t.textMuted} text-base animate-pulse`}>Waiting for host...</p>
+    </div>
+  );
+}
+
+// ---- Leave Game Menu ----
+function LeaveGameMenu({ onClose, onLeave }: { onClose: () => void; onLeave: () => void }) {
+  const [confirming, setConfirming] = useState(false);
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/60 z-30" onClick={onClose} />
+      <div className={`fixed top-0 right-0 h-full w-72 ${t.bgSurface} border-l ${t.borderSurface} z-40 flex flex-col shadow-2xl`}>
+        <div className={`flex items-center justify-between px-6 py-5 border-b ${t.borderSurface}`}>
+          <h2 className="text-white font-black text-xl">Menu</h2>
+          <button onClick={onClose} className={`${t.textMuted} hover:text-white text-2xl font-bold transition-colors`}>✕</button>
+        </div>
+        <div className="flex flex-col gap-3 p-6">
+          {!confirming ? (
+            <button onClick={() => setConfirming(true)} className={`w-full py-4 rounded-xl ${t.btnDanger} font-bold text-lg`}>
+              Leave Game
+            </button>
+          ) : (
+            <>
+              <div className="bg-[#f6dc53]/10 border border-[#f6dc53]/30 rounded-xl p-4 mb-2">
+                <p className={`${t.textYellow} font-bold text-lg mb-1`}>Leave this game?</p>
+                <p className={`${t.textMuted} text-base`}>Your score will be lost.</p>
+              </div>
+              <button onClick={onLeave} className={`w-full py-4 rounded-xl ${t.btnYellow} text-lg`}>Leave</button>
+              <button onClick={() => setConfirming(false)} className={`w-full py-3 rounded-xl ${t.btnGhost} font-semibold text-base`}>Cancel</button>
+            </>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ---- Main page ----
+const PLAYER_SESSION_KEY = "consensus_player_session";
+
+function PlayGameContent() {
+  const params = useParams();
+  const router = useRouter();
+  const roomCode = (params.roomCode as string).toUpperCase();
+
+  const nickname = (() => {
+    if (typeof window === "undefined") return "";
+    try {
+      const saved = localStorage.getItem(PLAYER_SESSION_KEY);
+      if (saved) {
+        const session = JSON.parse(saved) as { roomCode: string; nickname: string };
+        if (session.roomCode === roomCode) return session.nickname;
+      }
+    } catch { /* ignore */ }
+    return "";
+  })();
+
+  const [phase1Submitted, setPhase1Submitted] = useState(false);
+  const [phase2Submitted, setPhase2Submitted] = useState(false);
+  const lastRoundRef = useRef<number | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [kicked, setKicked] = useState(false);
+
+  const { sendMsg, gameState, lobbyState } = useParty(
+    roomCode,
+    () => { if (nickname) sendMsg({ type: "rejoin", nickname }); },
+    (msg) => {
+      if (msg.type === "kicked") setKicked(true);
+      if (msg.type === "disbanded") {
+        localStorage.removeItem(PLAYER_SESSION_KEY);
+        router.push("/");
+      }
+    },
+  );
+
+  useEffect(() => {
+    function handleBeforeUnload(e: BeforeUnloadEvent) { e.preventDefault(); }
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, []);
+
+  const phase = gameState?.phase ?? "lobby";
+
+  useEffect(() => {
+    if (gameState && gameState.round !== lastRoundRef.current) {
+      lastRoundRef.current = gameState.round;
+      setPhase1Submitted(false);
+      setPhase2Submitted(false);
+    }
+  }, [gameState?.round]);
+
+  useEffect(() => {
+    if (lobbyState && !lobbyState.locked && phase === "lobby") {
+      router.replace(`/play/${roomCode}`);
+    }
+  }, [lobbyState, phase, router, roomCode]);
+
+  function handleAnswerSubmit(val: string | number) {
+    sendMsg({ type: "submit_answer", answer: val });
+    setPhase1Submitted(true);
+  }
+
+  function handlePredictionSubmit(val: string | number, doubleDown: boolean) {
+    sendMsg({ type: "submit_prediction", prediction: val, doubleDown });
+    setPhase2Submitted(true);
+  }
+
+  function handleLeave() {
+    localStorage.removeItem(PLAYER_SESSION_KEY);
+    router.push("/");
+  }
+
+  if (kicked) {
+    return (
+      <div className={`flex flex-col items-center justify-center min-h-screen ${t.bgPage} text-white gap-6 px-6 text-center`}>
+        <div className="text-6xl">🚫</div>
+        <h2 className="text-3xl font-black text-[#c94f7a]">You were removed</h2>
+        <p className={`${t.textMuted} text-lg`}>The host removed you from the game.</p>
+        <button onClick={() => { localStorage.removeItem(PLAYER_SESSION_KEY); router.push("/"); }}
+          className={`px-6 py-3 rounded-xl ${t.btnYellow} text-lg`}>
+          Back to Home
+        </button>
+      </div>
+    );
+  }
+
+  if (!gameState) {
+    return (
+      <div className={`flex flex-col items-center justify-center min-h-screen ${t.bgPage} text-white gap-4`}>
+        <p className={`${t.textYellow} text-2xl font-black animate-pulse`}>Game loading...</p>
+      </div>
+    );
+  }
+
+  if (!nickname) {
+    return (
+      <div className={`flex flex-col items-center justify-center min-h-screen ${t.bgPage} text-white gap-4 px-6`}>
+        <p className={`${t.textMuted} text-lg`}>Missing nickname.</p>
+        <button onClick={() => router.replace(`/play/${roomCode}`)} className={`px-5 py-3 ${t.btnYellow} rounded-xl text-lg`}>
+          Back to Lobby
+        </button>
+      </div>
+    );
+  }
+
+  const answeredCount = gameState?.answeredCount ?? 0;
+  const N = gameState?.N ?? 0;
+  const myTotal = gameState.leaderboard.find((p) => p.nickname === nickname)?.total ?? 0;
+
+  return (
+    <main className={`min-h-screen ${t.bgPage} text-white`}>
+      {/* Top bar */}
+      <div className={`flex items-center justify-between px-4 py-3 border-b border-[#2a4a8a] sticky top-0 ${t.bgPage} z-10`}>
+        <div className="flex items-center gap-2">
+          <div className={`${avatarColor(nickname)} w-9 h-9 rounded-full flex items-center justify-center text-lg`}>
+            {playerEmoji(nickname)}
+          </div>
+          <span className="text-white font-semibold text-sm">{nickname}</span>
+        </div>
+        <div className="flex flex-col items-center">
+          <span className={`${t.textYellow} font-black text-base font-mono tracking-widest`}>{roomCode}</span>
+          <span className={`${t.textFaint} text-xs`}>Round {gameState.round}/{gameState.totalRounds}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <p className={`${t.textTeal} font-black text-sm`}>{myTotal} pts</p>
+          <button onClick={() => setMenuOpen(true)}
+            className={`px-3 py-1.5 rounded-lg ${t.btnGhost} font-bold text-lg leading-none`}>☰</button>
+        </div>
+      </div>
+
+      {/* Content — mobile-width constrained */}
+      <div className="pb-8 max-w-md mx-auto w-full">
+        {phase === "phase1" && (
+          <Phase1View game={gameState} nickname={nickname} onSubmit={handleAnswerSubmit} submitted={phase1Submitted} />
+        )}
+        {phase === "phase2" && (
+          <Phase2View game={gameState} nickname={nickname} onSubmit={handlePredictionSubmit} submitted={phase2Submitted} />
+        )}
+        {phase === "phase3" && <Phase3View game={gameState} nickname={nickname} />}
+        {phase === "leaderboard" && <LeaderboardView game={gameState} nickname={nickname} />}
+        {phase === "ended" && <EndedView game={gameState} nickname={nickname} />}
+        {phase === "lobby" && (
+          <div className="flex flex-col items-center justify-center py-20 text-center px-6">
+            <p className={`${t.textYellow} text-3xl font-black animate-pulse`}>Get ready!</p>
+            <p className={`${t.textMuted} text-lg mt-2`}>Game starting soon...</p>
+          </div>
+        )}
+      </div>
+
+      {/* Answered count badge */}
+      {(phase === "phase1" || phase === "phase2") && (
+        <div className={`fixed bottom-6 left-6 ${t.bgSurface}/80 backdrop-blur text-white px-4 py-2 rounded-full text-base font-semibold z-20 border ${t.borderSurface}`}>
+          {answeredCount} / {N} answered
+        </div>
+      )}
+
+      {menuOpen && <LeaveGameMenu onClose={() => setMenuOpen(false)} onLeave={handleLeave} />}
+    </main>
+  );
+}
+
+export default function PlayGamePage() {
+  return (
+    <Suspense fallback={
+      <main className={`min-h-screen ${t.bgPage} flex items-center justify-center`}>
+        <div className={`${t.textMuted} text-lg animate-pulse`}>Loading...</div>
+      </main>
+    }>
+      <PlayGameContent />
+    </Suspense>
+  );
+}
