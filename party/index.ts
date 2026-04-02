@@ -42,6 +42,7 @@ type GameState = {
   leaderboard: PlayerScore[];
   N: number;
   answeredCount: number;
+  answeredNicknames: string[];
 };
 
 type ClientMessage =

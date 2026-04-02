@@ -246,7 +246,7 @@ export default function HostPage() {
             <span className={`${t.textMuted} text-sm animate-pulse`}>Waiting for players...</span>
           </div>
           {nonHostPlayers.length === 0 ? (
-            <p className={`${t.textFaint} text-center py-6`}>No players yet. Share the room code!</p>
+            <p className={`${t.textMuted} text-center text-xl py-8`}>No players yet — share the room code!</p>
           ) : (
             <div className="flex flex-wrap gap-4">
               {nonHostPlayers.map((player) => <PlayerAvatar key={player.id} player={player} />)}
