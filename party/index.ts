@@ -219,6 +219,7 @@ export default class GameServer implements Party.Server {
     leaderboard: [],
     N: 0,
     answeredCount: 0,
+    answeredNicknames: [],
   };
   private prompts: Prompt[] = [];
   private phase1Answers: Map<string, string | number> = new Map();
@@ -293,6 +294,7 @@ export default class GameServer implements Party.Server {
       phaseEndsAt,
       roundResult: null,
       answeredCount: 0,
+      answeredNicknames: [],
     };
     this.broadcastGame();
 
@@ -304,7 +306,7 @@ export default class GameServer implements Party.Server {
     this.clearTimer();
     const ms = this.game.phase2Duration * 1000;
     const phaseEndsAt = Date.now() + ms;
-    this.game = { ...this.game, phase: "phase2", phaseEndsAt, answeredCount: 0 };
+    this.game = { ...this.game, phase: "phase2", phaseEndsAt, answeredCount: 0, answeredNicknames: [] };
     this.broadcastGame();
     this.phaseTimer = setTimeout(() => this.startPhase3(), ms);
   }
@@ -430,6 +432,15 @@ export default class GameServer implements Party.Server {
         return;
       }
 
+      // Reject duplicate nicknames (case-insensitive)
+      const nameTaken = this.lobby.players.some(
+        (p) => p.nickname.toLowerCase() === msg.nickname.toLowerCase()
+      );
+      if (nameTaken) {
+        sender.send(JSON.stringify({ type: "nickname_taken" }));
+        return;
+      }
+
       const isFirst = this.lobby.players.length === 0;
       const playerIsHost = joiningAsHost || isFirst;
       this.lobby.players.push({
@@ -521,6 +532,7 @@ export default class GameServer implements Party.Server {
         leaderboard: [],
         N: playerCount,
         answeredCount: 0,
+        answeredNicknames: [],
       };
 
       this.startPhase1();
@@ -534,7 +546,11 @@ export default class GameServer implements Party.Server {
       if (this.phase1Answers.has(nickname)) return; // already answered
 
       this.phase1Answers.set(nickname, msg.answer);
-      this.game = { ...this.game, answeredCount: this.game.answeredCount + 1 };
+      this.game = {
+        ...this.game,
+        answeredCount: this.game.answeredCount + 1,
+        answeredNicknames: [...this.game.answeredNicknames, nickname],
+      };
       this.broadcastGame(); // so TV can update count
 
       if (this.checkAllAnswered("phase1")) {
@@ -549,10 +565,16 @@ export default class GameServer implements Party.Server {
       const nickname = this.getNickname(sender.id);
       if (!nickname) return;
       if (this.phase2Predictions.has(nickname)) return;
+      // Must have answered phase1 to participate in phase2
+      if (!this.phase1Answers.has(nickname)) return;
 
       this.phase2Predictions.set(nickname, msg.prediction);
       this.phase2Wagers.set(nickname, msg.doubleDown);
-      this.game = { ...this.game, answeredCount: this.game.answeredCount + 1 };
+      this.game = {
+        ...this.game,
+        answeredCount: this.game.answeredCount + 1,
+        answeredNicknames: [...this.game.answeredNicknames, nickname],
+      };
       this.broadcastGame();
 
       if (this.checkAllAnswered("phase2")) {
@@ -565,6 +587,16 @@ export default class GameServer implements Party.Server {
     if (msg.type === "next_round") {
       const player = this.lobby.players.find((p) => p.id === sender.id);
       if (!player?.isHost) return;
+      if (this.game.phase === "phase1") {
+        this.clearTimer();
+        this.startPhase2();
+        return;
+      }
+      if (this.game.phase === "phase2") {
+        this.clearTimer();
+        this.startPhase3();
+        return;
+      }
       if (this.game.phase === "phase3") {
         this.startLeaderboard();
         return;
@@ -592,7 +624,7 @@ export default class GameServer implements Party.Server {
       this.game = {
         phase: "lobby", round: 0, totalRounds: 10,
         prompt: null, phaseEndsAt: null, phase1Duration: 25, phase2Duration: 20,
-        roundResult: null, leaderboard: [], N: 0, answeredCount: 0,
+        roundResult: null, leaderboard: [], N: 0, answeredCount: 0, answeredNicknames: [],
       };
       this.room.broadcast(JSON.stringify({ type: "disbanded" }));
       return;
@@ -625,6 +657,7 @@ export default class GameServer implements Party.Server {
         leaderboard: [],
         N: playerCount,
         answeredCount: 0,
+        answeredNicknames: [],
       };
       this.startPhase1();
       return;
@@ -639,7 +672,7 @@ export default class GameServer implements Party.Server {
       this.game = {
         phase: "lobby", round: 0, totalRounds: 10,
         prompt: null, phaseEndsAt: null, phase1Duration: 25, phase2Duration: 20,
-        roundResult: null, leaderboard: [], N: 0, answeredCount: 0,
+        roundResult: null, leaderboard: [], N: 0, answeredCount: 0, answeredNicknames: [],
       };
       this.broadcastLobby();
       this.room.broadcast(JSON.stringify({ type: "game", game: this.game }));

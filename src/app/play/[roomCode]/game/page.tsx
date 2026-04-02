@@ -209,7 +209,7 @@ function Phase1View({ game, onSubmit, submitted }: {
         <p className={`${t.textMuted} text-lg`}>Waiting for others...</p>
         <div className="w-full mt-4">
           <TimerBar secs={countdown} total={totalTime} />
-          <p className={`${t.textFaint} text-base mt-2 text-center`}>{displaySecs}s left</p>
+          <p className={`${t.textFaint} text-xl mt-2 text-center font-mono`}>{displaySecs}s left</p>
         </div>
       </div>
     );
@@ -218,14 +218,14 @@ function Phase1View({ game, onSubmit, submitted }: {
   return (
     <div className="flex flex-col gap-6 px-5 py-6">
       <div>
-        <p className={`${t.textCyan} text-base uppercase tracking-widest mb-2`}>
+        <p className={`${t.textCyan} text-xl uppercase tracking-widest mb-2`}>
           {prompt.type === "binary" ? "Yes / No" : prompt.type === "multiple_choice" ? "Multiple Choice" : "Scale 1–10"}
         </p>
         <p className="text-white text-2xl font-bold leading-snug">{prompt.text}</p>
       </div>
       <div>
         <TimerBar secs={countdown} total={totalTime} />
-        <p className={`${t.textFaint} text-base mt-1 text-right`}>{displaySecs}s</p>
+        <p className={`${t.textFaint} text-xl mt-1 text-right font-mono`}>{displaySecs}s</p>
       </div>
       {prompt.type === "binary" && <BinaryInput onSubmit={onSubmit} disabled={submitted} />}
       {prompt.type === "multiple_choice" && <MultipleChoiceInput options={prompt.options!} onSubmit={onSubmit} disabled={submitted} />}
@@ -256,7 +256,7 @@ function Phase2View({ game, onSubmit, submitted }: {
         <p className={`${t.textMuted} text-lg`}>Waiting for reveal...</p>
         <div className="w-full mt-4">
           <TimerBar secs={countdown} total={totalTime} color="bg-[#4dd9d2]" />
-          <p className={`${t.textFaint} text-base mt-2 text-center`}>{displaySecs}s left</p>
+          <p className={`${t.textFaint} text-xl mt-2 text-center font-mono`}>{displaySecs}s left</p>
         </div>
       </div>
     );
@@ -321,8 +321,8 @@ function Phase3View({ game, nickname }: { game: GameState; nickname: string }) {
   return (
     <div className="flex flex-col items-center gap-6 px-5 py-8 text-center">
       <div>
-        <p className={`${t.textMuted} text-base uppercase tracking-widest mb-2`}>Round {game.round} Score</p>
-        <p className={`text-7xl font-black ${color}`}>+{myScore}</p>
+        <p className={`${t.textMuted} text-lg uppercase tracking-widest mb-2`}>Round {game.round} Score</p>
+        <p className={`text-8xl font-black ${color}`}>+{myScore}</p>
         <p className={`text-2xl font-bold mt-2 ${color}`}>{tier}</p>
       </div>
 
@@ -449,49 +449,67 @@ function LeaderboardView({ game, nickname }: { game: GameState; nickname: string
 
 // ---- Ended view ----
 function EndedView({ game, nickname }: { game: GameState; nickname: string }) {
-  const myEntry = game.leaderboard.find((p) => p.nickname === nickname);
-  const winner = game.leaderboard[0];
-  const isWinner = winner?.nickname === nickname;
+  const lb = game.leaderboard;
+  const podium = lb.slice(0, 3);
+  const rest = lb.slice(3);
+  const podiumOrder = [podium[1], podium[0], podium[2]].filter(Boolean); // 2nd, 1st, 3rd
+
+  const podiumHeights = ["h-28", "h-40", "h-20"];
+  const podiumColors = [t.textMuted, t.textYellow, "text-[#cd853f]"];
+  const podiumLabels = ["2nd", "1st", "3rd"];
+  const podiumEmojis = ["🥈", "🏆", "🥉"];
 
   return (
-    <div className="flex flex-col items-center gap-6 px-5 py-10 text-center">
-      <h2 className={`text-4xl font-black ${t.textYellow}`}>Game Over!</h2>
-
-      {isWinner && (
-        <div className="bg-[#f6dc53]/20 border-2 border-[#f6dc53]/60 rounded-2xl px-6 py-4 w-full">
-          <p className={`${t.textYellow} font-black text-3xl`}>🏆 YOU WON!</p>
-        </div>
-      )}
-
-      {myEntry && (
-        <div className={`flex items-center gap-4 rounded-2xl px-5 py-4 border-2 w-full ${isWinner ? "border-[#f6dc53] bg-[#f6dc53]/10" : `border-[#2a4a8a] ${t.bgSurface}`}`}>
-          <span className={`text-3xl font-black ${t.textYellow}`}>#{myEntry.rank}</span>
-          <div className={`${avatarColor(nickname)} w-12 h-12 rounded-full flex items-center justify-center text-2xl`}>
-            {playerEmoji(nickname)}
-          </div>
-          <div className="flex-1 text-left">
-            <p className="text-white font-bold text-lg">{nickname}</p>
-            <p className={`${t.textMuted} text-base`}>Final score</p>
-          </div>
-          <p className={`${t.textYellow} font-black text-2xl`}>{myEntry.total}</p>
-        </div>
-      )}
-
-      <div className="flex flex-col gap-2 w-full">
-        {game.leaderboard.map((p) => (
-          <div key={p.nickname}
-            className={`flex items-center gap-3 rounded-xl px-4 py-3 ${p.nickname === nickname ? "bg-[#7862FF]/20 border border-[#7862FF]/30" : `${t.bgSurface} border ${t.borderSurface}`}`}>
-            <span className={`${t.textMuted} w-7 font-bold text-base`}>#{p.rank}</span>
-            <div className={`${avatarColor(p.nickname)} w-9 h-9 rounded-full flex items-center justify-center text-xl`}>
-              {playerEmoji(p.nickname)}
-            </div>
-            <span className="text-white flex-1 font-medium text-base">{p.nickname}</span>
-            <span className="text-white font-black text-lg">{p.total}</span>
-          </div>
-        ))}
+    <div className="flex flex-col gap-6 px-5 py-8">
+      <div className="text-center">
+        <h2 className={`text-4xl ${t.textYellow}`}>Game Over!</h2>
       </div>
 
-      <p className={`${t.textMuted} text-base animate-pulse`}>Waiting for host...</p>
+      {/* Podium */}
+      <div className="flex items-end justify-center gap-3 mt-2">
+        {podiumOrder.map((p, i) => {
+          const isMe = p.nickname === nickname;
+          return (
+            <div key={p.nickname} className="flex flex-col items-center gap-2 flex-1">
+              <div className={`${avatarColor(p.nickname)} w-14 h-14 rounded-full flex items-center justify-center text-2xl shadow-lg ${isMe ? "ring-2 ring-white/60" : ""}`}>
+                {playerEmoji(p.nickname)}
+              </div>
+              <p className={`text-white text-sm text-center truncate w-full px-1 ${isMe ? "underline underline-offset-2" : ""}`}>{p.nickname}</p>
+              <p className={`${podiumColors[i]} text-lg`}>{p.total} pts</p>
+              <div className={`w-full ${podiumHeights[i]} rounded-t-xl flex flex-col items-center justify-start pt-2 gap-0.5 ${
+                i === 1 ? "bg-[#f6dc53]/20 border border-[#f6dc53]/40" :
+                i === 0 ? "bg-[#7a96c8]/10 border border-[#7a96c8]/20" :
+                "bg-[#cd853f]/10 border border-[#cd853f]/20"
+              }`}>
+                <span className="text-xl">{podiumEmojis[i]}</span>
+                <span className={`${podiumColors[i]} text-sm`}>{podiumLabels[i]}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* 4th+ */}
+      {rest.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {rest.map((p) => {
+            const isMe = p.nickname === nickname;
+            return (
+              <div key={p.nickname}
+                className={`flex items-center gap-3 rounded-xl px-4 py-3 ${isMe ? "bg-[#7862FF]/20 border border-[#7862FF]/30" : `${t.bgSurface} border ${t.borderSurface}`}`}>
+                <span className={`${t.textMuted} w-7 text-base`}>#{p.rank}</span>
+                <div className={`${avatarColor(p.nickname)} w-9 h-9 rounded-full flex items-center justify-center text-xl`}>
+                  {playerEmoji(p.nickname)}
+                </div>
+                <span className="text-white flex-1 text-base">{p.nickname}</span>
+                <span className="text-white text-lg">{p.total}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <p className={`${t.textFaint} text-base text-center animate-pulse`}>Waiting for host...</p>
     </div>
   );
 }
@@ -667,7 +685,15 @@ function PlayGameContent() {
           <Phase1View game={gameState} nickname={nickname} onSubmit={handleAnswerSubmit} submitted={phase1Submitted} />
         )}
         {phase === "phase2" && (
-          <Phase2View game={gameState} nickname={nickname} onSubmit={handlePredictionSubmit} submitted={phase2Submitted} />
+          phase1Submitted
+            ? <Phase2View game={gameState} nickname={nickname} onSubmit={handlePredictionSubmit} submitted={phase2Submitted} />
+            : (
+              <div className="flex flex-col items-center justify-center flex-1 gap-4 text-center px-6 py-16">
+                <div className="w-20 h-20 bg-[#9a3558]/30 rounded-full flex items-center justify-center text-4xl">⏱</div>
+                <p className="text-white text-2xl font-bold">You missed this round</p>
+                <p className={`${t.textMuted} text-lg`}>Answer in time to earn points</p>
+              </div>
+            )
         )}
         {phase === "phase3" && <Phase3View game={gameState} nickname={nickname} />}
         {phase === "leaderboard" && <LeaderboardView game={gameState} nickname={nickname} />}

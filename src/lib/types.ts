@@ -52,6 +52,7 @@ export type GameState = {
   leaderboard: PlayerScore[];
   N: number;
   answeredCount: number;
+  answeredNicknames: string[]; // who has submitted in current phase
 };
 
 export type ServerMessage =
@@ -61,7 +62,8 @@ export type ServerMessage =
   | { type: "room_not_found" }
   | { type: "kicked" }
   | { type: "disbanded" }
-  | { type: "duplicate_tab" };
+  | { type: "duplicate_tab" }
+  | { type: "nickname_taken" };
 
 export type ClientMessage =
   | { type: "join"; nickname: string; isHost?: boolean }

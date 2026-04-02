@@ -31,8 +31,8 @@ export const t = {
   textTeal: "text-[#4dd9d2]",       // lighter teal for readability on dark bg
   textCyan: "text-[#4dd9d2]",       // alias
   textRose: "text-[#c94f7a]",       // lighter rose for readability on dark bg
-  textMuted: "text-[#7a96c8]",      // muted blue-slate
-  textFaint: "text-[#4a6a9a]",      // very faint blue-slate
+  textMuted: "text-[#a8c0e8]",      // muted blue-slate
+  textFaint: "text-[#7a96c8]",      // faint blue-slate
   textWhite: "text-white",
 
   // Button: primary (purple)
@@ -57,20 +57,20 @@ export const t = {
   // FALSE answer color (no/rose)
   falseColor: { bg: "bg-[#9a3558]", text: "text-white", hover: "hover:bg-[#7e2b47]" },
 
-  // Answer choice buttons: bg + text pairs
+  // Answer choice buttons: bg + text pairs (bright, white-hued, all black text)
   answerChoiceColors: [
-    { bg: "bg-[#7862FF]", text: "text-white" },
-    { bg: "bg-[#25a59f]", text: "text-white" },
-    { bg: "bg-[#f6dc53]", text: "text-[#081c48]" },
-    { bg: "bg-[#9a3558]", text: "text-white" },
+    { bg: "bg-[#a594ff]", text: "text-[#0a0a2e]" },
+    { bg: "bg-[#3dd4cc]", text: "text-[#021f1e]" },
+    { bg: "bg-[#f6dc53]", text: "text-[#1a1000]" },
+    { bg: "bg-[#f07ab0]", text: "text-[#2a0018]" },
   ] as { bg: string; text: string }[],
 
   // Answer bar colors for TV result bars
   answerBarColors: [
-    "bg-[#7862FF]",
-    "bg-[#25a59f]",
+    "bg-[#a594ff]",
+    "bg-[#3dd4cc]",
     "bg-[#f6dc53]",
-    "bg-[#9a3558]",
+    "bg-[#f07ab0]",
   ] as string[],
 
   // Timer

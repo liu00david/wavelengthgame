@@ -4,20 +4,6 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useParty } from "@/lib/useParty";
 import { t, avatarColor, playerEmoji } from "@/lib/theme";
-import type { Player } from "@/lib/types";
-
-function SmallAvatar({ player }: { player: Player }) {
-  const color = avatarColor(player.nickname);
-  return (
-    <div className={`flex items-center gap-3 bg-[#2a4a8a]/60 rounded-xl px-4 py-2`}>
-      <div className={`${color} w-9 h-9 rounded-full flex items-center justify-center text-xl flex-shrink-0`}>
-        {playerEmoji(player.nickname)}
-      </div>
-      <span className="text-white font-medium text-sm">{player.nickname}</span>
-      {player.isHost && <span className={`${t.textYellow} text-xs font-bold ml-auto`}>HOST</span>}
-    </div>
-  );
-}
 
 const PLAYER_SESSION_KEY = "consensus_player_session";
 
@@ -59,6 +45,12 @@ function PlayContent() {
         localStorage.removeItem(PLAYER_SESSION_KEY);
         router.push("/");
       }
+      if (msg.type === "nickname_taken") {
+        nicknameRef.current = "";
+        setNickname("");
+        localStorage.removeItem(PLAYER_SESSION_KEY);
+        setNicknameError("That name is already taken. Choose another.");
+      }
     },
   );
 
@@ -88,14 +80,14 @@ function PlayContent() {
     }
     setNicknameError("");
     nicknameRef.current = name;
+    // Don't persist to localStorage yet — wait for server to confirm (no nickname_taken)
+    sendMsg({ type: "join", nickname: name });
+    // Optimistically show waiting screen; nickname_taken handler will roll back
     setNickname(name);
     localStorage.setItem(PLAYER_SESSION_KEY, JSON.stringify({ roomCode, nickname: name }));
-    sendMsg({ type: "join", nickname: name });
   }
 
-  const players: Player[] = lobbyState?.players ?? [];
   const locked = lobbyState?.locked ?? false;
-  const myPlayer = players.find((p) => p.nickname === nickname);
 
   if (roomNotFound) {
     return (
@@ -180,28 +172,15 @@ function PlayContent() {
             {playerEmoji(nickname)}
           </div>
           <h2 className="text-2xl font-black text-white">{nickname}</h2>
-          {myPlayer?.isHost && <span className={`${t.textYellow} text-sm font-bold`}>HOST</span>}
         </div>
 
-        <div className={`${t.bgSurface} rounded-2xl border ${t.borderSurface} shadow-xl p-6 mb-6`}>
+        <div className={`${t.bgSurface} rounded-2xl border ${t.borderSurface} shadow-xl p-6 mb-6 w-full`}>
           <div className="flex items-center gap-3 mb-1">
             <div className="w-2 h-2 bg-[#4dd9d2] rounded-full animate-pulse" />
             <span className="text-[#4dd9d2] font-semibold">You&apos;re in!</span>
           </div>
-          <p className={`${t.textMuted} text-sm`}>Waiting for host to start the game...</p>
-          <p className={`${t.textFaint} text-xs mt-1 font-mono`}>Room: {roomCode}</p>
+          <p className={`${t.textMuted} text-sm`}>Waiting for the host to start the game...</p>
         </div>
-
-        {players.length > 0 && (
-          <div className={`${t.bgSurface} rounded-2xl border ${t.borderSurface} shadow-xl p-5 mb-4`}>
-            <h3 className={`${t.textMuted} text-xs uppercase tracking-widest mb-3`}>
-              Players in Lobby ({players.length})
-            </h3>
-            <div className="flex flex-col gap-2">
-              {players.map((player) => <SmallAvatar key={player.id} player={player} />)}
-            </div>
-          </div>
-        )}
 
         <button
           onClick={handleLeave}

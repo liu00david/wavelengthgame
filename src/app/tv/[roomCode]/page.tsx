@@ -1,27 +1,25 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import { useParty } from "@/lib/useParty";
 import { t, avatarColor, playerEmoji } from "@/lib/theme";
 import type { Player } from "@/lib/types";
 
-const JOIN_BASE_URL = "https://<PLACEHOLDER>";
+const JOIN_BASE_URL = "https://consensusgame.vercel.app";
+const JOIN_DISPLAY_URL = "consensusgame.vercel.app";
 
 function BigAvatar({ player }: { player: Player }) {
   const color = avatarColor(player.nickname);
   return (
     <div className="flex flex-col items-center gap-3 animate-[fadeIn_0.4s_ease-out]">
-      <div className={`${color} w-20 h-20 rounded-full flex items-center justify-center text-4xl shadow-xl ring-4 ring-white/10`}>
+      <div className={`${color} w-24 h-24 rounded-full flex items-center justify-center text-5xl shadow-xl ring-4 ring-white/10`}>
         {playerEmoji(player.nickname)}
       </div>
-      <span className="text-white text-lg font-semibold truncate max-w-[90px]">
+      <span className="text-white text-xl font-semibold truncate max-w-[110px]">
         {player.nickname}
       </span>
-      {player.isHost && (
-        <span className={`${t.textYellow} text-sm font-bold -mt-2`}>HOST</span>
-      )}
     </div>
   );
 }
@@ -31,7 +29,23 @@ export default function TVPage() {
   const roomCode = (params.roomCode as string).toUpperCase();
   const router = useRouter();
 
-  const { lobbyState, gameState } = useParty(roomCode);
+  const [roomNotFound, setRoomNotFound] = useState(false);
+
+  const { lobbyState, gameState } = useParty(roomCode, undefined, (msg) => {
+    if (msg.type === "room_not_found" || msg.type === "disbanded") {
+      setRoomNotFound(true);
+    }
+  });
+
+  // Check room existence on mount
+  useEffect(() => {
+    fetch(`/api/room/${roomCode}`)
+      .then((r) => r.json())
+      .then((data: { exists: boolean }) => {
+        if (!data.exists) setRoomNotFound(true);
+      })
+      .catch(() => setRoomNotFound(true));
+  }, [roomCode]);
 
   useEffect(() => {
     if (gameState && gameState.phase !== "lobby") {
@@ -39,70 +53,93 @@ export default function TVPage() {
     }
   }, [gameState, roomCode, router]);
 
-  const players: Player[] = lobbyState?.players ?? [];
+  if (roomNotFound) {
+    return (
+      <main className={`min-h-screen ${t.bgPage} flex flex-col items-center justify-center`}>
+        <div className={`${t.bgSurface} border border-[#9a3558]/40 rounded-2xl p-12 text-center max-w-md`}>
+          <p className="text-6xl mb-6">📺</p>
+          <h2 className="text-3xl font-black text-[#c94f7a] mb-3">Room Not Found</h2>
+          <p className={`${t.textMuted} text-lg`}>
+            No active game for room <span className="text-white font-mono font-black">{roomCode}</span>.
+          </p>
+          <p className={`${t.textFaint} text-base mt-2`}>Ask the host to create a new room.</p>
+        </div>
+      </main>
+    );
+  }
+
+  const players: Player[] = (lobbyState?.players ?? []).filter((p) => !p.isHost);
   const locked = lobbyState?.locked ?? false;
 
   return (
-    <main className={`min-h-screen ${t.bgPage} flex flex-col items-center justify-between px-8 py-10 relative overflow-hidden`}>
+    <main className={`min-h-screen ${t.bgPage} flex flex-col px-10 py-8 relative overflow-hidden`}>
       {/* Background decoration */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#7862FF]/5 rounded-full blur-3xl" />
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-[#25a59f]/5 rounded-full blur-3xl" />
       </div>
 
-      {/* Top: title + room code */}
-      <div className="w-full flex items-center justify-between z-10">
+      {/* Top bar: title left, room code right */}
+      <div className="w-full flex items-start justify-between z-10 mb-6">
         <div>
-          <h1 className={`text-4xl font-black text-white tracking-tight`}>
-            CONSENSUS
-          </h1>
-          <p className={`${t.textCyan} text-sm tracking-widest`}>
-            Wisdom of the Crowds
-          </p>
+          <h1 className="text-5xl font-black text-white tracking-tight">CONSENSUS</h1>
+          <p className={`${t.textCyan} text-xl tracking-widest mt-1`}>Wisdom of the Crowds</p>
         </div>
-
-        {/* QR code */}
-        <div className="flex flex-col items-center gap-2">
-          <div className="bg-white p-2 rounded-xl">
-            <QRCodeSVG
-              value={`${JOIN_BASE_URL}/play/${roomCode}`}
-              size={96}
-              bgColor="#ffffff"
-              fgColor="#081c48"
-              level="M"
-            />
+        <div className="text-right">
+          <p className={`${t.textMuted} text-lg uppercase tracking-widest`}>Room Code</p>
+          <div className={`text-7xl font-black text-white font-mono tracking-widest drop-shadow-2xl`}>
+            {roomCode}
           </div>
-          <span className={`${t.textMuted} text-xs`}>Scan to join</span>
         </div>
       </div>
 
-      {/* Center: room code + join URL */}
-      <div className="flex flex-col items-center z-10">
-        <p className={`${t.textMuted} uppercase tracking-widest text-sm mb-1`}>
-          Join at
-        </p>
-        <p className={`${t.textTeal} text-lg font-mono mb-3`}>
-          {JOIN_BASE_URL}/play/{roomCode}
-        </p>
-        <div className="text-8xl font-black text-white font-mono tracking-widest drop-shadow-2xl">
-          {roomCode}
+      {/* Center: player count (Kahoot-style large) */}
+      <div className="flex-1 flex flex-col items-center justify-center z-10 gap-6">
+        <div className="text-center mb-2">
+          {players.length === 0 ? (
+            <p className={`${t.textMuted} text-4xl font-semibold`}>Waiting for players...</p>
+          ) : (
+            <>
+              <div className="text-[10rem] font-black text-white leading-none drop-shadow-2xl">
+                {players.length}
+              </div>
+              <p className={`${t.textCyan} text-4xl font-bold -mt-2`}>
+                player{players.length === 1 ? "" : "s"} joined
+              </p>
+            </>
+          )}
         </div>
-        <p className={`${t.textFaint} mt-3 text-lg`}>
-          {players.length === 0
-            ? "Waiting for players..."
-            : `${players.length} player${players.length === 1 ? "" : "s"} joined`}
-        </p>
-      </div>
 
-      {/* Bottom: player bubbles */}
-      <div className="z-10 w-full">
+        {/* Player bubbles */}
         {players.length > 0 && (
-          <div className="flex flex-wrap justify-center gap-6">
+          <div className="flex flex-wrap justify-center gap-6 max-w-5xl">
             {players.map((player) => (
               <BigAvatar key={player.id} player={player} />
             ))}
           </div>
         )}
+      </div>
+
+      {/* Bottom: QR + URL side by side */}
+      <div className="z-10 flex items-center justify-center gap-8 mt-6">
+        <div className={`${t.bgSurface} border ${t.borderSurface} rounded-2xl p-6 flex items-center gap-8`}>
+          <div className="bg-white p-3 rounded-xl flex-shrink-0">
+            <QRCodeSVG
+              value={`${JOIN_BASE_URL}/play/${roomCode}`}
+              size={120}
+              bgColor="#ffffff"
+              fgColor="#081c48"
+              level="M"
+            />
+          </div>
+          <div>
+            <p className={`${t.textMuted} text-xl uppercase tracking-widest mb-1`}>Join at</p>
+            <p className="text-white text-3xl font-black font-mono">
+              {JOIN_DISPLAY_URL}/play/<span className={t.textYellow}>{roomCode}</span>
+            </p>
+            <p className={`${t.textFaint} text-lg mt-2`}>or scan the QR code</p>
+          </div>
+        </div>
       </div>
 
       {/* Locked overlay */}

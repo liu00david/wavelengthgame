@@ -150,7 +150,7 @@ export default function HostGamePage() {
           <div className="flex items-center justify-between mb-3">
             <span className={`${t.textYellow} font-bold text-lg`}>{phaseLabel[phase]}</span>
             {gameState && (
-              <span className={`${t.textMuted} text-sm`}>
+              <span className={`${t.textMuted} text-lg`}>
                 Round {gameState.round} / {gameState.totalRounds}
               </span>
             )}
@@ -158,7 +158,7 @@ export default function HostGamePage() {
 
           {prompt && (
             <div className="mb-4">
-              <p className={`${t.textMuted} text-xs uppercase tracking-widest mb-1`}>
+              <p className={`${t.textMuted} text-base uppercase tracking-widest mb-1`}>
                 {prompt.type.replace("_", " ")}
               </p>
               <p className="text-white text-lg font-semibold leading-snug">{prompt.text}</p>
@@ -186,13 +186,13 @@ export default function HostGamePage() {
           <div className="flex gap-3 mb-4">
             <button
               onClick={() => sendMsg({ type: "skip_question" })}
-              className={`flex-1 py-3 rounded-xl ${t.btnGhost} font-semibold text-sm`}
+              className={`flex-1 py-4 rounded-xl ${t.btnGhost} font-semibold text-base`}
             >
               Skip Question
             </button>
             <button
               onClick={() => sendMsg({ type: "next_round" })}
-              className={`flex-1 py-3 rounded-xl ${t.btnPrimary} font-semibold text-sm`}
+              className={`flex-1 py-4 rounded-xl ${t.btnPrimary} font-semibold text-base`}
             >
               Continue Without Waiting
             </button>
@@ -207,11 +207,7 @@ export default function HostGamePage() {
             </p>
             <div className="flex flex-wrap gap-2">
               {nonHostPlayers.map((p) => {
-                const roundResult = gameState.roundResult;
-                const hasAnswered =
-                  phase === "phase1"
-                    ? roundResult?.phase1Answers[p.nickname] !== undefined
-                    : roundResult?.phase2Predictions[p.nickname] !== undefined;
+                const hasAnswered = (gameState.answeredNicknames ?? []).includes(p.nickname);
                 return (
                   <div
                     key={p.id}
@@ -263,9 +259,9 @@ export default function HostGamePage() {
         {phase === "phase3" && (
           <button
             onClick={() => sendMsg({ type: "next_round" })}
-            className={`w-full py-4 rounded-2xl ${t.btnYellow} text-xl shadow-xl`}
+            className={`w-full py-5 rounded-2xl ${t.btnYellow} text-2xl shadow-xl`}
           >
-            Go to Leaderboard →
+            Go to Round Results →
           </button>
         )}
 
@@ -273,7 +269,7 @@ export default function HostGamePage() {
         {phase === "leaderboard" && (
           <button
             onClick={() => sendMsg({ type: "next_round" })}
-            className={`w-full py-4 rounded-2xl ${t.btnYellow} text-xl shadow-xl`}
+            className={`w-full py-5 rounded-2xl ${t.btnYellow} text-2xl shadow-xl`}
           >
             Next Question →
           </button>
@@ -291,7 +287,7 @@ export default function HostGamePage() {
           <div className="flex flex-col gap-3">
             <button
               onClick={handlePlayAgain}
-              className={`w-full py-4 rounded-2xl ${t.btnYellow} text-xl shadow-xl`}
+              className={`w-full py-5 rounded-2xl ${t.btnYellow} text-2xl shadow-xl`}
             >
               Play Again
             </button>

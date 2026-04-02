@@ -152,9 +152,9 @@ export default function HostPage() {
 
         {/* Menu overlay */}
         {menuState !== "closed" && (
-          <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm"
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
             onClick={() => setMenuState("closed")}>
-            <div className={`w-full max-w-sm ${t.bgSurface} rounded-t-2xl border-t ${t.borderSurface} p-6 pb-10`}
+            <div className={`w-full max-w-sm ${t.bgSurface} rounded-2xl border ${t.borderSurface} p-6`}
               onClick={(e) => e.stopPropagation()}>
 
               {menuState === "main" && (
@@ -279,12 +279,12 @@ export default function HostPage() {
           </div>
         </div>
 
-        <button onClick={handleLock} disabled={nonHostPlayers.length < 2}
+        <button onClick={handleLock} disabled={nonHostPlayers.length < 3}
           className={`w-full py-4 rounded-2xl ${t.btnYellow} text-xl shadow-xl ${t.btnPrimaryDisabled}`}>
           Lock &amp; Start Game
         </button>
-        {nonHostPlayers.length < 2 && (
-          <p className={`${t.textFaint} text-sm text-center mt-2`}>Need at least 2 players to start</p>
+        {nonHostPlayers.length < 3 && (
+          <p className={`${t.textFaint} text-sm text-center mt-2`}>Need at least 3 players to start</p>
         )}
       </div>
     </main>
