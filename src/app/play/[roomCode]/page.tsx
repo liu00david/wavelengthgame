@@ -7,17 +7,19 @@ import { t, avatarColor, playerEmoji } from "@/lib/theme";
 
 const PLAYER_SESSION_KEY = "consensus_player_session";
 
-function PlayContent() {
-  const params = useParams();
+// ---- Inner component: only rendered once tab check passes ----
+function PlayContent({ roomCode }: { roomCode: string }) {
   const router = useRouter();
-  const roomCode = (params.roomCode as string).toUpperCase();
 
+  // `nickname` = confirmed by server; `pendingNickname` = sent but not yet confirmed
   const [nickname, setNickname] = useState<string>("");
+  const [pendingNickname, setPendingNickname] = useState<string>("");
   const [nicknameInput, setNicknameInput] = useState("");
   const [nicknameError, setNicknameError] = useState("");
   const [roomNotFound, setRoomNotFound] = useState(false);
 
   const nicknameRef = useRef("");
+  const joinedRef = useRef(false); // true once we've successfully joined (got `connected`)
 
   useEffect(() => {
     try {
@@ -35,6 +37,12 @@ function PlayContent() {
   const { sendMsg, lobbyState, gameState } = useParty(
     roomCode,
     () => {
+      // Only auto-join on reconnect if we were previously confirmed
+      if (joinedRef.current) {
+        sendMsg({ type: "join", nickname: nicknameRef.current });
+        return;
+      }
+      // First open: only send if we have a saved session (returning player)
       const name = nicknameRef.current;
       if (!name) return;
       sendMsg({ type: "join", nickname: name });
@@ -45,9 +53,19 @@ function PlayContent() {
         localStorage.removeItem(PLAYER_SESSION_KEY);
         router.push("/");
       }
-      if (msg.type === "nickname_taken") {
+      if (msg.type === "connected") {
+        // Server confirmed join — promote to confirmed nickname
+        const name = nicknameRef.current;
+        if (name) {
+          joinedRef.current = true;
+          setNickname(name);
+          setPendingNickname("");
+          localStorage.setItem(PLAYER_SESSION_KEY, JSON.stringify({ roomCode, nickname: name }));
+        }
+      }
+      if (msg.type === "nickname_taken" || msg.type === "duplicate_tab") {
         nicknameRef.current = "";
-        setNickname("");
+        setPendingNickname("");
         localStorage.removeItem(PLAYER_SESSION_KEY);
         setNicknameError("That name is already taken. Choose another.");
       }
@@ -80,11 +98,13 @@ function PlayContent() {
     }
     setNicknameError("");
     nicknameRef.current = name;
-    // Don't persist to localStorage yet — wait for server to confirm (no nickname_taken)
+    setPendingNickname(name);
     sendMsg({ type: "join", nickname: name });
-    // Optimistically show waiting screen; nickname_taken handler will roll back
-    setNickname(name);
-    localStorage.setItem(PLAYER_SESSION_KEY, JSON.stringify({ roomCode, nickname: name }));
+    // Do NOT set nickname or localStorage yet — wait for server `connected`
+    // Safety timeout: if no response in 5s, un-stick the button
+    setTimeout(() => {
+      setPendingNickname((p) => p === name ? "" : p);
+    }, 5000);
   }
 
   const locked = lobbyState?.locked ?? false;
@@ -107,6 +127,7 @@ function PlayContent() {
   }
 
   if (!nickname) {
+    const waiting = !!pendingNickname;
     return (
       <main className={`min-h-screen ${t.bgPage} flex flex-col items-center justify-center px-4`}>
         <div className={`w-full max-w-sm ${t.bgSurface} rounded-2xl border ${t.borderSurface} shadow-xl p-8`}>
@@ -119,17 +140,23 @@ function PlayContent() {
             <input
               type="text"
               maxLength={20}
-              placeholder="e.g. Alex"
+              placeholder="e.g. David"
               value={nicknameInput}
-              onChange={(e) => setNicknameInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSetNickname()}
-              className={`w-full bg-[#0f2660] border border-[#2a4a8a] rounded-xl px-4 py-3 text-white placeholder-[#4a6a9a] focus:outline-none focus:border-[#7862FF] transition-colors`}
+              onChange={(e) => { setNicknameInput(e.target.value); setNicknameError(""); }}
+              onKeyDown={(e) => e.key === "Enter" && !waiting && handleSetNickname()}
+              disabled={waiting}
+              className={`w-full bg-[#0f2660] border border-[#2a4a8a] rounded-xl px-4 py-3 text-white placeholder-[#4a6a9a] focus:outline-none focus:border-[#7862FF] transition-colors disabled:opacity-60`}
               autoFocus
             />
             {nicknameError && <p className="text-[#c94f7a] text-sm">{nicknameError}</p>}
-            <button onClick={handleSetNickname}
-              className={`w-full py-3 rounded-xl ${t.btnYellow} text-lg`}>
-              Enter Room
+            <button onClick={handleSetNickname} disabled={waiting}
+              className={`w-full py-3 rounded-xl ${t.btnYellow} text-lg disabled:opacity-60 flex items-center justify-center gap-2`}>
+              {waiting ? (
+                <>
+                  <span className="inline-block w-5 h-5 border-2 border-[#081c48] border-t-transparent rounded-full animate-spin" />
+                  Joining...
+                </>
+              ) : "Enter Room"}
             </button>
           </div>
         </div>
@@ -163,7 +190,7 @@ function PlayContent() {
       <div className={`flex items-center justify-between px-4 py-3 border-b ${t.borderSurface} ${t.bgPage}`}>
         <span className={`${t.textMuted} text-sm font-medium`}>Room</span>
         <span className={`${t.textYellow} font-black text-xl font-mono tracking-widest`}>{roomCode}</span>
-        <div className="w-12" /> {/* spacer */}
+        <div className="w-12" />
       </div>
 
       <div className="flex flex-col items-center px-4 py-6 w-full max-w-md mx-auto">
@@ -193,6 +220,66 @@ function PlayContent() {
   );
 }
 
+// ---- Tab check wrapper ----
+function PlayGuard() {
+  const params = useParams();
+  const roomCode = (params.roomCode as string).toUpperCase();
+
+  const [tabStatus, setTabStatus] = useState<"checking" | "duplicate" | "ok">("checking");
+
+  useEffect(() => {
+    const channel = new BroadcastChannel(`consensus_tab_${roomCode}`);
+    let isDuplicate = false;
+
+    channel.onmessage = (e) => {
+      if (e.data === "ping") {
+        channel.postMessage("pong");
+      }
+      if (e.data === "pong" && !isDuplicate) {
+        isDuplicate = true;
+        setTabStatus("duplicate");
+        channel.close();
+      }
+    };
+
+    channel.postMessage("ping");
+
+    const timer = setTimeout(() => {
+      setTabStatus((s) => s === "checking" ? "ok" : s);
+    }, 300);
+
+    return () => {
+      clearTimeout(timer);
+      if (!isDuplicate) channel.close();
+    };
+  }, [roomCode]);
+
+  if (tabStatus === "checking") {
+    return (
+      <main className={`min-h-screen ${t.bgPage} flex items-center justify-center`}>
+        <div className={`${t.textMuted} text-lg animate-pulse`}>Loading...</div>
+      </main>
+    );
+  }
+
+  if (tabStatus === "duplicate") {
+    return (
+      <main className={`min-h-screen ${t.bgPage} flex flex-col items-center justify-center px-4`}>
+        <div className={`w-full max-w-sm ${t.bgSurface} rounded-2xl border border-[#9a3558]/40 shadow-xl p-8 text-center`}>
+          <p className="text-5xl mb-4">🪟</p>
+          <h2 className="text-2xl font-black text-[#c94f7a] mb-2">Already Open</h2>
+          <p className={`${t.textMuted} mb-4`}>
+            This game is already open in another tab.
+          </p>
+          <p className={`${t.textFaint} text-sm`}>Close this tab and continue in the other one.</p>
+        </div>
+      </main>
+    );
+  }
+
+  return <PlayContent roomCode={roomCode} />;
+}
+
 export default function PlayPage() {
   return (
     <Suspense fallback={
@@ -200,7 +287,7 @@ export default function PlayPage() {
         <div className={`${t.textMuted} text-lg animate-pulse`}>Loading...</div>
       </main>
     }>
-      <PlayContent />
+      <PlayGuard />
     </Suspense>
   );
 }

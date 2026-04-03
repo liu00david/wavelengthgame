@@ -176,18 +176,19 @@ function DoubleDownToggle({ active, onToggle, disabled }: { active: boolean; onT
 
 // ---- Score Tier ----
 function tierLabel(score: number): string {
-  if (score >= 1000) return "BULLSEYE";
-  if (score >= 750) return "Inner Circle";
-  if (score >= 400) return "Close";
-  if (score >= 100) return "Fringe";
+  if (score >= 950) return "PERFECT";
+  if (score >= 750) return "Great";
+  if (score >= 500) return "Good";
+  if (score >= 250) return "Close";
+  if (score > 0)    return "Miss";
   return "Miss";
 }
 
 function tierColor(score: number): string {
-  if (score >= 1000) return t.textYellow;
+  if (score >= 950) return t.textYellow;
   if (score >= 750) return t.textTeal;
-  if (score >= 400) return t.textCyan;
-  if (score >= 100) return "text-[#7a96c8]";
+  if (score >= 500) return t.textCyan;
+  if (score >= 250) return "text-[#7a96c8]";
   return "text-[#c94f7a]";
 }
 
@@ -334,12 +335,6 @@ function Phase3View({ game, nickname }: { game: GameState; nickname: string }) {
         </div>
       )}
 
-      {result.chaosBonusAwarded && (
-        <div className="bg-[#f6dc53]/20 border border-[#f6dc53]/30 rounded-xl px-4 py-3 w-full">
-          <p className={`${t.textYellow} font-bold text-lg`}>+200 Chaos Bonus!</p>
-        </div>
-      )}
-
       {/* Ranking message */}
       {myEntry && (
         <div className={`${t.bgSurface} rounded-2xl border ${t.borderSurface} px-5 py-4 w-full`}>
@@ -447,17 +442,27 @@ function LeaderboardView({ game, nickname }: { game: GameState; nickname: string
   );
 }
 
+// ---- Podium helpers ----
+const RANK_STYLE: Record<number, { color: string; label: string; emoji: string; height: string; bg: string }> = {
+  1: { color: t.textYellow,       label: "1st", emoji: "🏆", height: "h-40", bg: "bg-[#f6dc53]/20 border border-[#f6dc53]/40" },
+  2: { color: t.textMuted,        label: "2nd", emoji: "🥈", height: "h-28", bg: "bg-[#7a96c8]/10 border border-[#7a96c8]/20" },
+  3: { color: "text-[#cd853f]",   label: "3rd", emoji: "🥉", height: "h-20", bg: "bg-[#cd853f]/10 border border-[#cd853f]/20" },
+};
+
 // ---- Ended view ----
 function EndedView({ game, nickname }: { game: GameState; nickname: string }) {
   const lb = game.leaderboard;
-  const podium = lb.slice(0, 3);
-  const rest = lb.slice(3);
-  const podiumOrder = [podium[1], podium[0], podium[2]].filter(Boolean); // 2nd, 1st, 3rd
 
-  const podiumHeights = ["h-28", "h-40", "h-20"];
-  const podiumColors = [t.textMuted, t.textYellow, "text-[#cd853f]"];
-  const podiumLabels = ["2nd", "1st", "3rd"];
-  const podiumEmojis = ["🥈", "🏆", "🥉"];
+  // Players with rank 1–3 go on the podium; rest go in the list
+  const podiumPlayers = lb.filter((p) => (p.rank ?? 99) <= 3);
+  const restPlayers = lb.filter((p) => (p.rank ?? 99) > 3);
+
+  // Display order: rank-2 left, rank-1 center, rank-3 right
+  // Within each rank group, preserve leaderboard order
+  const rank2 = podiumPlayers.filter((p) => p.rank === 2);
+  const rank1 = podiumPlayers.filter((p) => p.rank === 1);
+  const rank3 = podiumPlayers.filter((p) => p.rank === 3);
+  const podiumOrder = [...rank2, ...rank1, ...rank3];
 
   return (
     <div className="flex flex-col gap-6 px-5 py-8">
@@ -466,33 +471,30 @@ function EndedView({ game, nickname }: { game: GameState; nickname: string }) {
       </div>
 
       {/* Podium */}
-      <div className="flex items-end justify-center gap-3 mt-2">
-        {podiumOrder.map((p, i) => {
+      <div className="flex items-end justify-center gap-2 mt-2">
+        {podiumOrder.map((p) => {
+          const style = RANK_STYLE[p.rank ?? 1];
           const isMe = p.nickname === nickname;
           return (
-            <div key={p.nickname} className="flex flex-col items-center gap-2 flex-1">
-              <div className={`${avatarColor(p.nickname)} w-14 h-14 rounded-full flex items-center justify-center text-2xl shadow-lg ${isMe ? "ring-2 ring-white/60" : ""}`}>
+            <div key={p.nickname} className="flex flex-col items-center gap-1 flex-1 min-w-0">
+              <div className={`${avatarColor(p.nickname)} w-12 h-12 rounded-full flex items-center justify-center text-2xl shadow-lg flex-shrink-0 ${isMe ? "ring-2 ring-white/60" : ""}`}>
                 {playerEmoji(p.nickname)}
               </div>
-              <p className={`text-white text-sm text-center truncate w-full px-1 ${isMe ? "underline underline-offset-2" : ""}`}>{p.nickname}</p>
-              <p className={`${podiumColors[i]} text-lg`}>{p.total} pts</p>
-              <div className={`w-full ${podiumHeights[i]} rounded-t-xl flex flex-col items-center justify-start pt-2 gap-0.5 ${
-                i === 1 ? "bg-[#f6dc53]/20 border border-[#f6dc53]/40" :
-                i === 0 ? "bg-[#7a96c8]/10 border border-[#7a96c8]/20" :
-                "bg-[#cd853f]/10 border border-[#cd853f]/20"
-              }`}>
-                <span className="text-xl">{podiumEmojis[i]}</span>
-                <span className={`${podiumColors[i]} text-sm`}>{podiumLabels[i]}</span>
+              <p className={`text-white text-xs text-center truncate w-full px-1 ${isMe ? "underline underline-offset-2" : ""}`}>{p.nickname}</p>
+              <p className={`${style.color} text-sm`}>{p.total} pts</p>
+              <div className={`w-full ${style.height} rounded-t-xl flex flex-col items-center justify-start pt-2 gap-0.5 ${style.bg}`}>
+                <span className="text-lg">{style.emoji}</span>
+                <span className={`${style.color} text-xs`}>{style.label}</span>
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* 4th+ */}
-      {rest.length > 0 && (
+      {/* Below podium */}
+      {restPlayers.length > 0 && (
         <div className="flex flex-col gap-2">
-          {rest.map((p) => {
+          {restPlayers.map((p) => {
             const isMe = p.nickname === nickname;
             return (
               <div key={p.nickname}
@@ -571,24 +573,37 @@ function PlayGameContent() {
   const lastRoundRef = useRef<number | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [kicked, setKicked] = useState(false);
+  const [notification, setNotification] = useState<string | null>(null);
+  const [duplicateTab, setDuplicateTab] = useState(false);
+  const removedByHostRef = useRef(false);
 
   const { sendMsg, gameState, lobbyState } = useParty(
     roomCode,
     () => { if (nickname) sendMsg({ type: "rejoin", nickname }); },
     (msg) => {
-      if (msg.type === "kicked") setKicked(true);
+      if (msg.type === "kicked") {
+        removedByHostRef.current = true;
+        setKicked(true);
+      }
       if (msg.type === "disbanded") {
+        removedByHostRef.current = true;
         localStorage.removeItem(PLAYER_SESSION_KEY);
-        router.push("/");
+        setNotification("The host ended the game.");
+        setTimeout(() => router.push("/"), 2500);
+      }
+      if (msg.type === "duplicate_tab") {
+        removedByHostRef.current = true;
+        setDuplicateTab(true);
       }
     },
   );
 
   useEffect(() => {
+    if (removedByHostRef.current) return;
     function handleBeforeUnload(e: BeforeUnloadEvent) { e.preventDefault(); }
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, []);
+  }, [kicked]);
 
   const phase = gameState?.phase ?? "lobby";
 
@@ -631,6 +646,27 @@ function PlayGameContent() {
           className={`px-6 py-3 rounded-xl ${t.btnYellow} text-lg`}>
           Back to Home
         </button>
+      </div>
+    );
+  }
+
+  if (duplicateTab) {
+    return (
+      <div className={`flex flex-col items-center justify-center min-h-screen ${t.bgPage} text-white gap-6 px-6 text-center`}>
+        <div className="text-6xl">🪟</div>
+        <h2 className="text-3xl font-black text-[#c94f7a]">Already Open</h2>
+        <p className={`${t.textMuted} text-lg`}>This game is already open in another tab.</p>
+        <p className={`${t.textFaint} text-base`}>Close this tab and continue in the other one.</p>
+      </div>
+    );
+  }
+
+  if (notification) {
+    return (
+      <div className={`flex flex-col items-center justify-center min-h-screen ${t.bgPage} text-white gap-6 px-6 text-center`}>
+        <div className="text-6xl">📺</div>
+        <h2 className="text-3xl font-black text-white">{notification}</h2>
+        <p className={`${t.textMuted} text-lg`}>Returning to home...</p>
       </div>
     );
   }

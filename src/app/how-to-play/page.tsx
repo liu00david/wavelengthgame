@@ -25,11 +25,9 @@ const rules = [
 ];
 
 const scoring = [
-  { label: "BULLSEYE", pts: "1000 pts", desc: "Perfect prediction", color: t.textYellow },
-  { label: "Inner Circle", pts: "750 pts", desc: "Very close", color: t.textTeal },
-  { label: "Close", pts: "400 pts", desc: "In the right range", color: t.textCyan },
-  { label: "Fringe", pts: "100 pts", desc: "Off but not terrible", color: t.textMuted },
-  { label: "Miss", pts: "0 pts", desc: "Way off", color: "text-[#c94f7a]" },
+  { label: "Yes / No", pts: "0–1000 pts", desc: "Based on how far off your count was", color: t.textCyan },
+  { label: "Scale", pts: "0–1000 pts", desc: "Closer to the average = more points", color: t.textTeal },
+  { label: "Multiple Choice", pts: "625–1000 pts", desc: "Correct guess — rarer answers score higher", color: t.textYellow },
 ];
 
 export default function HowToPlayPage() {
@@ -102,8 +100,7 @@ export default function HowToPlayPage() {
             "You need at least 3 players to start a game.",
             "The host controls the pace — they can skip questions or advance phases early.",
             "You must answer Phase 1 to participate in Phase 2.",
-            "Ties in multiple choice award points to all tied answers.",
-            "The Chaos Bonus awards +200 pts when a yes/no question splits exactly 50/50.",
+            "Ties in multiple choice award points to all tied answers — but popular choices score fewer points.",
           ].map((tip) => (
             <div key={tip} className={`flex gap-3 ${t.bgSurface} border ${t.borderSurface} rounded-xl px-4 py-3`}>
               <span className={t.textTeal}>→</span>

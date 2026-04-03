@@ -72,7 +72,7 @@ export default function TVPage() {
   const locked = lobbyState?.locked ?? false;
 
   return (
-    <main className={`min-h-screen ${t.bgPage} flex flex-col px-10 py-8 relative overflow-hidden`}>
+    <main className={`min-h-screen ${t.bgPage} flex flex-col px-4 sm:px-10 py-6 sm:py-8 relative overflow-hidden`}>
       {/* Background decoration */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#7862FF]/5 rounded-full blur-3xl" />
@@ -82,12 +82,12 @@ export default function TVPage() {
       {/* Top bar: title left, room code right */}
       <div className="w-full flex items-start justify-between z-10 mb-6">
         <div>
-          <h1 className="text-5xl font-black text-white tracking-tight">CONSENSUS</h1>
-          <p className={`${t.textCyan} text-xl tracking-widest mt-1`}>Wisdom of the Crowds</p>
+          <h1 className="text-3xl sm:text-5xl font-black text-white tracking-tight">CONSENSUS</h1>
+          <p className={`${t.textCyan} text-base sm:text-xl tracking-widest mt-1`}>Wisdom of the Crowds</p>
         </div>
         <div className="text-right">
-          <p className={`${t.textMuted} text-lg uppercase tracking-widest`}>Room Code</p>
-          <div className={`text-7xl font-black text-white font-mono tracking-widest drop-shadow-2xl`}>
+          <p className={`${t.textMuted} text-sm sm:text-lg uppercase tracking-widest`}>Room Code</p>
+          <div className={`text-4xl sm:text-7xl font-black text-white font-mono tracking-widest drop-shadow-2xl`}>
             {roomCode}
           </div>
         </div>
@@ -97,13 +97,13 @@ export default function TVPage() {
       <div className="flex-1 flex flex-col items-center justify-center z-10 gap-6">
         <div className="text-center mb-2">
           {players.length === 0 ? (
-            <p className={`${t.textMuted} text-4xl font-semibold`}>Waiting for players...</p>
+            <p className={`${t.textMuted} text-2xl sm:text-4xl font-semibold`}>Waiting for players...</p>
           ) : (
             <>
-              <div className="text-[10rem] font-black text-white leading-none drop-shadow-2xl">
+              <div className="text-[5rem] sm:text-[10rem] font-black text-white leading-none drop-shadow-2xl">
                 {players.length}
               </div>
-              <p className={`${t.textCyan} text-4xl font-bold -mt-2`}>
+              <p className={`${t.textCyan} text-2xl sm:text-4xl font-bold -mt-2`}>
                 player{players.length === 1 ? "" : "s"} joined
               </p>
             </>
@@ -120,24 +120,24 @@ export default function TVPage() {
         )}
       </div>
 
-      {/* Bottom: QR + URL side by side */}
-      <div className="z-10 flex items-center justify-center gap-8 mt-6">
-        <div className={`${t.bgSurface} border ${t.borderSurface} rounded-2xl p-6 flex items-center gap-8`}>
-          <div className="bg-white p-3 rounded-xl flex-shrink-0">
+      {/* Bottom: QR + URL */}
+      <div className="z-10 flex items-center justify-center mt-6">
+        <div className={`${t.bgSurface} border ${t.borderSurface} rounded-2xl p-4 flex flex-col sm:flex-row items-center gap-4 sm:gap-8`}>
+          <div className="bg-white p-2 rounded-xl flex-shrink-0">
             <QRCodeSVG
               value={`${JOIN_BASE_URL}/play/${roomCode}`}
-              size={120}
+              size={90}
               bgColor="#ffffff"
               fgColor="#081c48"
               level="M"
             />
           </div>
-          <div>
-            <p className={`${t.textMuted} text-xl uppercase tracking-widest mb-1`}>Join at</p>
-            <p className="text-white text-3xl font-black font-mono">
+          <div className="text-center sm:text-left">
+            <p className={`${t.textMuted} text-base sm:text-xl uppercase tracking-widest mb-1`}>Join at</p>
+            <p className="text-white text-xl sm:text-3xl font-black font-mono break-all">
               {JOIN_DISPLAY_URL}/play/<span className={t.textYellow}>{roomCode}</span>
             </p>
-            <p className={`${t.textFaint} text-lg mt-2`}>or scan the QR code</p>
+            <p className={`${t.textFaint} text-base mt-1`}>or scan the QR code</p>
           </div>
         </div>
       </div>

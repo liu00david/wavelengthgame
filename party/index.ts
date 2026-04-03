@@ -94,12 +94,17 @@ function calculateProximityScore(
   prediction: string | number,
   actual: string | number,
   N: number,
-  type: PromptType
+  type: PromptType,
+  voteCounts?: Map<string, number>
 ): number {
   if (type === "multiple_choice") {
     // actual may be comma-joined tied winners
     const winners = String(actual).split(",");
-    return winners.includes(String(prediction)) ? 1000 : 0;
+    if (!winners.includes(String(prediction))) return 0;
+    // Points = 1125 - 500 * (votes_for_winner / N), min 0
+    const votes = voteCounts?.get(String(prediction)) ?? 0;
+    const score = N > 0 ? 1125 - 500 * (votes / N) : 1000;
+    return Math.max(0, Math.round(score));
   }
 
   const pred = Number(prediction);
@@ -107,25 +112,18 @@ function calculateProximityScore(
   const diff = Math.abs(pred - act);
 
   if (type === "binary") {
-    if (diff === 0) return 1000;
-    const innerThreshold = N < 20 ? 1 : 2;
-    if (diff <= innerThreshold) return 750;
-    if (diff <= N * 0.1) return 400;
-    if (diff <= N * 0.2) return 100;
-    return 0;
+    // 1000 - 2000 * (diff / N), min 0
+    const score = N > 0 ? 1000 - 2000 * (diff / N) : (diff === 0 ? 1000 : 0);
+    return Math.max(0, Math.round(score));
   }
 
-  // scale
-  if (diff === 0) return 1000;
-  if (diff <= 0.5) return 1000; // within half a point = bullseye
-  if (diff <= 1.0) return 750;
-  if (diff <= 2.0) return 400;
-  if (diff <= 3.0) return 100;
-  return 0;
+  // scale: 1000 - 250 * diff^2, min 0
+  const score = 1000 - 250 * diff * diff;
+  return Math.max(0, Math.round(score));
 }
 
 function isHighlyAccurate(baseScore: number): boolean {
-  // Inner circle or better = 750+
+  // Double Down threshold: 750+
   return baseScore >= 750;
 }
 
@@ -166,6 +164,15 @@ function computeActualResult(
   return Math.round((sum / count) * 10) / 10;
 }
 
+function computeVoteCounts(answers: Map<string, string | number>): Map<string, number> {
+  const counts = new Map<string, number>();
+  answers.forEach((v) => {
+    const key = String(v);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  });
+  return counts;
+}
+
 function computeScores(
   prompt: Prompt,
   answers: Map<string, string | number>,
@@ -174,30 +181,20 @@ function computeScores(
   actual: string | number,
   N: number,
   round: number,
-  chaosBonusAwarded: boolean
 ): Record<string, number> {
   const multiplier = getRoundMultiplier(round);
+  const voteCounts = prompt.type === "multiple_choice" ? computeVoteCounts(answers) : undefined;
   const scores: Record<string, number> = {};
 
   predictions.forEach((prediction, nickname) => {
-    let base = calculateProximityScore(prediction, actual, N, prompt.type);
+    let base = calculateProximityScore(prediction, actual, N, prompt.type, voteCounts);
     const doubled = wagers.get(nickname) ?? false;
 
     if (doubled) {
-      if (isHighlyAccurate(base)) {
-        base = base * 2;
-      } else {
-        base = 0;
-      }
+      base = isHighlyAccurate(base) ? base * 2 : 0;
     }
 
-    let final = Math.round(base * multiplier);
-
-    if (chaosBonusAwarded) {
-      final += 200;
-    }
-
-    scores[nickname] = final;
+    scores[nickname] = Math.round(base * multiplier);
   });
 
   return scores;
@@ -267,8 +264,11 @@ export default class GameServer implements Party.Server {
       roundScore: roundScores?.[p.nickname] ?? 0,
     }));
     scores.sort((a, b) => b.total - a.total);
+    // Dense ranking: tied scores get the same rank
+    let rank = 1;
     scores.forEach((s, i) => {
-      s.rank = i + 1;
+      if (i > 0 && s.total < scores[i - 1].total) rank = i + 1;
+      s.rank = rank;
     });
     return scores;
   }
@@ -319,16 +319,6 @@ export default class GameServer implements Party.Server {
 
     const actual = computeActualResult(prompt, this.phase1Answers);
 
-    // Chaos bonus: binary exactly 50/50
-    let chaosBonusAwarded = false;
-    if (prompt.type === "binary") {
-      const yesCount = Number(actual);
-      const noCount = N - yesCount;
-      if (N > 0 && yesCount === noCount) {
-        chaosBonusAwarded = true;
-      }
-    }
-
     const scores = computeScores(
       prompt,
       this.phase1Answers,
@@ -337,7 +327,6 @@ export default class GameServer implements Party.Server {
       actual,
       N,
       this.game.round,
-      chaosBonusAwarded
     );
 
     // Update totals
@@ -352,7 +341,7 @@ export default class GameServer implements Party.Server {
       phase2Wagers: Object.fromEntries(this.phase2Wagers),
       actualResult: actual,
       scores,
-      chaosBonusAwarded,
+      chaosBonusAwarded: false,
     };
 
     const leaderboard = this.buildLeaderboard(scores);
@@ -434,10 +423,10 @@ export default class GameServer implements Party.Server {
       }
 
       // Reject duplicate nicknames (case-insensitive)
-      const nameTaken = this.lobby.players.some(
+      const takenPlayer = this.lobby.players.find(
         (p) => p.nickname.toLowerCase() === msg.nickname.toLowerCase()
       );
-      if (nameTaken) {
+      if (takenPlayer) {
         sender.send(JSON.stringify({ type: "nickname_taken" }));
         return;
       }
@@ -470,6 +459,14 @@ export default class GameServer implements Party.Server {
       console.log("[server] rejoin from", sender.id, "nickname:", msg.nickname, "players:", this.lobby.players.map(p => p.nickname));
       const player = this.lobby.players.find((p) => p.nickname === msg.nickname);
       if (player) {
+        // If the previous connection is still open, this is a duplicate tab
+        if (player.id !== sender.id) {
+          const existingConn = this.room.getConnection(player.id);
+          if (existingConn) {
+            sender.send(JSON.stringify({ type: "duplicate_tab" }));
+            return;
+          }
+        }
         player.id = sender.id;
         if (player.isHost) this.hasHost = true;
         // Cancel any pending kick timer for this player

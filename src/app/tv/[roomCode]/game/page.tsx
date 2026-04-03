@@ -259,12 +259,6 @@ function ResultFooter({ result }: { result: NonNullable<GameState["roundResult"]
 
   return (
     <div className="flex flex-wrap items-start gap-6 mt-2">
-      {result.chaosBonusAwarded && (
-        <div className="bg-[#25a59f]/20 border border-[#25a59f]/30 rounded-2xl px-5 py-3">
-          <p className={`${t.textTeal} font-black text-lg`}>CHAOS BONUS!</p>
-          <p className="text-[#7a96c8] text-sm">+200 pts everyone</p>
-        </div>
-      )}
       {topScorers.length > 0 && (
         <div className={`${t.bgSurface}/50 border ${t.borderSurface} rounded-2xl px-5 py-3 flex-1`}>
           <p className={`${t.textMuted} text-sm uppercase tracking-widest mb-2`}>Top This Round</p>
@@ -333,15 +327,22 @@ function LeaderboardView({ game, title }: { game: GameState; title: string }) {
   );
 }
 
+const TV_RANK_STYLE: Record<number, { color: string; label: string; emoji: string; height: string; bg: string }> = {
+  1: { color: t.textYellow,       label: "1st", emoji: "🏆", height: "h-48", bg: "bg-[#f6dc53]/20 border border-[#f6dc53]/40" },
+  2: { color: "text-[#7a96c8]",   label: "2nd", emoji: "🥈", height: "h-32", bg: "bg-[#7a96c8]/10 border border-[#7a96c8]/20" },
+  3: { color: "text-[#cd853f]",   label: "3rd", emoji: "🥉", height: "h-24", bg: "bg-[#cd853f]/10 border border-[#cd853f]/20" },
+};
+
 function EndedView({ game }: { game: GameState }) {
   const lb = game.leaderboard;
-  const podium = lb.slice(0, 3);
-  const rest = lb.slice(3, 10);
-  const podiumOrder = [podium[1], podium[0], podium[2]].filter(Boolean); // 2nd, 1st, 3rd
-  const podiumHeights = ["h-32", "h-48", "h-24"];
-  const podiumColors = ["text-[#7a96c8]", t.textYellow, "text-[#cd853f]"];
-  const podiumEmojis = ["🥈", "🏆", "🥉"];
-  const podiumLabels = ["2nd", "1st", "3rd"];
+
+  const podiumPlayers = lb.filter((p) => (p.rank ?? 99) <= 3);
+  const restPlayers = lb.filter((p) => (p.rank ?? 99) > 3).slice(0, 7);
+
+  const rank2 = podiumPlayers.filter((p) => p.rank === 2);
+  const rank1 = podiumPlayers.filter((p) => p.rank === 1);
+  const rank3 = podiumPlayers.filter((p) => p.rank === 3);
+  const podiumOrder = [...rank2, ...rank1, ...rank3];
 
   return (
     <div className="flex flex-col flex-1 px-16 py-6 gap-6">
@@ -351,30 +352,29 @@ function EndedView({ game }: { game: GameState }) {
       </div>
 
       {/* Podium */}
-      <div className="flex items-end justify-center gap-6 mt-2">
-        {podiumOrder.map((p, i) => (
-          <div key={p.nickname} className="flex flex-col items-center gap-2" style={{ width: 180 }}>
-            <div className={`${avatarColor(p.nickname)} w-20 h-20 rounded-full flex items-center justify-center text-4xl shadow-xl`}>
-              {playerEmoji(p.nickname)}
+      <div className="flex items-end justify-center gap-4 mt-2">
+        {podiumOrder.map((p) => {
+          const style = TV_RANK_STYLE[p.rank ?? 1];
+          return (
+            <div key={p.nickname} className="flex flex-col items-center gap-2 flex-1 min-w-0 max-w-[160px]">
+              <div className={`${avatarColor(p.nickname)} w-20 h-20 rounded-full flex items-center justify-center text-4xl shadow-xl flex-shrink-0`}>
+                {playerEmoji(p.nickname)}
+              </div>
+              <p className="text-white text-xl text-center truncate w-full px-1">{p.nickname}</p>
+              <p className={`${style.color} text-lg`}>{p.total} pts</p>
+              <div className={`w-full ${style.height} rounded-t-2xl flex flex-col items-center justify-start pt-3 gap-1 ${style.bg}`}>
+                <span className="text-3xl">{style.emoji}</span>
+                <span className={`${style.color} text-lg`}>{style.label}</span>
+              </div>
             </div>
-            <p className={`text-white text-xl text-center truncate w-full px-1`}>{p.nickname}</p>
-            <p className={`${podiumColors[i]} text-lg`}>{p.total} pts</p>
-            <div className={`w-full ${podiumHeights[i]} rounded-t-2xl flex flex-col items-center justify-start pt-3 gap-1 ${
-              i === 1 ? "bg-[#f6dc53]/20 border border-[#f6dc53]/40" :
-              i === 0 ? "bg-[#7a96c8]/10 border border-[#7a96c8]/20" :
-              "bg-[#cd853f]/10 border border-[#cd853f]/20"
-            }`}>
-              <span className="text-3xl">{podiumEmojis[i]}</span>
-              <span className={`${podiumColors[i]} text-lg`}>{podiumLabels[i]}</span>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* 4th–10th */}
-      {rest.length > 0 && (
+      {/* Below podium */}
+      {restPlayers.length > 0 && (
         <div className="flex flex-col gap-2 max-w-2xl mx-auto w-full">
-          {rest.map((p) => (
+          {restPlayers.map((p) => (
             <div key={p.nickname} className={`flex items-center gap-4 ${t.bgSurface}/60 rounded-xl px-5 py-3`}>
               <span className={`${t.textMuted} text-xl w-8`}>#{p.rank}</span>
               <div className={`${avatarColor(p.nickname)} w-10 h-10 rounded-full flex items-center justify-center text-xl`}>
@@ -411,6 +411,13 @@ export default function TVGamePage() {
       .catch(() => setRoomNotFound(true));
   }, [roomCode]);
 
+  // When game resets to lobby (host starts a new game), reload TV lobby page
+  useEffect(() => {
+    if (gameState?.phase === "lobby") {
+      window.location.href = `/tv/${roomCode}`;
+    }
+  }, [gameState?.phase, roomCode]);
+
   if (roomNotFound) {
     return (
       <main className={`min-h-screen ${t.bgPage} flex flex-col items-center justify-center`}>
@@ -439,20 +446,20 @@ export default function TVGamePage() {
       </div>
 
       {/* Top bar */}
-      <div className={`relative z-10 flex items-center justify-between px-10 pt-6 pb-4 border-b border-[#2a4a8a]`}>
+      <div className={`relative z-10 flex items-center justify-between px-4 sm:px-10 pt-4 sm:pt-6 pb-3 sm:pb-4 border-b border-[#2a4a8a]`}>
         <div>
-          <h1 className={`text-2xl font-black text-white tracking-tight`}>CONSENSUS</h1>
-          <p className={`${t.textCyan} text-xs tracking-widest`}>Wisdom of the Crowds</p>
+          <h1 className={`text-lg sm:text-2xl font-black text-white tracking-tight`}>CONSENSUS</h1>
+          <p className={`${t.textCyan} text-xs tracking-widest hidden sm:block`}>Wisdom of the Crowds</p>
         </div>
         {gameState && (
-          <div className="flex items-center gap-8">
+          <div className="flex items-center gap-4 sm:gap-8">
             <div className="text-center">
-              <p className={`${t.textFaint} text-sm uppercase tracking-widest`}>Round</p>
-              <p className="text-white font-black text-3xl leading-tight">{gameState.round}<span className={`${t.textFaint} text-xl`}> / {gameState.totalRounds}</span></p>
+              <p className={`${t.textFaint} text-xs sm:text-sm uppercase tracking-widest`}>Round</p>
+              <p className="text-white font-black text-xl xl:text-3xl leading-tight">{gameState.round}<span className={`${t.textFaint} text-base xl:text-xl`}> / {gameState.totalRounds}</span></p>
             </div>
             <div className="text-center">
-              <p className={`${t.textFaint} text-sm uppercase tracking-widest`}>Room</p>
-              <p className="text-white font-black text-3xl font-mono leading-tight">{roomCode}</p>
+              <p className={`${t.textFaint} text-xs sm:text-sm uppercase tracking-widest`}>Room</p>
+              <p className={`${t.textYellow} font-black text-xl xl:text-3xl font-mono leading-tight`}>{roomCode}</p>
             </div>
           </div>
         )}

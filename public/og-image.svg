@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <!-- Background -->
+  <rect width="1200" height="630" fill="#081c48"/>
+
+  <!-- Subtle glow blobs -->
+  <circle cx="200" cy="150" r="300" fill="#7862FF" opacity="0.07"/>
+  <circle cx="1000" cy="480" r="300" fill="#25a59f" opacity="0.07"/>
+
+  <!-- +1 icon -->
+  <rect x="541" y="100" width="118" height="100" rx="22" fill="#0a1f52"/>
+  <text x="600" y="175" font-family="system-ui, -apple-system, sans-serif" font-size="72" font-weight="900" fill="#f6dc53" text-anchor="middle">+1</text>
+
+  <!-- Title -->
+  <text x="600" y="310" font-family="system-ui, -apple-system, sans-serif" font-size="96" font-weight="900" fill="white" text-anchor="middle" letter-spacing="-2">CONSENSUS</text>
+
+  <!-- Subtitle -->
+  <text x="600" y="375" font-family="system-ui, -apple-system, sans-serif" font-size="36" font-weight="500" fill="#4dd9d2" text-anchor="middle" letter-spacing="6">WISDOM OF THE CROWDS</text>
+
+  <!-- Description -->
+  <text x="600" y="450" font-family="system-ui, -apple-system, sans-serif" font-size="28" fill="#a8c0e8" text-anchor="middle">Predict what your group thinks. Score points for getting close.</text>
+
+  <!-- URL -->
+  <text x="600" y="560" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="600" fill="#7862FF" text-anchor="middle" letter-spacing="1">consensusgame.vercel.app</text>
+</svg>

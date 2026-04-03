@@ -21,8 +21,8 @@ function PlayerAvatar({ player }: { player: Player }) {
 
 const HOST_SESSION_KEY = "consensus_host_session";
 
-const QUESTION_OPTIONS = [5, 7, 10, 12, 15];
-const TIME_OPTIONS = [15, 20, 25, 30, 45, 60];
+const QUESTION_OPTIONS = [5, 10, 15, 20];
+const TIME_OPTIONS = [15, 20, 30, 45, 60];
 
 function SettingRow({ label, value, options, onChange }: {
   label: string;
@@ -32,16 +32,16 @@ function SettingRow({ label, value, options, onChange }: {
 }) {
   return (
     <div className="flex items-center justify-between gap-4">
-      <span className={`${t.textMuted} text-sm font-medium`}>{label}</span>
-      <div className="flex gap-1.5">
+      <span className="text-white text-base font-medium">{label}</span>
+      <div className="flex gap-2">
         {options.map((opt) => (
           <button
             key={opt}
             onClick={() => onChange(opt)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-bold transition-all ${
+            className={`px-4 py-2 rounded-lg text-base font-bold transition-all ${
               value === opt
                 ? "bg-[#7862FF] text-white"
-                : `${t.btnGhost} text-[#7a96c8] text-xs`
+                : `${t.btnGhost} ${t.textMuted}`
             }`}
           >
             {opt}
@@ -59,8 +59,8 @@ export default function HostPage() {
 
   // Game settings
   const [numQuestions, setNumQuestions] = useState(10);
-  const [phase1Time, setPhase1Time] = useState(25);
-  const [phase2Time, setPhase2Time] = useState(20);
+  const [phase1Time, setPhase1Time] = useState(20);
+  const [phase2Time, setPhase2Time] = useState(30);
 
   // Menu state
   type MenuState = "closed" | "main" | "kick" | "disband_confirm";
@@ -256,7 +256,7 @@ export default function HostPage() {
 
         {/* Game Settings */}
         <div className={`${t.bgSurface} rounded-2xl border ${t.borderSurface} shadow-xl p-6 mb-6`}>
-          <h3 className={`${t.textMuted} text-xs uppercase tracking-widest mb-4`}>Game Settings</h3>
+          <h3 className={`${t.textMuted} text-sm uppercase tracking-widest mb-4`}>Game Settings</h3>
           <div className="flex flex-col gap-4">
             <SettingRow
               label="Questions"
