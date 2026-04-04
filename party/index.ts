@@ -305,6 +305,11 @@ export default class GameServer implements Party.Server {
 
   private startPhase2() {
     this.clearTimer();
+    // If nobody answered phase1, skip phase2 entirely — everyone gets 0
+    if (this.phase1Answers.size === 0) {
+      this.startPhase3();
+      return;
+    }
     const ms = this.game.phase2Duration * 1000;
     const phaseEndsAt = Date.now() + ms;
     this.game = { ...this.game, phase: "phase2", phaseEndsAt, answeredCount: 0, answeredNicknames: [] };
@@ -318,6 +323,8 @@ export default class GameServer implements Party.Server {
     const N = this.lobby.N;
 
     const actual = computeActualResult(prompt, this.phase1Answers);
+    // For binary scoring, N = number of players who actually answered phase 1
+    const scoringN = prompt.type === "binary" ? this.phase1Answers.size : N;
 
     const scores = computeScores(
       prompt,
@@ -325,7 +332,7 @@ export default class GameServer implements Party.Server {
       this.phase2Predictions,
       this.phase2Wagers,
       actual,
-      N,
+      scoringN,
       this.game.round,
     );
 
@@ -385,10 +392,14 @@ export default class GameServer implements Party.Server {
   }
 
   private checkAllAnswered(phase: "phase1" | "phase2") {
-    const players = this.lobby.players.filter((p) => !p.isHost);
-    if (players.length === 0) return false;
-    const map = phase === "phase1" ? this.phase1Answers : this.phase2Predictions;
-    return players.every((p) => map.has(p.nickname));
+    if (phase === "phase1") {
+      const players = this.lobby.players.filter((p) => !p.isHost);
+      if (players.length === 0) return false;
+      return players.every((p) => this.phase1Answers.has(p.nickname));
+    }
+    // phase2: only players who answered phase1 are eligible
+    if (this.phase1Answers.size === 0) return true;
+    return [...this.phase1Answers.keys()].every((nick) => this.phase2Predictions.has(nick));
   }
 
   onConnect(conn: Party.Connection) {

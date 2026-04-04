@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useParty } from "@/lib/useParty";
 import { t, avatarColor, playerEmoji } from "@/lib/theme";
@@ -60,7 +60,7 @@ function AnswerBar({ label, value, pct, color, isWinner }: { label: string; valu
 
   return (
     <div className={`flex items-center gap-4 ${isWinner ? "opacity-100" : "opacity-60"}`}>
-      <span className={`text-white font-bold text-xl w-44 text-right shrink-0 ${isWinner ? t.textTeal : ""}`}>
+      <span className={`text-white font-bold text-xl w-28 text-right shrink-0 ${isWinner ? t.textTeal : ""}`}>
         {label}
       </span>
       <div className="flex-1 relative h-14 bg-[#2a4a8a] rounded-xl overflow-hidden">
@@ -75,6 +75,69 @@ function AnswerBar({ label, value, pct, color, isWinner }: { label: string; valu
       <span className="w-8 text-center text-2xl shrink-0">
         {isWinner ? <span className={t.textTeal}>✓</span> : null}
       </span>
+    </div>
+  );
+}
+
+function CountdownOverlay({ onDone }: { onDone: () => void }) {
+  const [step, setStep] = useState<"tagline_in" | "tagline_out" | "3" | "2" | "1" | "done">("tagline_in");
+
+  useEffect(() => {
+    const timers = [
+      setTimeout(() => setStep("tagline_out"), 1800),
+      setTimeout(() => setStep("3"), 2600),
+      setTimeout(() => setStep("2"), 3600),
+      setTimeout(() => setStep("1"), 4600),
+      setTimeout(() => { setStep("done"); onDone(); }, 5400),
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, [onDone]);
+
+  const isTagline = step === "tagline_in" || step === "tagline_out";
+  const digit = step === "3" ? "3" : step === "2" ? "2" : step === "1" ? "1" : null;
+
+  return (
+    <div className={`absolute inset-0 z-50 flex flex-col items-center justify-center ${t.bgPage}`}>
+      {isTagline && (
+        <div
+          className="flex flex-col items-center gap-4 transition-all duration-500"
+          style={{
+            opacity: step === "tagline_in" ? 1 : 0,
+            transform: step === "tagline_in" ? "scale(1) translateY(0)" : "scale(0.9) translateY(-20px)",
+          }}
+        >
+          <span className="text-8xl">🎯</span>
+          <p className={`text-5xl font-black text-white text-center leading-tight`}>
+            Ready to read<br />the room?
+          </p>
+        </div>
+      )}
+      {digit && (
+        <div
+          key={digit}
+          className="flex items-center justify-center"
+          style={{ animation: "countdownPop 0.9s ease-out forwards" }}
+        >
+          <span
+            className={`font-black leading-none`}
+            style={{
+              fontSize: "20rem",
+              color: digit === "3" ? "#7862FF" : digit === "2" ? "#4dd9d2" : "#f6dc53",
+              textShadow: `0 0 80px ${digit === "3" ? "#7862FF88" : digit === "2" ? "#4dd9d288" : "#f6dc5388"}`,
+            }}
+          >
+            {digit}
+          </span>
+        </div>
+      )}
+      <style>{`
+        @keyframes countdownPop {
+          0%   { transform: scale(1.6); opacity: 0; }
+          20%  { transform: scale(1.0); opacity: 1; }
+          70%  { transform: scale(1.0); opacity: 1; }
+          100% { transform: scale(0.7); opacity: 0; }
+        }
+      `}</style>
     </div>
   );
 }
@@ -395,6 +458,8 @@ export default function TVGamePage() {
   const roomCode = (params.roomCode as string).toUpperCase();
 
   const [roomNotFound, setRoomNotFound] = useState(false);
+  const [showCountdown, setShowCountdown] = useState(false);
+  const prevPhaseRef = useRef<string | null>(null);
 
   const { gameState } = useParty(roomCode, undefined, (msg) => {
     if (msg.type === "room_not_found" || msg.type === "disbanded") {
@@ -418,6 +483,16 @@ export default function TVGamePage() {
     }
   }, [gameState?.phase, roomCode]);
 
+  // Show countdown overlay when game first starts (lobby → phase1, round 1)
+  useEffect(() => {
+    const prev = prevPhaseRef.current;
+    const curr = gameState?.phase ?? null;
+    if (prev === "lobby" && curr === "phase1" && gameState?.round === 1) {
+      setShowCountdown(true);
+    }
+    prevPhaseRef.current = curr;
+  }, [gameState?.phase, gameState?.round]);
+
   if (roomNotFound) {
     return (
       <main className={`min-h-screen ${t.bgPage} flex flex-col items-center justify-center`}>
@@ -439,6 +514,9 @@ export default function TVGamePage() {
 
   return (
     <main className={`min-h-screen ${t.bgPage} flex flex-col relative overflow-hidden`}>
+      {showCountdown && (
+        <CountdownOverlay onDone={() => setShowCountdown(false)} />
+      )}
       {/* Background decoration */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#7862FF]/5 rounded-full blur-3xl" />

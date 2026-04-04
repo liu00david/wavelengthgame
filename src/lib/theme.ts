@@ -49,7 +49,7 @@ export const t = {
   btnGhost: "bg-[#0f2660] border border-[#2a4a8a] text-white hover:bg-[#1a3580] active:scale-95 transition-all",
 
   // Button: danger/leave
-  btnDanger: "bg-[#9a3558]/30 border border-[#9a3558]/50 text-[#c94f7a] hover:bg-[#9a3558]/40 active:scale-95 transition-all",
+  btnDanger: "bg-[#9a3558] border border-[#7e2b47] text-white hover:bg-[#7e2b47] active:scale-95 transition-all",
 
   // TRUE answer color (yes/teal)
   trueColor: { bg: "bg-[#25a59f]", text: "text-white", hover: "hover:bg-[#1d8c87]" },

@@ -287,7 +287,7 @@ function Phase2View({ game, onSubmit, submitted }: {
       )}
       {prompt.type === "scale" && (
         <div className="flex flex-col gap-4">
-          <ScaleInput onSubmit={(v) => handleSubmit(v)} disabled={submitted} step={0.5} min={1} max={10}
+          <ScaleInput onSubmit={(v) => handleSubmit(v)} disabled={submitted} step={0.1} min={1} max={10}
             label="Predict the group average (1.0 – 10.0)" />
           <DoubleDownToggle active={doubleDown} onToggle={() => setDoubleDown((d) => !d)} disabled={submitted} />
         </div>

@@ -171,7 +171,7 @@ export default function HostPage() {
                     )}
                     <button
                       onClick={() => setMenuState("disband_confirm")}
-                      className={`w-full py-3 rounded-xl bg-[#9a3558]/20 border border-[#9a3558]/40 text-[#c94f7a] hover:bg-[#9a3558]/30 active:scale-95 transition-all font-semibold text-base text-left px-4`}
+                      className={`w-full py-3 rounded-xl ${t.btnDanger} font-semibold text-base text-left px-4`}
                     >
                       🗑 Disband Room
                     </button>
