@@ -17,6 +17,7 @@ export type Prompt = {
 
 export type GamePhase =
   | "lobby"
+  | "countdown"
   | "phase1"
   | "phase2"
   | "phase3"
@@ -51,6 +52,7 @@ export type GameState = {
   roundResult: RoundResult | null;
   leaderboard: PlayerScore[];
   N: number;
+  phase1AnsweredCount: number; // how many players answered phase1 (used as N for binary scoring)
   answeredCount: number;
   answeredNicknames: string[]; // who has submitted in current phase
 };

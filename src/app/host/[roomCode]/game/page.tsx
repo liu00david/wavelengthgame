@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useParty } from "@/lib/useParty";
 import { t, avatarColor, playerEmoji } from "@/lib/theme";
+import type { RoundResult } from "@/lib/types";
 
 function useCountdown(phaseEndsAt: number | null): number {
   const [secs, setSecs] = useState(0);
@@ -15,6 +16,63 @@ function useCountdown(phaseEndsAt: number | null): number {
     return () => clearInterval(id);
   }, [phaseEndsAt]);
   return secs;
+}
+
+function CountdownScreen() {
+  const [step, setStep] = useState<"tagline_in" | "tagline_out" | "3" | "2" | "1">("tagline_in");
+
+  useEffect(() => {
+    const timers = [
+      setTimeout(() => setStep("tagline_out"), 1800),
+      setTimeout(() => setStep("3"), 2600),
+      setTimeout(() => setStep("2"), 3600),
+      setTimeout(() => setStep("1"), 4600),
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  const isTagline = step === "tagline_in" || step === "tagline_out";
+  const digit = step === "3" ? "3" : step === "2" ? "2" : step === "1" ? "1" : null;
+
+  return (
+    <div className={`fixed inset-0 z-50 flex flex-col items-center justify-center ${t.bgPage}`}>
+      {isTagline && (
+        <div
+          className="flex flex-col items-center gap-4 transition-all duration-500"
+          style={{
+            opacity: step === "tagline_in" ? 1 : 0,
+            transform: step === "tagline_in" ? "scale(1) translateY(0)" : "scale(0.9) translateY(-20px)",
+          }}
+        >
+          <span className="text-7xl">🎯</span>
+          <p className="text-4xl font-black text-white text-center leading-tight">
+            Ready to read<br />the room?
+          </p>
+        </div>
+      )}
+      {digit && (
+        <div key={digit} style={{ animation: "cdPop 0.9s ease-out forwards" }}>
+          <span
+            className="font-black leading-none"
+            style={{
+              fontSize: "16rem",
+              color: digit === "3" ? "#7862FF" : digit === "2" ? "#4dd9d2" : "#f6dc53",
+            }}
+          >
+            {digit}
+          </span>
+        </div>
+      )}
+      <style>{`
+        @keyframes cdPop {
+          0%   { transform: scale(1.5); opacity: 0; }
+          20%  { transform: scale(1.0); opacity: 1; }
+          70%  { transform: scale(1.0); opacity: 1; }
+          100% { transform: scale(0.7); opacity: 0; }
+        }
+      `}</style>
+    </div>
+  );
 }
 
 type MenuState = "closed" | "main" | "kick" | "end_confirm" | "disband_confirm";
@@ -44,6 +102,9 @@ export default function HostGamePage() {
     return parseInt(sessionStorage.getItem(`${roomCode}_p2t`) ?? "") || DEFAULT_PHASE2_TIME;
   });
 
+  const roundHistoryRef = useRef<RoundResult[]>([]);
+  const seenRoundsRef = useRef<Set<number>>(new Set());
+
   const { sendMsg, lobbyState, gameState } = useParty(
     roomCode,
     () => {
@@ -59,6 +120,22 @@ export default function HostGamePage() {
       }
     },
   );
+
+  // Accumulate round results as they come in (phase3 has roundResult)
+  useEffect(() => {
+    if (!gameState?.roundResult) return;
+    const round = gameState.round;
+    if (!seenRoundsRef.current.has(round)) {
+      seenRoundsRef.current.add(round);
+      roundHistoryRef.current = [...roundHistoryRef.current, gameState.roundResult];
+    }
+    if (gameState.phase === "ended") {
+      sessionStorage.setItem(`${roomCode}_summary`, JSON.stringify({
+        rounds: roundHistoryRef.current,
+        leaderboard: gameState.leaderboard,
+      }));
+    }
+  }, [gameState?.phase, gameState?.round, gameState?.roundResult, roomCode]);
 
   const countdown = useCountdown(gameState?.phaseEndsAt ?? null);
 
@@ -102,6 +179,7 @@ export default function HostGamePage() {
 
   const phaseLabel: Record<string, string> = {
     lobby: "Lobby",
+    countdown: "Starting...",
     phase1: "Phase 1 — Answer",
     phase2: "Phase 2 — Predict",
     phase3: "Phase 3 — Reveal",
@@ -119,6 +197,7 @@ export default function HostGamePage() {
 
   return (
     <main className={`min-h-screen ${t.bgPage} text-white px-6 py-8`}>
+      {phase === "countdown" && <CountdownScreen />}
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -286,8 +365,14 @@ export default function HostGamePage() {
         {phase === "ended" && (
           <div className="flex flex-col gap-3">
             <button
+              onClick={() => router.push(`/host/${roomCode}/summary`)}
+              className={`w-full py-5 rounded-2xl ${t.btnPrimary} text-xl font-black shadow-xl`}
+            >
+              View Game Summary →
+            </button>
+            <button
               onClick={handlePlayAgain}
-              className={`w-full py-5 rounded-2xl ${t.btnYellow} text-2xl shadow-xl`}
+              className={`w-full py-4 rounded-2xl ${t.btnYellow} text-xl shadow-xl`}
             >
               Play Again
             </button>
@@ -343,7 +428,7 @@ export default function HostGamePage() {
             </button>
             <button
               onClick={() => setMenuState("disband_confirm")}
-              className={`w-full py-4 rounded-xl bg-[#9a3558]/20 border border-[#9a3558]/40 text-[#c94f7a] hover:bg-[#9a3558]/30 active:scale-95 transition-all font-bold text-base`}
+              className={`w-full py-4 rounded-xl ${t.btnDanger} font-bold text-base`}
             >
               Disband Room
             </button>

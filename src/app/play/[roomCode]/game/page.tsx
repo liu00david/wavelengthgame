@@ -275,7 +275,7 @@ function Phase2View({ game, onSubmit, submitted }: {
       </div>
       {prompt.type === "binary" && (
         <div className="flex flex-col gap-4">
-          <BinaryPrediction N={game.N} onSubmit={(v) => handleSubmit(v)} disabled={submitted} />
+          <BinaryPrediction N={game.phase1AnsweredCount || game.N} onSubmit={(v) => handleSubmit(v)} disabled={submitted} />
           <DoubleDownToggle active={doubleDown} onToggle={() => setDoubleDown((d) => !d)} disabled={submitted} />
         </div>
       )}
@@ -300,6 +300,7 @@ function Phase2View({ game, onSubmit, submitted }: {
 function Phase3View({ game, nickname }: { game: GameState; nickname: string }) {
   const result = game.roundResult;
   if (!result) return <div className={`${t.textMuted} text-center p-8 text-lg`}>Loading results...</div>;
+  const binaryN = game.phase1AnsweredCount || game.N;
 
   const myScore = result.scores[nickname] ?? 0;
   const myPrediction = result.phase2Predictions[nickname];
@@ -361,7 +362,7 @@ function Phase3View({ game, nickname }: { game: GameState; nickname: string }) {
         <p className="text-white font-bold text-lg">
           Actual: <span className={t.textYellow}>
             {prompt.type === "binary"
-              ? `${result.actualResult} said YES`
+              ? `${result.actualResult} / ${binaryN} said YES`
               : prompt.type === "scale"
               ? `${Number(result.actualResult).toFixed(1)} avg`
               : String(result.actualResult).split(",").join(" & ")}
@@ -734,10 +735,15 @@ function PlayGameContent() {
         {phase === "phase3" && <Phase3View game={gameState} nickname={nickname} />}
         {phase === "leaderboard" && <LeaderboardView game={gameState} nickname={nickname} />}
         {phase === "ended" && <EndedView game={gameState} nickname={nickname} />}
-        {phase === "lobby" && (
-          <div className="flex flex-col items-center justify-center py-20 text-center px-6">
-            <p className={`${t.textYellow} text-3xl font-black animate-pulse`}>Get ready!</p>
-            <p className={`${t.textMuted} text-lg mt-2`}>Game starting soon...</p>
+        {(phase === "lobby" || phase === "countdown") && (
+          <div className="flex flex-col items-center justify-center py-20 text-center px-6 gap-4">
+            <span className="text-6xl">{phase === "countdown" ? "🎯" : "⏳"}</span>
+            <p className={`${t.textYellow} text-3xl font-black ${phase === "countdown" ? "animate-bounce" : "animate-pulse"}`}>
+              {phase === "countdown" ? "Get Ready!" : "Waiting to start..."}
+            </p>
+            {phase === "countdown" && (
+              <p className={`${t.textMuted} text-lg`}>Game starting now!</p>
+            )}
           </div>
         )}
       </div>

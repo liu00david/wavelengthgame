@@ -11,7 +11,7 @@ type Prompt = {
   options?: string[];
 };
 
-type GamePhase = "lobby" | "phase1" | "phase2" | "phase3" | "leaderboard" | "ended";
+type GamePhase = "lobby" | "countdown" | "phase1" | "phase2" | "phase3" | "leaderboard" | "ended";
 
 type PlayerScore = {
   nickname: string;
@@ -41,6 +41,7 @@ type GameState = {
   roundResult: RoundResult | null;
   leaderboard: PlayerScore[];
   N: number;
+  phase1AnsweredCount: number;
   answeredCount: number;
   answeredNicknames: string[];
 };
@@ -216,6 +217,7 @@ export default class GameServer implements Party.Server {
     roundResult: null,
     leaderboard: [],
     N: 0,
+    phase1AnsweredCount: 0,
     answeredCount: 0,
     answeredNicknames: [],
   };
@@ -312,7 +314,14 @@ export default class GameServer implements Party.Server {
     }
     const ms = this.game.phase2Duration * 1000;
     const phaseEndsAt = Date.now() + ms;
-    this.game = { ...this.game, phase: "phase2", phaseEndsAt, answeredCount: 0, answeredNicknames: [] };
+    this.game = {
+      ...this.game,
+      phase: "phase2",
+      phaseEndsAt,
+      phase1AnsweredCount: this.phase1Answers.size,
+      answeredCount: 0,
+      answeredNicknames: [],
+    };
     this.broadcastGame();
     this.phaseTimer = setTimeout(() => this.startPhase3(), ms);
   }
@@ -530,7 +539,7 @@ export default class GameServer implements Party.Server {
         .forEach((p) => this.totalScores.set(p.nickname, 0));
 
       this.game = {
-        phase: "lobby",
+        phase: "countdown",
         round: 1,
         totalRounds,
         prompt: null,
@@ -540,11 +549,14 @@ export default class GameServer implements Party.Server {
         roundResult: null,
         leaderboard: [],
         N: playerCount,
+        phase1AnsweredCount: 0,
         answeredCount: 0,
         answeredNicknames: [],
       };
+      this.broadcastGame();
 
-      this.startPhase1();
+      this.clearTimer();
+      this.phaseTimer = setTimeout(() => this.startPhase1(), 6000);
       return;
     }
 
@@ -633,7 +645,7 @@ export default class GameServer implements Party.Server {
       this.game = {
         phase: "lobby", round: 0, totalRounds: 10,
         prompt: null, phaseEndsAt: null, phase1Duration: 25, phase2Duration: 20,
-        roundResult: null, leaderboard: [], N: 0, answeredCount: 0, answeredNicknames: [],
+        roundResult: null, leaderboard: [], N: 0, phase1AnsweredCount: 0, answeredCount: 0, answeredNicknames: [],
       };
       this.room.broadcast(JSON.stringify({ type: "disbanded" }));
       return;
@@ -665,6 +677,7 @@ export default class GameServer implements Party.Server {
         roundResult: null,
         leaderboard: [],
         N: playerCount,
+        phase1AnsweredCount: 0,
         answeredCount: 0,
         answeredNicknames: [],
       };
@@ -681,7 +694,7 @@ export default class GameServer implements Party.Server {
       this.game = {
         phase: "lobby", round: 0, totalRounds: 10,
         prompt: null, phaseEndsAt: null, phase1Duration: 25, phase2Duration: 20,
-        roundResult: null, leaderboard: [], N: 0, answeredCount: 0, answeredNicknames: [],
+        roundResult: null, leaderboard: [], N: 0, phase1AnsweredCount: 0, answeredCount: 0, answeredNicknames: [],
       };
       this.broadcastLobby();
       this.room.broadcast(JSON.stringify({ type: "game", game: this.game }));

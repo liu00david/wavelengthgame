@@ -51,7 +51,7 @@ export default function TVPage() {
     if (gameState && gameState.phase !== "lobby") {
       router.push(`/tv/${roomCode}/game`);
     }
-  }, [gameState, roomCode, router]);
+  }, [gameState?.phase, roomCode, router]);
 
   if (roomNotFound) {
     return (

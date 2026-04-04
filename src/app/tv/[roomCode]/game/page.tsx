@@ -79,6 +79,46 @@ function AnswerBar({ label, value, pct, color, isWinner }: { label: string; valu
   );
 }
 
+function GameOverIntro({ onDone }: { onDone: () => void }) {
+  const [step, setStep] = useState<"in" | "sub" | "out">("in");
+
+  useEffect(() => {
+    const timers = [
+      setTimeout(() => setStep("sub"), 800),
+      setTimeout(() => setStep("out"), 2800),
+      setTimeout(() => onDone(), 3400),
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, [onDone]);
+
+  return (
+    <div
+      className={`absolute inset-0 z-50 flex flex-col items-center justify-center ${t.bgPage} transition-opacity duration-600`}
+      style={{ opacity: step === "out" ? 0 : 1 }}
+    >
+      <div
+        className="flex flex-col items-center gap-6 transition-all duration-500"
+        style={{
+          transform: step === "out" ? "scale(0.9) translateY(-30px)" : "scale(1) translateY(0)",
+        }}
+      >
+        <p
+          className={`font-black text-white text-center leading-none transition-all duration-500`}
+          style={{ fontSize: "7rem", opacity: 1 }}
+        >
+          Game Over!
+        </p>
+        <p
+          className={`${t.textYellow} font-black text-4xl text-center tracking-wide transition-all duration-500`}
+          style={{ opacity: step === "in" ? 0 : 1, transform: step === "in" ? "translateY(16px)" : "translateY(0)" }}
+        >
+          What&apos;s the Consensus?
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function CountdownOverlay({ onDone }: { onDone: () => void }) {
   const [step, setStep] = useState<"tagline_in" | "tagline_out" | "3" | "2" | "1" | "done">("tagline_in");
 
@@ -203,7 +243,7 @@ function Phase2View({ game }: { game: GameState }) {
 function Phase3View({ game }: { game: GameState }) {
   const result = game.roundResult!;
   const prompt = result.prompt;
-  const N = game.N;
+  const N = game.phase1AnsweredCount || game.N;
 
   if (prompt.type === "binary") {
     const yesCount = Number(result.actualResult);
@@ -458,7 +498,8 @@ export default function TVGamePage() {
   const roomCode = (params.roomCode as string).toUpperCase();
 
   const [roomNotFound, setRoomNotFound] = useState(false);
-  const [showCountdown, setShowCountdown] = useState(false);
+  const [showGameOver, setShowGameOver] = useState(false);
+  const [endedVisible, setEndedVisible] = useState(false);
   const prevPhaseRef = useRef<string | null>(null);
 
   const { gameState } = useParty(roomCode, undefined, (msg) => {
@@ -483,15 +524,21 @@ export default function TVGamePage() {
     }
   }, [gameState?.phase, roomCode]);
 
-  // Show countdown overlay when game first starts (lobby → phase1, round 1)
+  // Show Game Over intro when transitioning to ended phase
   useEffect(() => {
     const prev = prevPhaseRef.current;
     const curr = gameState?.phase ?? null;
-    if (prev === "lobby" && curr === "phase1" && gameState?.round === 1) {
-      setShowCountdown(true);
+    if (curr === "ended") {
+      if (prev === null) {
+        // page loaded already in ended state (e.g. refresh) — skip intro
+        setEndedVisible(true);
+      } else if (prev !== "ended") {
+        setShowGameOver(true);
+        setEndedVisible(false);
+      }
     }
     prevPhaseRef.current = curr;
-  }, [gameState?.phase, gameState?.round]);
+  }, [gameState?.phase]);
 
   if (roomNotFound) {
     return (
@@ -514,8 +561,11 @@ export default function TVGamePage() {
 
   return (
     <main className={`min-h-screen ${t.bgPage} flex flex-col relative overflow-hidden`}>
-      {showCountdown && (
-        <CountdownOverlay onDone={() => setShowCountdown(false)} />
+      {phase === "countdown" && (
+        <CountdownOverlay onDone={() => {}} />
+      )}
+      {showGameOver && (
+        <GameOverIntro onDone={() => { setShowGameOver(false); setEndedVisible(true); }} />
       )}
       {/* Background decoration */}
       <div className="absolute inset-0 pointer-events-none">
@@ -545,7 +595,7 @@ export default function TVGamePage() {
 
       {/* Content */}
       <div className="relative z-10 flex flex-col flex-1">
-        {!gameState || phase === "lobby" ? (
+        {!gameState || phase === "lobby" || phase === "countdown" ? (
           <div className="flex flex-col items-center justify-center flex-1 text-center">
             <p className={`${t.textTeal} text-3xl font-black animate-pulse`}>Waiting for game to start...</p>
           </div>
@@ -558,7 +608,12 @@ export default function TVGamePage() {
         ) : phase === "leaderboard" ? (
           <LeaderboardView game={gameState} title={`Round ${gameState.round} Results`} />
         ) : (
-          <EndedView game={gameState} />
+          <div
+            className="flex flex-col flex-1 transition-all duration-700"
+            style={{ opacity: endedVisible ? 1 : 0, transform: endedVisible ? "translateY(0)" : "translateY(40px)" }}
+          >
+            <EndedView game={gameState} />
+          </div>
         )}
       </div>
 
