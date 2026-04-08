@@ -26,7 +26,7 @@ const rules = [
 
 const scoring = [
   { label: "Yes / No", pts: "0–1000 pts", desc: "Based on how far off your count was", color: t.textCyan },
-  { label: "Scale", pts: "0–1000 pts", desc: "Closer to the average = more points", color: t.textTeal },
+  { label: "Scale", pts: "0–1000 pts", desc: "Closer to the group average = more points", color: t.textTeal },
   { label: "Multiple Choice", pts: "625–1000 pts", desc: "Correct guess — rarer answers score higher", color: t.textYellow },
 ];
 
@@ -69,14 +69,6 @@ export default function HowToPlayPage() {
               </div>
             </div>
           ))}
-        </div>
-
-        {/* Double Down */}
-        <div className="bg-[#f6dc53]/10 border border-[#f6dc53]/30 rounded-2xl p-5 mb-8">
-          <p className={`${t.textYellow} font-bold text-base uppercase tracking-wide mb-1`}>⚡ Double Down</p>
-          <p className="text-white text-base leading-relaxed">
-            During Phase 2, you can Double Down on your prediction. If you&apos;re right — you earn <span className={t.textYellow}>2× points</span>. If you&apos;re wrong — you earn <span className="text-[#c94f7a]">0 points</span>. Use it wisely.
-          </p>
         </div>
 
         {/* Scoring */}
