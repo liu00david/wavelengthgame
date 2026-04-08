@@ -104,11 +104,6 @@ function getPromptsForGame(n: number): Prompt[] {
   return shuffled.slice(0, Math.min(n, shuffled.length));
 }
 
-function getRoundMultiplier(round: number): number {
-  if (round <= 4) return 1;
-  if (round <= 8) return 1.5;
-  return 3;
-}
 
 function calculateProximityScore(
   prediction: string | number,
@@ -200,9 +195,7 @@ function computeScores(
   wagers: Map<string, boolean>,
   actual: string | number,
   N: number,
-  round: number,
 ): Record<string, number> {
-  const multiplier = getRoundMultiplier(round);
   const voteCounts = prompt.type === "multiple_choice" ? computeVoteCounts(answers) : undefined;
   const scores: Record<string, number> = {};
 
@@ -214,7 +207,7 @@ function computeScores(
       base = isHighlyAccurate(base) ? base * 2 : 0;
     }
 
-    scores[nickname] = Math.round(base * multiplier);
+    scores[nickname] = Math.round(base);
   });
 
   return scores;
@@ -362,7 +355,6 @@ export default class GameServer implements Party.Server {
       this.phase2Wagers,
       actual,
       scoringN,
-      this.game.round,
     );
 
     // Update totals

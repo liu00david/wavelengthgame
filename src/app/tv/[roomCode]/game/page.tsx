@@ -382,6 +382,64 @@ function ResultFooter({ result }: { result: NonNullable<GameState["roundResult"]
   );
 }
 
+function useCountUp(target: number, from: number, duration = 2000): number {
+  const [value, setValue] = useState(from);
+  const startRef = useRef<number | null>(null);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    startRef.current = null;
+    setValue(from);
+
+    function step(ts: number) {
+      if (startRef.current === null) startRef.current = ts;
+      const elapsed = ts - startRef.current;
+      const progress = Math.min(elapsed / duration, 1);
+      // ease-out cubic
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setValue(Math.round(from + (target - from) * eased));
+      if (progress < 1) rafRef.current = requestAnimationFrame(step);
+    }
+
+    rafRef.current = requestAnimationFrame(step);
+    return () => { if (rafRef.current !== null) cancelAnimationFrame(rafRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target, from, duration]);
+
+  return value;
+}
+
+function LeaderboardRow({ player, isTop }: { player: GameState["leaderboard"][0]; isTop: boolean }) {
+  const prevTotal = player.total - player.roundScore;
+  const animatedTotal = useCountUp(player.total, prevTotal, 2000);
+
+  return (
+    <div
+      className={`flex items-center gap-4 rounded-2xl px-6 py-4 transition-all ${
+        isTop
+          ? "bg-[#7862FF]/20 border-2 border-[#7862FF]/60"
+          : `${t.bgSurface}/60 border ${t.borderSurface}`
+      }`}
+    >
+      <span className={`font-black text-2xl w-8 ${isTop ? t.textPrimary : t.textMuted}`}>
+        #{player.rank}
+      </span>
+      <div className={`${resolveAvatarColor(player.nickname, player.emoji)} w-12 h-12 rounded-full flex items-center justify-center text-2xl`}>
+        {resolveEmoji(player.nickname, player.emoji)}
+      </div>
+      <span className={`font-bold text-xl flex-1 ${isTop ? t.textPrimary : "text-white"}`}>
+        {player.nickname}
+      </span>
+      {player.roundScore > 0 && (
+        <span className={`${t.textTeal} font-bold text-lg`}>+{player.roundScore}</span>
+      )}
+      <span className={`font-black text-2xl tabular-nums ${isTop ? t.textPrimary : "text-white"}`}>
+        {animatedTotal}
+      </span>
+    </div>
+  );
+}
+
 function LeaderboardView({ game, title }: { game: GameState; title: string }) {
   const board = game.leaderboard;
 
@@ -390,35 +448,9 @@ function LeaderboardView({ game, title }: { game: GameState; title: string }) {
       <h2 className={`text-4xl font-black ${t.textCyan} text-center`}>{title}</h2>
 
       <div className="flex flex-col gap-3 max-w-2xl mx-auto w-full">
-        {board.map((player, i) => {
-          const isTop = i === 0;
-          return (
-            <div
-              key={player.nickname}
-              className={`flex items-center gap-4 rounded-2xl px-6 py-4 transition-all ${
-                isTop
-                  ? "bg-[#7862FF]/20 border-2 border-[#7862FF]/60"
-                  : `${t.bgSurface}/60 border ${t.borderSurface}`
-              }`}
-            >
-              <span className={`font-black text-2xl w-8 ${isTop ? t.textPrimary : t.textMuted}`}>
-                #{player.rank}
-              </span>
-              <div className={`${resolveAvatarColor(player.nickname, player.emoji)} w-12 h-12 rounded-full flex items-center justify-center text-2xl`}>
-                {resolveEmoji(player.nickname, player.emoji)}
-              </div>
-              <span className={`font-bold text-xl flex-1 ${isTop ? t.textPrimary : "text-white"}`}>
-                {player.nickname}
-              </span>
-              {player.roundScore > 0 && (
-                <span className={`${t.textTeal} font-bold text-lg`}>+{player.roundScore}</span>
-              )}
-              <span className={`font-black text-2xl ${isTop ? t.textPrimary : "text-white"}`}>
-                {player.total}
-              </span>
-            </div>
-          );
-        })}
+        {board.map((player, i) => (
+          <LeaderboardRow key={player.nickname} player={player} isTop={i === 0} />
+        ))}
       </div>
 
       {game.phase === "leaderboard" && (

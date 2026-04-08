@@ -86,6 +86,13 @@ function PlayContent({ roomCode }: { roomCode: string }) {
     }
   }, [gameState, roomCode, nickname, router]);
 
+  // Sync chosenEmoji from server when lobby state arrives (preserves emoji across games)
+  useEffect(() => {
+    if (!lobbyState || !nickname || chosenEmoji !== undefined) return;
+    const me = lobbyState.players.find((p) => p.nickname === nickname);
+    if (me?.emoji) setChosenEmoji(me.emoji);
+  }, [lobbyState, nickname, chosenEmoji]);
+
   function handleLeave() {
     localStorage.removeItem(PLAYER_SESSION_KEY);
     router.push("/");
