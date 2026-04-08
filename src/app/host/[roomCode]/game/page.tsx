@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useParty } from "@/lib/useParty";
-import { t, avatarColor, playerEmoji } from "@/lib/theme";
+import { t, avatarColor, resolveAvatarColor, resolveEmoji } from "@/lib/theme";
 import type { RoundResult } from "@/lib/types";
 
 function useCountdown(phaseEndsAt: number | null): number {
@@ -296,7 +296,7 @@ export default function HostGamePage() {
                         : `${t.bgPage} ${t.textMuted}`
                     }`}
                   >
-                    <div className={`${avatarColor(p.nickname)} w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold`}>
+                    <div className={`${resolveAvatarColor(p.nickname, p.emoji)} w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold`}>
                       {p.nickname.charAt(0).toUpperCase()}
                     </div>
                     {p.nickname}
@@ -317,8 +317,8 @@ export default function HostGamePage() {
                 <div key={s.nickname} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className={`${t.textFaint} text-sm w-5`}>#{s.rank}</span>
-                    <div className={`${avatarColor(s.nickname)} w-7 h-7 rounded-full flex items-center justify-center text-base`}>
-                      {playerEmoji(s.nickname)}
+                    <div className={`${resolveAvatarColor(s.nickname, s.emoji)} w-7 h-7 rounded-full flex items-center justify-center text-base`}>
+                      {resolveEmoji(s.nickname, s.emoji)}
                     </div>
                     <span className="text-white text-sm font-medium">{s.nickname}</span>
                   </div>
@@ -357,7 +357,7 @@ export default function HostGamePage() {
         {/* End state */}
         {phase === "ended" && (
           <div className={`${t.bgSurface} rounded-2xl border border-[#f6dc53]/30 p-6 text-center mb-4`}>
-            <p className={`${t.textYellow} text-2xl font-black mb-2`}>Game Over!</p>
+            <p className={`${t.textYellow} text-2xl font-black mb-2`}>CONSENSUS</p>
             <p className={t.textMuted}>Thanks for playing Consensus.</p>
           </div>
         )}
@@ -389,7 +389,7 @@ export default function HostGamePage() {
       {/* Answered count badge */}
       {(phase === "phase1" || phase === "phase2") && gameState && (
         <div className={`fixed bottom-6 left-6 ${t.bgSurface}/80 backdrop-blur text-white px-4 py-2 rounded-full text-sm font-semibold z-20 border ${t.borderSurface}`}>
-          {answeredCount} / {N} answered
+          {answeredCount} / {phase === "phase2" ? (gameState.phase1AnsweredCount || N) : N} answered
         </div>
       )}
 
@@ -448,8 +448,8 @@ export default function HostGamePage() {
                 onClick={() => handleKickPlayer(p.nickname)}
                 className={`w-full py-3 px-4 rounded-xl ${t.btnGhost} font-semibold text-sm hover:bg-[#9a3558]/20 hover:border-[#9a3558]/40 hover:text-[#c94f7a] active:scale-95 transition-all flex items-center gap-3`}
               >
-                <div className={`${avatarColor(p.nickname)} w-8 h-8 rounded-full flex items-center justify-center text-lg flex-shrink-0`}>
-                  {playerEmoji(p.nickname)}
+                <div className={`${resolveAvatarColor(p.nickname, p.emoji)} w-8 h-8 rounded-full flex items-center justify-center text-lg flex-shrink-0`}>
+                  {resolveEmoji(p.nickname, p.emoji)}
                 </div>
                 {p.nickname}
               </button>

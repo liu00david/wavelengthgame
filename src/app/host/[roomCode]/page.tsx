@@ -3,15 +3,15 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useParty } from "@/lib/useParty";
-import { t, avatarColor, playerEmoji } from "@/lib/theme";
+import { t, avatarColor, resolveAvatarColor, resolveEmoji } from "@/lib/theme";
 import type { Player } from "@/lib/types";
 
 function PlayerAvatar({ player }: { player: Player }) {
-  const color = avatarColor(player.nickname);
+  const color = resolveAvatarColor(player.nickname, player.emoji);
   return (
     <div className="flex flex-col items-center gap-2">
       <div className={`${color} w-14 h-14 rounded-full flex items-center justify-center text-3xl shadow-lg`}>
-        {playerEmoji(player.nickname)}
+        {resolveEmoji(player.nickname, player.emoji)}
       </div>
       <span className="text-[#7a96c8] text-base font-medium truncate max-w-[72px]">{player.nickname}</span>
       {player.isHost && <span className={`${t.textYellow} text-sm font-bold -mt-1`}>HOST</span>}
@@ -195,8 +195,8 @@ export default function HostPage() {
                         onClick={() => handleKick(p.nickname)}
                         className={`w-full flex items-center gap-3 py-3 px-4 rounded-xl ${t.btnGhost} hover:bg-[#9a3558]/20 hover:border-[#9a3558]/40 hover:text-[#c94f7a] transition-all`}
                       >
-                        <div className={`${avatarColor(p.nickname)} w-9 h-9 rounded-full flex items-center justify-center text-xl flex-shrink-0`}>
-                          {playerEmoji(p.nickname)}
+                        <div className={`${resolveAvatarColor(p.nickname, p.emoji)} w-9 h-9 rounded-full flex items-center justify-center text-xl flex-shrink-0`}>
+                          {resolveEmoji(p.nickname, p.emoji)}
                         </div>
                         <span className="font-semibold">{p.nickname}</span>
                       </button>

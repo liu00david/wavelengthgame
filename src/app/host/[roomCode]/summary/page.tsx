@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { t, avatarColor, playerEmoji } from "@/lib/theme";
+import { t, avatarColor, resolveAvatarColor, resolveEmoji } from "@/lib/theme";
 import type { RoundResult, PlayerScore } from "@/lib/types";
 
 type SummaryData = {
@@ -89,8 +89,8 @@ export default function HostSummaryPage() {
               className={`flex items-center gap-4 px-5 py-3 ${i < players.length - 1 ? `border-b ${t.borderSurface}` : ""}`}
             >
               <span className={`font-black text-lg w-7 ${p.rank === 1 ? t.textYellow : t.textMuted}`}>#{p.rank}</span>
-              <div className={`${avatarColor(p.nickname)} w-9 h-9 rounded-full flex items-center justify-center text-xl shrink-0`}>
-                {playerEmoji(p.nickname)}
+              <div className={`${resolveAvatarColor(p.nickname, p.emoji)} w-9 h-9 rounded-full flex items-center justify-center text-xl shrink-0`}>
+                {resolveEmoji(p.nickname, p.emoji)}
               </div>
               <span className="text-white font-semibold flex-1 truncate">{p.nickname}</span>
               <span className={`${p.rank === 1 ? t.textYellow : "text-white"} font-black text-lg`}>{p.total} pts</span>
@@ -138,8 +138,8 @@ export default function HostSummaryPage() {
                         const didPredict = pred !== undefined;
                         return (
                           <div key={p.nickname} className={`flex items-center gap-3 py-2 border-b ${t.borderSurface} last:border-0`}>
-                            <div className={`${avatarColor(p.nickname)} w-8 h-8 rounded-full flex items-center justify-center text-base shrink-0`}>
-                              {playerEmoji(p.nickname)}
+                            <div className={`${resolveAvatarColor(p.nickname, p.emoji)} w-8 h-8 rounded-full flex items-center justify-center text-base shrink-0`}>
+                              {resolveEmoji(p.nickname, p.emoji)}
                             </div>
                             <span className={`text-white font-medium text-sm flex-1 truncate`}>{p.nickname}</span>
                             {didAnswer ? (

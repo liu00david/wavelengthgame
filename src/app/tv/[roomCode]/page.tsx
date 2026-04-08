@@ -4,18 +4,18 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import { useParty } from "@/lib/useParty";
-import { t, avatarColor, playerEmoji } from "@/lib/theme";
+import { t, avatarColor, resolveAvatarColor, resolveEmoji } from "@/lib/theme";
 import type { Player } from "@/lib/types";
 
 const JOIN_BASE_URL = "https://consensusgame.vercel.app";
 const JOIN_DISPLAY_URL = "consensusgame.vercel.app";
 
 function BigAvatar({ player }: { player: Player }) {
-  const color = avatarColor(player.nickname);
+  const color = resolveAvatarColor(player.nickname, player.emoji);
   return (
     <div className="flex flex-col items-center gap-3 animate-[fadeIn_0.4s_ease-out]">
       <div className={`${color} w-24 h-24 rounded-full flex items-center justify-center text-5xl shadow-xl ring-4 ring-white/10`}>
-        {playerEmoji(player.nickname)}
+        {resolveEmoji(player.nickname, player.emoji)}
       </div>
       <span className="text-white text-xl font-semibold truncate max-w-[110px]">
         {player.nickname}

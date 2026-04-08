@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useParty } from "@/lib/useParty";
-import { t, avatarColor, playerEmoji } from "@/lib/theme";
+import { t, avatarColor, resolveAvatarColor, resolveEmoji } from "@/lib/theme";
 import type { GameState } from "@/lib/types";
 
 function useCountdown(phaseEndsAt: number | null): number {
@@ -72,7 +72,7 @@ function AnswerBar({ label, value, pct, color, isWinner }: { label: string; valu
           {value}{safePct > 0 ? ` (${Math.round(safePct)}%)` : ""}
         </span>
       </div>
-      <span className="w-8 text-center text-2xl shrink-0">
+      <span className="w-16 text-center text-5xl shrink-0">
         {isWinner ? <span className={t.textTeal}>✓</span> : null}
       </span>
     </div>
@@ -106,7 +106,7 @@ function GameOverIntro({ onDone }: { onDone: () => void }) {
           className={`font-black text-white text-center leading-none transition-all duration-500`}
           style={{ fontSize: "7rem", opacity: 1 }}
         >
-          Game Over!
+          CONSENSUS
         </p>
         <p
           className={`${t.textYellow} font-black text-4xl text-center tracking-wide transition-all duration-500`}
@@ -260,7 +260,7 @@ function Phase3View({ game }: { game: GameState }) {
           </h2>
         </div>
 
-        <div className="flex flex-col gap-4 w-full max-w-2xl mx-auto mt-4">
+        <div className="flex flex-col gap-4 w-full max-w-2xl ml-auto mr-[12%] mt-4">
           <AnswerBar label="YES" value={yesCount} pct={yesPct} color="bg-[#25a59f]" isWinner={yesCount >= noCount} />
           <AnswerBar label="NO" value={noCount} pct={noPct} color="bg-[#9a3558]" isWinner={noCount > yesCount} />
         </div>
@@ -287,7 +287,7 @@ function Phase3View({ game }: { game: GameState }) {
           </h2>
         </div>
 
-        <div className="flex flex-col gap-4 w-full max-w-2xl mx-auto mt-4">
+        <div className="flex flex-col gap-4 w-full max-w-2xl ml-auto mr-[12%] mt-4">
           {prompt.options!.map((opt, i) => {
             const count = counts[opt] ?? 0;
             const pct = N > 0 ? (count / N) * 100 : 0;
@@ -369,7 +369,7 @@ function ResultFooter({ result }: { result: NonNullable<GameState["roundResult"]
             {topScorers.map(([name, pts]) => (
               <div key={name} className="flex items-center gap-2">
                 <div className={`${avatarColor(name)} w-8 h-8 rounded-full flex items-center justify-center text-lg`}>
-                  {playerEmoji(name)}
+                  {resolveEmoji(name)}
                 </div>
                 <span className="text-white font-semibold text-lg">{name}</span>
                 <span className={`${t.textTeal} font-black text-lg`}>+{pts}</span>
@@ -404,8 +404,8 @@ function LeaderboardView({ game, title }: { game: GameState; title: string }) {
               <span className={`font-black text-2xl w-8 ${isTop ? t.textPrimary : t.textMuted}`}>
                 #{player.rank}
               </span>
-              <div className={`${avatarColor(player.nickname)} w-12 h-12 rounded-full flex items-center justify-center text-2xl`}>
-                {playerEmoji(player.nickname)}
+              <div className={`${resolveAvatarColor(player.nickname, player.emoji)} w-12 h-12 rounded-full flex items-center justify-center text-2xl`}>
+                {resolveEmoji(player.nickname, player.emoji)}
               </div>
               <span className={`font-bold text-xl flex-1 ${isTop ? t.textPrimary : "text-white"}`}>
                 {player.nickname}
@@ -445,7 +445,26 @@ function EndedView({ game }: { game: GameState }) {
   const rank2 = podiumPlayers.filter((p) => p.rank === 2);
   const rank1 = podiumPlayers.filter((p) => p.rank === 1);
   const rank3 = podiumPlayers.filter((p) => p.rank === 3);
-  const podiumOrder = [...rank2, ...rank1, ...rank3];
+  // Split rank2 across left/right; overflow rank2 fills right if rank3 absent
+  const leftSlot = rank2[0] ?? null;
+  const rightSlot = rank2[1] ?? rank3[0] ?? null;
+
+  function TVPodiumSlot({ p }: { p: typeof rank1[0] }) {
+    const style = TV_RANK_STYLE[p.rank ?? 1];
+    return (
+      <div className="flex flex-col items-center gap-2 w-full max-w-[160px]">
+        <div className={`${resolveAvatarColor(p.nickname, p.emoji)} w-20 h-20 rounded-full flex items-center justify-center text-4xl shadow-xl flex-shrink-0`}>
+          {resolveEmoji(p.nickname, p.emoji)}
+        </div>
+        <p className="text-white text-xl text-center truncate w-full px-1">{p.nickname}</p>
+        <p className={`${style.color} text-lg`}>{p.total} pts</p>
+        <div className={`w-full ${style.height} rounded-t-2xl flex flex-col items-center justify-start pt-3 gap-1 ${style.bg}`}>
+          <span className="text-3xl">{style.emoji}</span>
+          <span className={`${style.color} text-lg`}>{style.label}</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col flex-1 px-16 py-6 gap-6">
@@ -454,24 +473,17 @@ function EndedView({ game }: { game: GameState }) {
         <h2 className={`text-6xl text-white`}>CONSENSUS</h2>
       </div>
 
-      {/* Podium */}
+      {/* Podium: left=2nd, center=1st, right=2nd-tie or 3rd */}
       <div className="flex items-end justify-center gap-4 mt-2">
-        {podiumOrder.map((p) => {
-          const style = TV_RANK_STYLE[p.rank ?? 1];
-          return (
-            <div key={p.nickname} className="flex flex-col items-center gap-2 flex-1 min-w-0 max-w-[160px]">
-              <div className={`${avatarColor(p.nickname)} w-20 h-20 rounded-full flex items-center justify-center text-4xl shadow-xl flex-shrink-0`}>
-                {playerEmoji(p.nickname)}
-              </div>
-              <p className="text-white text-xl text-center truncate w-full px-1">{p.nickname}</p>
-              <p className={`${style.color} text-lg`}>{p.total} pts</p>
-              <div className={`w-full ${style.height} rounded-t-2xl flex flex-col items-center justify-start pt-3 gap-1 ${style.bg}`}>
-                <span className="text-3xl">{style.emoji}</span>
-                <span className={`${style.color} text-lg`}>{style.label}</span>
-              </div>
-            </div>
-          );
-        })}
+        <div className="flex flex-col items-center flex-1 min-w-0">
+          {leftSlot && <TVPodiumSlot p={leftSlot} />}
+        </div>
+        <div className="flex flex-col items-center flex-1 min-w-0">
+          {rank1.map((p) => <TVPodiumSlot key={p.nickname} p={p} />)}
+        </div>
+        <div className="flex flex-col items-center flex-1 min-w-0">
+          {rightSlot && <TVPodiumSlot p={rightSlot} />}
+        </div>
       </div>
 
       {/* Below podium */}
@@ -480,8 +492,8 @@ function EndedView({ game }: { game: GameState }) {
           {restPlayers.map((p) => (
             <div key={p.nickname} className={`flex items-center gap-4 ${t.bgSurface}/60 rounded-xl px-5 py-3`}>
               <span className={`${t.textMuted} text-xl w-8`}>#{p.rank}</span>
-              <div className={`${avatarColor(p.nickname)} w-10 h-10 rounded-full flex items-center justify-center text-xl`}>
-                {playerEmoji(p.nickname)}
+              <div className={`${resolveAvatarColor(p.nickname, p.emoji)} w-10 h-10 rounded-full flex items-center justify-center text-xl`}>
+                {resolveEmoji(p.nickname, p.emoji)}
               </div>
               <span className="text-white text-xl flex-1">{p.nickname}</span>
               <span className="text-white text-xl">{p.total}</span>
@@ -620,7 +632,7 @@ export default function TVGamePage() {
       {/* Answered count badge (phase1/phase2 only) */}
       {(phase === "phase1" || phase === "phase2") && gameState && (
         <div className={`fixed bottom-6 left-6 ${t.bgSurface}/80 backdrop-blur text-white px-4 py-2 rounded-full text-sm font-semibold z-20 border ${t.borderSurface}`}>
-          {answeredCount} / {N} answered
+          {answeredCount} / {phase === "phase2" ? (gameState.phase1AnsweredCount || N) : N} answered
         </div>
       )}
     </main>

@@ -1,4 +1,4 @@
-export type Player = { id: string; nickname: string; isHost: boolean };
+export type Player = { id: string; nickname: string; isHost: boolean; emoji?: string };
 
 export type LobbyState = {
   players: Player[];
@@ -26,6 +26,7 @@ export type GamePhase =
 
 export type PlayerScore = {
   nickname: string;
+  emoji?: string;
   total: number;
   roundScore: number; // points earned this round
   rank?: number;
@@ -80,4 +81,5 @@ export type ClientMessage =
   | { type: "play_again"; numQuestions: number; phase1Time: number; phase2Time: number } // host only
   | { type: "reset_to_lobby" } // host only — unlock room, return to lobby phase
   | { type: "kick_player"; nickname: string }
-  | { type: "skip_question" };
+  | { type: "skip_question" }
+  | { type: "set_emoji"; emoji: string };

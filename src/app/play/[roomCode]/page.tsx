@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useParty } from "@/lib/useParty";
-import { t, avatarColor, playerEmoji } from "@/lib/theme";
+import { t, avatarColor, resolveAvatarColor, resolveEmoji } from "@/lib/theme";
 
 const PLAYER_SESSION_KEY = "consensus_player_session";
 
@@ -17,6 +17,7 @@ function PlayContent({ roomCode }: { roomCode: string }) {
   const [nicknameInput, setNicknameInput] = useState("");
   const [nicknameError, setNicknameError] = useState("");
   const [roomNotFound, setRoomNotFound] = useState(false);
+  const [chosenEmoji, setChosenEmoji] = useState<string | undefined>(undefined);
 
   const nicknameRef = useRef("");
   const joinedRef = useRef(false); // true once we've successfully joined (got `connected`)
@@ -107,6 +108,11 @@ function PlayContent({ roomCode }: { roomCode: string }) {
     }, 5000);
   }
 
+  function handlePickEmoji(emoji: string) {
+    setChosenEmoji(emoji);
+    sendMsg({ type: "set_emoji", emoji });
+  }
+
   const locked = lobbyState?.locked ?? false;
 
   if (roomNotFound) {
@@ -164,12 +170,14 @@ function PlayContent({ roomCode }: { roomCode: string }) {
     );
   }
 
+  const displayEmoji = resolveEmoji(nickname, chosenEmoji);
+
   if (locked) {
     return (
       <main className={`min-h-screen ${t.bgPage} flex flex-col items-center justify-center px-4`}>
         <div className="text-center">
-          <div className={`${avatarColor(nickname)} w-24 h-24 rounded-full flex items-center justify-center text-5xl shadow-2xl mx-auto mb-6 ring-4 ring-[#f6dc53]/50`}>
-            {playerEmoji(nickname)}
+          <div className={`${resolveAvatarColor(nickname, chosenEmoji)} w-24 h-24 rounded-full flex items-center justify-center text-5xl shadow-2xl mx-auto mb-6 ring-4 ring-[#f6dc53]/50`}>
+            {displayEmoji}
           </div>
           <h2 className={`text-5xl font-black ${t.textYellow} mb-3 animate-pulse`}>Get Ready!</h2>
           <p className="text-white text-xl font-semibold mb-1">{nickname}</p>
@@ -194,19 +202,45 @@ function PlayContent({ roomCode }: { roomCode: string }) {
       </div>
 
       <div className="flex flex-col items-center px-4 py-6 w-full max-w-md mx-auto">
-        <div className="flex flex-col items-center mb-6">
-          <div className={`${avatarColor(nickname)} w-20 h-20 rounded-full flex items-center justify-center text-4xl shadow-2xl mb-3 ring-4 ring-white/10`}>
-            {playerEmoji(nickname)}
+        {/* Avatar */}
+        <div className="flex flex-col items-center mb-5">
+          <div className={`${resolveAvatarColor(nickname, chosenEmoji)} w-24 h-24 rounded-full flex items-center justify-center text-5xl shadow-2xl mb-3 ring-4 ring-white/10`}>
+            {displayEmoji}
           </div>
           <h2 className="text-2xl font-black text-white">{nickname}</h2>
         </div>
 
-        <div className={`${t.bgSurface} rounded-2xl border ${t.borderSurface} shadow-xl p-6 mb-6 w-full`}>
-          <div className="flex items-center gap-3 mb-1">
-            <div className="w-2 h-2 bg-[#4dd9d2] rounded-full animate-pulse" />
-            <span className="text-[#4dd9d2] font-semibold">You&apos;re in!</span>
+        {/* Emoji picker */}
+        <div className={`${t.bgSurface} rounded-2xl border ${t.borderSurface} p-4 mb-4 w-full`}>
+          <p className={`${t.textMuted} text-xs uppercase tracking-widest mb-3`}>Pick your emoji</p>
+          <div className="grid grid-cols-8 gap-2">
+            {t.playerEmojis.map((emoji) => {
+              const emojiColor = t.emojiColors[emoji]?.bg ?? t.bgPage;
+              const selected = displayEmoji === emoji;
+              return (
+                <button
+                  key={emoji}
+                  onClick={() => handlePickEmoji(emoji)}
+                  className={`w-full aspect-square rounded-xl text-2xl flex items-center justify-center transition-all active:scale-90 ${emojiColor} ${
+                    selected ? "ring-2 ring-white scale-110 opacity-100" : "opacity-60 hover:opacity-100"
+                  }`}
+                >
+                  {emoji}
+                </button>
+              );
+            })}
           </div>
-          <p className={`${t.textMuted} text-sm`}>Waiting for the host to start the game...</p>
+        </div>
+
+        {/* Status */}
+        <div className={`${t.bgSurface} rounded-2xl border ${t.borderSurface} p-4 mb-4 w-full`}>
+          <div className="flex items-center gap-3">
+            <div className="w-2 h-2 bg-[#4dd9d2] rounded-full animate-pulse shrink-0" />
+            <div>
+              <span className="text-[#4dd9d2] font-semibold">You&apos;re in!</span>
+              <p className={`${t.textMuted} text-sm mt-0.5`}>Waiting for the host to start the game...</p>
+            </div>
+          </div>
         </div>
 
         <button

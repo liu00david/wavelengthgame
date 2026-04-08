@@ -46,14 +46,16 @@ The penalty grows quickly — being off by 2 or more scores 0.
 
 Predict which option was most popular. Only correct guesses score points. **Rarer answers score higher** — if everyone picked the same answer, it's worth less.
 
+**N = number of players who answered Phase 1.**
+
 **Formula (correct guess only):** `max(0, round(1125 − 500 × votes_for_winner / N))`
 
 | Winner vote share | Score |
 |-------------------|-------|
-| 25% of players (minority) | 1000 |
-| 50% of players | 875 |
-| 75% of players | 750 |
-| 100% of players | 625 |
+| 25% of answerers (minority) | 1000 |
+| 50% of answerers | 875 |
+| 75% of answerers | 750 |
+| 100% of answerers | 625 |
 
 > Ties: if two answers are equally popular, predicting either one counts as correct (using that option's vote count).
 

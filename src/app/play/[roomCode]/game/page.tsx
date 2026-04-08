@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, Suspense } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useParty } from "@/lib/useParty";
-import { t, avatarColor, avatarTextColor, playerEmoji } from "@/lib/theme";
+import { t, avatarColor, resolveAvatarColor, resolveEmoji } from "@/lib/theme";
 import type { GameState } from "@/lib/types";
 
 function useCountdown(phaseEndsAt: number | null): number {
@@ -120,20 +120,38 @@ function ScaleInput({ onSubmit, disabled, step = 1, min = 1, max = 10, label }: 
 function BinaryPrediction({ N, onSubmit, disabled }: { N: number; onSubmit: (val: number) => void; disabled: boolean }) {
   const [value, setValue] = useState(Math.round(N / 2));
   function adjust(delta: number) { setValue((v) => Math.min(N, Math.max(0, v + delta))); }
+  const noCount = N - value;
 
   return (
-    <div className="flex flex-col items-center gap-6 w-full">
-      <p className={`${t.textMuted} text-base text-center`}>How many people said YES? (0 to {N})</p>
-      <div className={`text-8xl font-black ${t.textYellow}`}>{value}</div>
-      <div className="flex items-center gap-4 w-full">
+    <div className="flex flex-col items-center gap-5 w-full">
+      <p className={`${t.textMuted} text-lg font-semibold text-center`}>How many people said YES?</p>
+
+      {/* YES / NO split display */}
+      <div className="flex items-center justify-center gap-6 w-full">
+        <div className="flex flex-col items-center gap-1 flex-1">
+          <span className="text-[#9a3558] font-black text-lg uppercase tracking-widest">NO</span>
+          <span className="text-white font-black text-6xl leading-none">{noCount}</span>
+          <span className={`${t.textFaint} text-sm`}>/ {N}</span>
+        </div>
+        <div className={`w-px h-16 bg-[#2a4a8a]`} />
+        <div className="flex flex-col items-center gap-1 flex-1">
+          <span className="text-[#25a59f] font-black text-lg uppercase tracking-widest">YES</span>
+          <span className="text-white font-black text-6xl leading-none">{value}</span>
+          <span className={`${t.textFaint} text-sm`}>/ {N}</span>
+        </div>
+      </div>
+
+      {/* Slider */}
+      <div className="flex items-center gap-3 w-full">
         <button onClick={() => adjust(-1)} disabled={disabled}
-          className={`w-16 h-16 rounded-full ${t.btnGhost} text-white text-3xl font-black disabled:opacity-40 transition-all shadow`}>−</button>
+          className={`w-14 h-14 rounded-full ${t.btnGhost} text-white text-3xl font-black disabled:opacity-40 transition-all shadow`}>−</button>
         <input type="range" min={0} max={N} step={1} value={value} disabled={disabled}
           onChange={(e) => setValue(parseInt(e.target.value))}
           className="flex-1 accent-[#7862FF] h-3 cursor-pointer" />
         <button onClick={() => adjust(1)} disabled={disabled}
-          className={`w-16 h-16 rounded-full ${t.btnGhost} text-white text-3xl font-black disabled:opacity-40 transition-all shadow`}>+</button>
+          className={`w-14 h-14 rounded-full ${t.btnGhost} text-white text-3xl font-black disabled:opacity-40 transition-all shadow`}>+</button>
       </div>
+
       <button onClick={() => !disabled && onSubmit(value)} disabled={disabled}
         className={`w-full py-5 rounded-2xl ${t.btnYellow} text-xl shadow-xl disabled:opacity-40`}>
         Submit Prediction
@@ -406,8 +424,8 @@ function LeaderboardView({ game, nickname }: { game: GameState; nickname: string
         <div className={`rounded-2xl px-5 py-4 border-2 ${myEntry.rank === 1 ? "border-[#f6dc53] bg-[#f6dc53]/10" : "border-[#7862FF] bg-[#7862FF]/10"}`}>
           <div className="flex items-center gap-4">
             <span className={`text-3xl font-black ${t.textYellow}`}>#{myEntry.rank}</span>
-            <div className={`${avatarColor(nickname)} w-12 h-12 rounded-full flex items-center justify-center text-2xl`}>
-              {playerEmoji(nickname)}
+            <div className={`${resolveAvatarColor(nickname, myEntry?.emoji)} w-12 h-12 rounded-full flex items-center justify-center text-2xl`}>
+              {resolveEmoji(nickname, myEntry.emoji)}
             </div>
             <div className="flex-1">
               <p className="text-white font-bold text-lg">{nickname}</p>
@@ -430,8 +448,8 @@ function LeaderboardView({ game, nickname }: { game: GameState; nickname: string
           <div key={p.nickname}
             className={`flex items-center gap-3 rounded-xl px-4 py-3 ${p.nickname === nickname ? "bg-[#7862FF]/20 border border-[#7862FF]/30" : `${t.bgSurface} border ${t.borderSurface}`}`}>
             <span className={`${t.textMuted} w-7 font-bold text-base`}>#{p.rank}</span>
-            <div className={`${avatarColor(p.nickname)} w-9 h-9 rounded-full flex items-center justify-center text-xl`}>
-              {playerEmoji(p.nickname)}
+            <div className={`${resolveAvatarColor(p.nickname, p.emoji)} w-9 h-9 rounded-full flex items-center justify-center text-xl`}>
+              {resolveEmoji(p.nickname, p.emoji)}
             </div>
             <span className="text-white flex-1 font-medium text-base">{p.nickname}</span>
             {p.roundScore > 0 && <span className={`${t.textTeal} text-base font-bold`}>+{p.roundScore}</span>}
@@ -458,38 +476,53 @@ function EndedView({ game, nickname }: { game: GameState; nickname: string }) {
   const podiumPlayers = lb.filter((p) => (p.rank ?? 99) <= 3);
   const restPlayers = lb.filter((p) => (p.rank ?? 99) > 3);
 
-  // Display order: rank-2 left, rank-1 center, rank-3 right
-  // Within each rank group, preserve leaderboard order
+  // Podium: rank-1 center, rank-2 split left/right, rank-3 on the outside
   const rank2 = podiumPlayers.filter((p) => p.rank === 2);
   const rank1 = podiumPlayers.filter((p) => p.rank === 1);
   const rank3 = podiumPlayers.filter((p) => p.rank === 3);
-  const podiumOrder = [...rank2, ...rank1, ...rank3];
+  // Split rank2 across left/right slots; overflow rank2 fills right if rank3 absent
+  const leftSlot = rank2[0] ?? null;
+  const rightSlot = rank2[1] ?? rank3[0] ?? null;
+
+  function PodiumSlot({ p }: { p: typeof rank1[0] }) {
+    const style = RANK_STYLE[p.rank ?? 1];
+    const isMe = p.nickname === nickname;
+    return (
+      <div className="flex flex-col items-center gap-1 w-full">
+        <div className={`${resolveAvatarColor(p.nickname, p.emoji)} w-12 h-12 rounded-full flex items-center justify-center text-2xl shadow-lg flex-shrink-0 ${isMe ? "ring-2 ring-white scale-110" : ""}`}>
+          {resolveEmoji(p.nickname, p.emoji)}
+        </div>
+        {isMe ? (
+          <p className="text-white font-black text-base text-center w-full px-1">Me</p>
+        ) : (
+          <p className="text-white text-xs text-center truncate w-full px-1">{p.nickname}</p>
+        )}
+        <p className={`${style.color} text-sm`}>{p.total} pts</p>
+        <div className={`w-full ${style.height} rounded-t-xl flex flex-col items-center justify-start pt-2 gap-0.5 ${style.bg}`}>
+          <span className="text-lg">{style.emoji}</span>
+          <span className={`${style.color} text-xs`}>{style.label}</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6 px-5 py-8">
       <div className="text-center">
-        <h2 className={`text-4xl ${t.textYellow}`}>Game Over!</h2>
+        <h2 className={`text-4xl ${t.textYellow}`}>The Consensus</h2>
       </div>
 
-      {/* Podium */}
+      {/* Podium: left=2nd, center=1st, right=2nd-tie or 3rd */}
       <div className="flex items-end justify-center gap-2 mt-2">
-        {podiumOrder.map((p) => {
-          const style = RANK_STYLE[p.rank ?? 1];
-          const isMe = p.nickname === nickname;
-          return (
-            <div key={p.nickname} className="flex flex-col items-center gap-1 flex-1 min-w-0">
-              <div className={`${avatarColor(p.nickname)} w-12 h-12 rounded-full flex items-center justify-center text-2xl shadow-lg flex-shrink-0 ${isMe ? "ring-2 ring-white/60" : ""}`}>
-                {playerEmoji(p.nickname)}
-              </div>
-              <p className={`text-white text-xs text-center truncate w-full px-1 ${isMe ? "underline underline-offset-2" : ""}`}>{p.nickname}</p>
-              <p className={`${style.color} text-sm`}>{p.total} pts</p>
-              <div className={`w-full ${style.height} rounded-t-xl flex flex-col items-center justify-start pt-2 gap-0.5 ${style.bg}`}>
-                <span className="text-lg">{style.emoji}</span>
-                <span className={`${style.color} text-xs`}>{style.label}</span>
-              </div>
-            </div>
-          );
-        })}
+        <div className="flex-1 min-w-0">
+          {leftSlot && <PodiumSlot p={leftSlot} />}
+        </div>
+        <div className="flex-1 min-w-0">
+          {rank1.map((p) => <PodiumSlot key={p.nickname} p={p} />)}
+        </div>
+        <div className="flex-1 min-w-0">
+          {rightSlot && <PodiumSlot p={rightSlot} />}
+        </div>
       </div>
 
       {/* Below podium */}
@@ -501,8 +534,8 @@ function EndedView({ game, nickname }: { game: GameState; nickname: string }) {
               <div key={p.nickname}
                 className={`flex items-center gap-3 rounded-xl px-4 py-3 ${isMe ? "bg-[#7862FF]/20 border border-[#7862FF]/30" : `${t.bgSurface} border ${t.borderSurface}`}`}>
                 <span className={`${t.textMuted} w-7 text-base`}>#{p.rank}</span>
-                <div className={`${avatarColor(p.nickname)} w-9 h-9 rounded-full flex items-center justify-center text-xl`}>
-                  {playerEmoji(p.nickname)}
+                <div className={`${resolveAvatarColor(p.nickname, p.emoji)} w-9 h-9 rounded-full flex items-center justify-center text-xl`}>
+                  {resolveEmoji(p.nickname, p.emoji)}
                 </div>
                 <span className="text-white flex-1 text-base">{p.nickname}</span>
                 <span className="text-white text-lg">{p.total}</span>
@@ -694,14 +727,15 @@ function PlayGameContent() {
   const answeredCount = gameState?.answeredCount ?? 0;
   const N = gameState?.N ?? 0;
   const myTotal = gameState.leaderboard.find((p) => p.nickname === nickname)?.total ?? 0;
+  const myLobbyEmoji = lobbyState?.players.find((p) => p.nickname === nickname)?.emoji;
 
   return (
     <main className={`min-h-screen ${t.bgPage} text-white`}>
       {/* Top bar */}
       <div className={`flex items-center justify-between px-4 py-3 border-b border-[#2a4a8a] sticky top-0 ${t.bgPage} z-10`}>
         <div className="flex items-center gap-2">
-          <div className={`${avatarColor(nickname)} w-9 h-9 rounded-full flex items-center justify-center text-lg`}>
-            {playerEmoji(nickname)}
+          <div className={`${resolveAvatarColor(nickname, myLobbyEmoji)} w-9 h-9 rounded-full flex items-center justify-center text-lg`}>
+            {resolveEmoji(nickname, myLobbyEmoji)}
           </div>
           <span className="text-white font-semibold text-sm">{nickname}</span>
         </div>
