@@ -276,7 +276,7 @@ function Phase3View({ game }: { game: GameState }) {
     Object.values(result.phase1Answers).forEach((v) => {
       if (counts[String(v)] !== undefined) counts[String(v)]++;
     });
-    const winners = new Set(String(result.actualResult).split(","));
+    const winners = new Set(String(result.actualResult).split("|"));
 
     return (
       <div className="flex flex-col flex-1 items-center px-8 py-8 gap-8">

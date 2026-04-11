@@ -80,6 +80,29 @@ function PlayContent({ roomCode }: { roomCode: string }) {
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [nickname]);
 
+  // Request wake lock to prevent screen dim from killing the WebSocket connection
+  useEffect(() => {
+    if (!nickname) return;
+    let wakeLock: WakeLockSentinel | null = null;
+    async function requestWakeLock() {
+      try {
+        if ("wakeLock" in navigator) {
+          wakeLock = await navigator.wakeLock.request("screen");
+        }
+      } catch { /* not supported or denied — ignore */ }
+    }
+    requestWakeLock();
+    // Re-acquire on visibility change (wake lock releases when page is hidden)
+    function onVisibilityChange() {
+      if (document.visibilityState === "visible") requestWakeLock();
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      wakeLock?.release();
+    };
+  }, [nickname]);
+
   useEffect(() => {
     if (gameState && gameState.phase !== "lobby" && nickname) {
       router.push(`/play/${roomCode}/game`);

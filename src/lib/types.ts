@@ -56,6 +56,7 @@ export type GameState = {
   phase1AnsweredCount: number; // how many players answered phase1 (used as N for binary scoring)
   answeredCount: number;
   answeredNicknames: string[]; // who has submitted in current phase
+  doubleDownUsed: string[]; // nicknames who have already used their one double down
 };
 
 export type ServerMessage =

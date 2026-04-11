@@ -44,6 +44,7 @@ type GameState = {
   phase1AnsweredCount: number;
   answeredCount: number;
   answeredNicknames: string[];
+  doubleDownUsed: string[];
 };
 
 type ClientMessage =
@@ -114,10 +115,11 @@ function calculateProximityScore(
 ): number {
   if (type === "multiple_choice") {
     // actual may be comma-joined tied winners
-    const winners = String(actual).split(",");
-    if (!winners.includes(String(prediction))) return 0;
+    const predStr = String(prediction).trim();
+    const winners = String(actual).split("|").map((w) => w.trim());
+    if (!winners.includes(predStr)) return 0;
     // Points = 1125 - 500 * (votes_for_winner / N), min 0
-    const votes = voteCounts?.get(String(prediction)) ?? 0;
+    const votes = voteCounts?.get(predStr) ?? 0;
     const score = N > 0 ? 1125 - 500 * (votes / N) : 1000;
     return Math.max(0, Math.round(score));
   }
@@ -165,7 +167,7 @@ function computeActualResult(
     counts.forEach((count) => { if (count > maxCount) maxCount = count; });
     const winners: string[] = [];
     counts.forEach((count, option) => { if (count === maxCount) winners.push(option); });
-    return winners.join(",");
+    return winners.join("|");
   }
 
   // scale — average
@@ -232,6 +234,7 @@ export default class GameServer implements Party.Server {
     phase1AnsweredCount: 0,
     answeredCount: 0,
     answeredNicknames: [],
+    doubleDownUsed: [],
   };
   private prompts: Prompt[] = [];
   private phase1Answers: Map<string, string | number> = new Map();
@@ -311,6 +314,7 @@ export default class GameServer implements Party.Server {
       roundResult: null,
       answeredCount: 0,
       answeredNicknames: [],
+      doubleDownUsed: this.game.doubleDownUsed,
     };
     this.broadcastGame();
 
@@ -334,6 +338,7 @@ export default class GameServer implements Party.Server {
       phase1AnsweredCount: this.phase1Answers.size,
       answeredCount: 0,
       answeredNicknames: [],
+      doubleDownUsed: this.game.doubleDownUsed,
     };
     this.broadcastGame();
     this.phaseTimer = setTimeout(() => this.startPhase3(), ms);
@@ -356,6 +361,10 @@ export default class GameServer implements Party.Server {
       actual,
       scoringN,
     );
+    console.log("[scoring] type:", prompt.type, "actual:", JSON.stringify(actual), "scoringN:", scoringN);
+    console.log("[scoring] phase1Answers:", JSON.stringify(Object.fromEntries(this.phase1Answers)));
+    console.log("[scoring] phase2Predictions:", JSON.stringify(Object.fromEntries(this.phase2Predictions)));
+    console.log("[scoring] scores:", JSON.stringify(scores));
 
     // Update totals
     Object.entries(scores).forEach(([nickname, pts]) => {
@@ -580,6 +589,7 @@ export default class GameServer implements Party.Server {
         phase1AnsweredCount: 0,
         answeredCount: 0,
         answeredNicknames: [],
+        doubleDownUsed: [],
       };
       this.broadcastGame();
 
@@ -617,12 +627,15 @@ export default class GameServer implements Party.Server {
       // Must have answered phase1 to participate in phase2
       if (!this.phase1Answers.has(nickname)) return;
 
+      // Ignore double down if player already used it this game
+      const doubleDown = msg.doubleDown && !this.game.doubleDownUsed.includes(nickname);
       this.phase2Predictions.set(nickname, msg.prediction);
-      this.phase2Wagers.set(nickname, msg.doubleDown);
+      this.phase2Wagers.set(nickname, doubleDown);
       this.game = {
         ...this.game,
         answeredCount: this.game.answeredCount + 1,
         answeredNicknames: [...this.game.answeredNicknames, nickname],
+        doubleDownUsed: doubleDown ? [...this.game.doubleDownUsed, nickname] : this.game.doubleDownUsed,
       };
       this.broadcastGame();
 
@@ -673,7 +686,7 @@ export default class GameServer implements Party.Server {
       this.game = {
         phase: "lobby", round: 0, totalRounds: 10,
         prompt: null, phaseEndsAt: null, phase1Duration: 25, phase2Duration: 20,
-        roundResult: null, leaderboard: [], N: 0, phase1AnsweredCount: 0, answeredCount: 0, answeredNicknames: [],
+        roundResult: null, leaderboard: [], N: 0, phase1AnsweredCount: 0, answeredCount: 0, answeredNicknames: [], doubleDownUsed: [],
       };
       this.room.broadcast(JSON.stringify({ type: "disbanded" }));
       return;
@@ -708,6 +721,7 @@ export default class GameServer implements Party.Server {
         phase1AnsweredCount: 0,
         answeredCount: 0,
         answeredNicknames: [],
+        doubleDownUsed: [],
       };
       this.startPhase1();
       return;
@@ -722,7 +736,7 @@ export default class GameServer implements Party.Server {
       this.game = {
         phase: "lobby", round: 0, totalRounds: 10,
         prompt: null, phaseEndsAt: null, phase1Duration: 25, phase2Duration: 20,
-        roundResult: null, leaderboard: [], N: 0, phase1AnsweredCount: 0, answeredCount: 0, answeredNicknames: [],
+        roundResult: null, leaderboard: [], N: 0, phase1AnsweredCount: 0, answeredCount: 0, answeredNicknames: [], doubleDownUsed: [],
       };
       this.broadcastLobby();
       this.room.broadcast(JSON.stringify({ type: "game", game: this.game }));
@@ -781,11 +795,22 @@ export default class GameServer implements Party.Server {
   }
 
   onClose(conn: Party.Connection) {
-    if (this.lobby.locked) {
-      return;
-    }
-    this.lobby.players = this.lobby.players.filter((p) => p.id !== conn.id);
-    this.lobby.N = this.lobby.players.length;
-    this.broadcastLobby();
+    const player = this.lobby.players.find((p) => p.id === conn.id);
+    if (!player) return;
+    const nickname = player.nickname;
+
+    // Grace period: wait 2 minutes before removing the player
+    // This handles screen dim, brief disconnects, page refreshes
+    const timer = setTimeout(() => {
+      this.rejoinTimers.delete(nickname);
+      this.lobby.players = this.lobby.players.filter((p) => p.nickname !== nickname);
+      this.lobby.N = this.lobby.players.filter((p) => !p.isHost).length;
+      this.broadcastLobby();
+    }, 2 * 60 * 1000);
+
+    // Cancel any existing timer for this nickname
+    const existing = this.rejoinTimers.get(nickname);
+    if (existing !== undefined) clearTimeout(existing);
+    this.rejoinTimers.set(nickname, timer);
   }
 }

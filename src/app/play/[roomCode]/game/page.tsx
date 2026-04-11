@@ -193,8 +193,15 @@ function DoubleDownToggle({ active, onToggle, disabled }: { active: boolean; onT
 }
 
 // ---- Score Tier ----
+function isPerfect(prediction: string | number | undefined, actual: string | number, promptType: string): boolean {
+  if (prediction === undefined) return false;
+  if (promptType === "scale") return Math.abs(Number(prediction) - Number(actual)) <= 0.1;
+  if (promptType === "binary") return Number(prediction) === Number(actual);
+  // multiple_choice: prediction matches one of the winners
+  return String(actual).split("|").includes(String(prediction));
+}
+
 function tierLabel(score: number): string {
-  if (score >= 950) return "PERFECT";
   if (score >= 750) return "Great";
   if (score >= 500) return "Good";
   if (score >= 250) return "Close";
@@ -254,7 +261,7 @@ function Phase1View({ game, onSubmit, submitted }: {
 }
 
 // ---- Phase 2 view ----
-function Phase2View({ game, onSubmit, submitted }: {
+function Phase2View({ game, nickname, onSubmit, submitted }: {
   game: GameState; nickname: string;
   onSubmit: (val: string | number, doubleDown: boolean) => void; submitted: boolean;
 }) {
@@ -263,6 +270,7 @@ function Phase2View({ game, onSubmit, submitted }: {
   const prompt = game.prompt!;
   const totalTime = game.phase2Duration;
   const displaySecs = Math.ceil(countdown);
+  const canDoubleDown = !(game.doubleDownUsed ?? []).includes(nickname);
 
   function handleSubmit(val: string | number) { onSubmit(val, doubleDown); }
 
@@ -294,20 +302,20 @@ function Phase2View({ game, onSubmit, submitted }: {
       {prompt.type === "binary" && (
         <div className="flex flex-col gap-4">
           <BinaryPrediction N={game.phase1AnsweredCount || game.N} onSubmit={(v) => handleSubmit(v)} disabled={submitted} />
-          <DoubleDownToggle active={doubleDown} onToggle={() => setDoubleDown((d) => !d)} disabled={submitted} />
+          {canDoubleDown && <DoubleDownToggle active={doubleDown} onToggle={() => setDoubleDown((d) => !d)} disabled={submitted} />}
         </div>
       )}
       {prompt.type === "multiple_choice" && (
         <div className="flex flex-col gap-4">
           <MultipleChoicePrediction options={prompt.options!} onSubmit={(v) => handleSubmit(v)} disabled={submitted} />
-          <DoubleDownToggle active={doubleDown} onToggle={() => setDoubleDown((d) => !d)} disabled={submitted} />
+          {canDoubleDown && <DoubleDownToggle active={doubleDown} onToggle={() => setDoubleDown((d) => !d)} disabled={submitted} />}
         </div>
       )}
       {prompt.type === "scale" && (
         <div className="flex flex-col gap-4">
           <ScaleInput onSubmit={(v) => handleSubmit(v)} disabled={submitted} step={0.1} min={1} max={10}
             label="Predict the group average (1.0 – 10.0)" />
-          <DoubleDownToggle active={doubleDown} onToggle={() => setDoubleDown((d) => !d)} disabled={submitted} />
+          {canDoubleDown && <DoubleDownToggle active={doubleDown} onToggle={() => setDoubleDown((d) => !d)} disabled={submitted} />
         </div>
       )}
     </div>
@@ -329,8 +337,9 @@ function Phase3View({ game, nickname }: { game: GameState; nickname: string }) {
   if (doubled && myScore > 0) baseScore = myScore / 2;
   if (doubled && myScore === 0) baseScore = 0;
 
-  const tier = tierLabel(baseScore > 0 ? baseScore : myScore);
-  const color = tierColor(myScore);
+  const perfect = isPerfect(myPrediction, result.actualResult, prompt.type);
+  const tier = perfect ? "PERFECT" : tierLabel(baseScore > 0 ? baseScore : myScore);
+  const color = perfect ? t.textYellow : tierColor(myScore);
 
   // Ranking info
   const myEntry = game.leaderboard.find((p) => p.nickname === nickname);
@@ -383,7 +392,7 @@ function Phase3View({ game, nickname }: { game: GameState; nickname: string }) {
               ? `${result.actualResult} / ${binaryN} said YES`
               : prompt.type === "scale"
               ? `${Number(result.actualResult).toFixed(1)} avg`
-              : String(result.actualResult).split(",").join(" & ")}
+              : String(result.actualResult).split("|").join(" & ")}
           </span>
         </p>
         {myPrediction !== undefined && (
@@ -638,6 +647,25 @@ function PlayGameContent() {
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [kicked]);
+
+  // Wake lock: prevent screen dim from killing the WebSocket
+  useEffect(() => {
+    let wakeLock: WakeLockSentinel | null = null;
+    async function requestWakeLock() {
+      try {
+        if ("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen");
+      } catch { /* not supported or denied */ }
+    }
+    requestWakeLock();
+    function onVisibilityChange() {
+      if (document.visibilityState === "visible") requestWakeLock();
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      wakeLock?.release();
+    };
+  }, []);
 
   const phase = gameState?.phase ?? "lobby";
 
