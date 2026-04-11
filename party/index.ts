@@ -536,9 +536,16 @@ export default class GameServer implements Party.Server {
     if (msg.type === "set_emoji") {
       const player = this.lobby.players.find((p) => p.id === sender.id);
       if (!player || player.isHost) return;
-      if (this.game.phase !== "lobby") return; // only allow during lobby
       player.emoji = msg.emoji;
       this.broadcastLobby();
+      // Also refresh leaderboard emoji in game state so TV game page reflects the change
+      if (this.game.phase !== "lobby" && this.game.leaderboard.length > 0) {
+        const updated = this.game.leaderboard.map((s) =>
+          s.nickname === player.nickname ? { ...s, emoji: player.emoji } : s
+        );
+        this.game = { ...this.game, leaderboard: updated };
+        this.broadcastGame();
+      }
       return;
     }
 

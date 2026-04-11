@@ -114,7 +114,7 @@ export default function TVPage() {
         {players.length > 0 && (
           <div className="flex flex-wrap justify-center gap-6 max-w-5xl">
             {players.map((player) => (
-              <BigAvatar key={player.id} player={player} />
+              <BigAvatar key={player.nickname} player={player} />
             ))}
           </div>
         )}
