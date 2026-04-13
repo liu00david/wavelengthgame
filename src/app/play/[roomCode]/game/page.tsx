@@ -186,8 +186,8 @@ function DoubleDownToggle({ active, onToggle, disabled }: { active: boolean; onT
       className={`w-full py-4 rounded-2xl font-black text-xl transition-all active:scale-95 shadow ${
         active ? "bg-[#f6dc53] text-[#081c48]" : `${t.btnGhost} text-[#7a96c8]`
       } ${disabled ? "opacity-40" : ""}`}>
-      {active ? "DOUBLE DOWN ON!" : "Double Down?"}
-      {active && <p className="text-[#081c48]/70 text-sm font-semibold mt-0.5">Accurate = 2× pts — Wrong = 0 pts</p>}
+      {active ? "Double Down On!" : "Double Down? (One Time Use)"}
+      {active && <p className="text-[#081c48]/70 text-sm font-semibold mt-0.5">Get x2 points if correct</p>}
     </button>
   );
 }
@@ -251,7 +251,9 @@ function Phase1View({ game, onSubmit, submitted }: {
       </div>
       <div>
         <TimerBar secs={countdown} total={totalTime} />
-        <p className={`${t.textFaint} text-xl mt-1 text-right font-mono`}>{displaySecs}s</p>
+        <p className={`text-xl mt-1 text-right font-mono ${game.paused ? `${t.textYellow} animate-pulse` : t.textFaint}`}>
+          {game.paused ? "⏸ Paused" : `${displaySecs}s`}
+        </p>
       </div>
       {prompt.type === "binary" && <BinaryInput onSubmit={onSubmit} disabled={submitted} />}
       {prompt.type === "multiple_choice" && <MultipleChoiceInput options={prompt.options!} onSubmit={onSubmit} disabled={submitted} />}
@@ -297,7 +299,9 @@ function Phase2View({ game, nickname, onSubmit, submitted }: {
       </div>
       <div>
         <TimerBar secs={countdown} total={totalTime} color="bg-[#4dd9d2]" />
-        <p className={`${t.textFaint} text-base mt-1 text-right`}>{displaySecs}s</p>
+        <p className={`text-base mt-1 text-right ${game.paused ? `${t.textYellow} animate-pulse` : t.textFaint}`}>
+          {game.paused ? "⏸ Paused" : `${displaySecs}s`}
+        </p>
       </div>
       {prompt.type === "binary" && (
         <div className="flex flex-col gap-4">
@@ -315,7 +319,7 @@ function Phase2View({ game, nickname, onSubmit, submitted }: {
         <div className="flex flex-col gap-4">
           <ScaleInput onSubmit={(v) => handleSubmit(v)} disabled={submitted} step={0.1} min={1} max={10}
             label="Predict the group average (1.0 – 10.0)" />
-          {canDoubleDown && <DoubleDownToggle active={doubleDown} onToggle={() => setDoubleDown((d) => !d)} disabled={submitted} />
+          {canDoubleDown && <DoubleDownToggle active={doubleDown} onToggle={() => setDoubleDown((d) => !d)} disabled={submitted} />}
         </div>
       )}
     </div>
@@ -486,12 +490,14 @@ function EndedView({ game, nickname }: { game: GameState; nickname: string }) {
   const restPlayers = lb.filter((p) => (p.rank ?? 99) > 3);
 
   // Podium: rank-1 center, rank-2 split left/right, rank-3 on the outside
-  const rank2 = podiumPlayers.filter((p) => p.rank === 2);
   const rank1 = podiumPlayers.filter((p) => p.rank === 1);
+  const rank2 = podiumPlayers.filter((p) => p.rank === 2);
   const rank3 = podiumPlayers.filter((p) => p.rank === 3);
-  // Split rank2 across left/right slots; overflow rank2 fills right if rank3 absent
-  const leftSlot = rank2[0] ?? null;
-  const rightSlot = rank2[1] ?? rank3[0] ?? null;
+
+  const tiedFirst = rank1.length >= 2;
+  const leftSlot = tiedFirst ? rank1[0] : (rank2[0] ?? null);
+  const centerSlot = tiedFirst ? rank1[1] : (rank1[0] ?? null);
+  const rightSlot = tiedFirst ? (rank1[2] ?? rank2[0] ?? null) : (rank2[1] ?? rank3[0] ?? null);
 
   function PodiumSlot({ p }: { p: typeof rank1[0] }) {
     const style = RANK_STYLE[p.rank ?? 1];
@@ -521,13 +527,13 @@ function EndedView({ game, nickname }: { game: GameState; nickname: string }) {
         <h2 className={`text-4xl ${t.textYellow}`}>The Consensus</h2>
       </div>
 
-      {/* Podium: left=2nd, center=1st, right=2nd-tie or 3rd */}
+      {/* Podium */}
       <div className="flex items-end justify-center gap-2 mt-2">
         <div className="flex-1 min-w-0">
           {leftSlot && <PodiumSlot p={leftSlot} />}
         </div>
         <div className="flex-1 min-w-0">
-          {rank1.map((p) => <PodiumSlot key={p.nickname} p={p} />)}
+          {centerSlot && <PodiumSlot p={centerSlot} />}
         </div>
         <div className="flex-1 min-w-0">
           {rightSlot && <PodiumSlot p={rightSlot} />}
@@ -591,6 +597,47 @@ function LeaveGameMenu({ onClose, onLeave }: { onClose: () => void; onLeave: () 
   );
 }
 
+// ---- Game Over Intro (player screen) ----
+function GameOverIntroPlayer({ onDone }: { onDone: () => void }) {
+  const [step, setStep] = useState<"gameover" | "crossfade" | "consensus" | "fadeout">("gameover");
+
+  useEffect(() => {
+    const timers = [
+      setTimeout(() => setStep("crossfade"), 2000),
+      setTimeout(() => setStep("consensus"), 2500),
+      setTimeout(() => setStep("fadeout"), 4500),
+      setTimeout(() => onDone(), 5000),
+    ];
+    return () => timers.forEach(clearTimeout);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const showGameOver = step === "gameover";
+  const showConsensus = step === "consensus";
+
+  return (
+    <div
+      className={`absolute inset-0 z-20 flex flex-col items-center justify-center ${t.bgPage} transition-opacity duration-500`}
+      style={{ opacity: step === "fadeout" ? 0 : 1 }}
+    >
+      <div
+        className="flex flex-col items-center gap-4 text-center transition-all duration-500"
+        style={{ opacity: showGameOver ? 1 : 0, transform: showGameOver ? "translateY(0)" : "translateY(-12px)" }}
+      >
+        <p className="text-6xl">🏆</p>
+        <p className={`text-4xl font-black ${t.textYellow}`}>Game Over!</p>
+      </div>
+      <div
+        className="absolute flex flex-col items-center gap-4 text-center transition-all duration-500"
+        style={{ opacity: showConsensus ? 1 : 0, transform: showConsensus ? "translateY(0)" : "translateY(16px)" }}
+      >
+        <p className="text-5xl">🤔</p>
+        <p className={`text-3xl font-black text-white text-center px-6`}>Who figured out the consensus?</p>
+      </div>
+    </div>
+  );
+}
+
 // ---- Main page ----
 const PLAYER_SESSION_KEY = "consensus_player_session";
 
@@ -619,6 +666,9 @@ function PlayGameContent() {
   const [notification, setNotification] = useState<string | null>(null);
   const [duplicateTab, setDuplicateTab] = useState(false);
   const removedByHostRef = useRef(false);
+  const [showGameOverIntro, setShowGameOverIntro] = useState(false);
+  const [endedVisible, setEndedVisible] = useState(false);
+  const prevPhaseRef = useRef<string | null>(null);
 
   const { sendMsg, gameState, lobbyState } = useParty(
     roomCode,
@@ -641,12 +691,6 @@ function PlayGameContent() {
     },
   );
 
-  useEffect(() => {
-    if (removedByHostRef.current) return;
-    function handleBeforeUnload(e: BeforeUnloadEvent) { e.preventDefault(); }
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [kicked]);
 
   // Wake lock: prevent screen dim from killing the WebSocket
   useEffect(() => {
@@ -668,6 +712,21 @@ function PlayGameContent() {
   }, []);
 
   const phase = gameState?.phase ?? "lobby";
+
+  // Game-over intro animation
+  useEffect(() => {
+    const prev = prevPhaseRef.current;
+    const curr = gameState?.phase ?? null;
+    if (curr === "ended") {
+      if (prev === null) {
+        setEndedVisible(true); // already ended on load (e.g. refresh)
+      } else if (prev !== "ended") {
+        setShowGameOverIntro(true);
+        setEndedVisible(false);
+      }
+    }
+    prevPhaseRef.current = curr;
+  }, [gameState?.phase]);
 
   useEffect(() => {
     if (gameState && gameState.round !== lastRoundRef.current) {
@@ -744,9 +803,9 @@ function PlayGameContent() {
   if (!nickname) {
     return (
       <div className={`flex flex-col items-center justify-center min-h-screen ${t.bgPage} text-white gap-4 px-6`}>
-        <p className={`${t.textMuted} text-lg`}>Missing nickname.</p>
+        <p className={`${t.textMuted} text-lg`}>Session not found — please rejoin.</p>
         <button onClick={() => router.replace(`/play/${roomCode}`)} className={`px-5 py-3 ${t.btnYellow} rounded-xl text-lg`}>
-          Back to Lobby
+          Rejoin
         </button>
       </div>
     );
@@ -796,7 +855,10 @@ function PlayGameContent() {
         )}
         {phase === "phase3" && <Phase3View game={gameState} nickname={nickname} />}
         {phase === "leaderboard" && <LeaderboardView game={gameState} nickname={nickname} />}
-        {phase === "ended" && <EndedView game={gameState} nickname={nickname} />}
+        {phase === "ended" && showGameOverIntro && (
+          <GameOverIntroPlayer onDone={() => { setShowGameOverIntro(false); setEndedVisible(true); }} />
+        )}
+        {phase === "ended" && endedVisible && <EndedView game={gameState} nickname={nickname} />}
         {(phase === "lobby" || phase === "countdown") && (
           <div className="flex flex-col items-center justify-center py-20 text-center px-6 gap-4">
             <span className="text-6xl">{phase === "countdown" ? "🎯" : "⏳"}</span>

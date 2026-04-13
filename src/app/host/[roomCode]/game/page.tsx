@@ -123,17 +123,18 @@ export default function HostGamePage() {
 
   // Accumulate round results as they come in (phase3 has roundResult)
   useEffect(() => {
+    if (gameState?.phase === "ended") {
+      sessionStorage.setItem(`${roomCode}_summary`, JSON.stringify({
+        rounds: roundHistoryRef.current,
+        leaderboard: gameState.leaderboard,
+      }));
+      return;
+    }
     if (!gameState?.roundResult) return;
     const round = gameState.round;
     if (!seenRoundsRef.current.has(round)) {
       seenRoundsRef.current.add(round);
       roundHistoryRef.current = [...roundHistoryRef.current, gameState.roundResult];
-    }
-    if (gameState.phase === "ended") {
-      sessionStorage.setItem(`${roomCode}_summary`, JSON.stringify({
-        rounds: roundHistoryRef.current,
-        leaderboard: gameState.leaderboard,
-      }));
     }
   }, [gameState?.phase, gameState?.round, gameState?.roundResult, roomCode]);
 
@@ -247,7 +248,7 @@ export default function HostGamePage() {
           {/* Smooth timer bar */}
           {gameState?.phaseEndsAt && (phase === "phase1" || phase === "phase2") && (
             <div className="flex items-center gap-3">
-              <div className={`flex-1 ${t.bgPage} rounded-full h-2 overflow-hidden`}>
+              <div className="flex-1 bg-[#1a3580] rounded-full h-2 overflow-hidden">
                 <div
                   className={`h-2 rounded-full transition-none ${timerUrgent ? "bg-[#c94f7a]" : "bg-[#7862FF]"}`}
                   style={{ width: `${timerPct}%` }}
@@ -262,18 +263,24 @@ export default function HostGamePage() {
 
         {/* Inline host controls during answering phases */}
         {(phase === "phase1" || phase === "phase2") && (
-          <div className="flex gap-3 mb-4">
+          <div className="flex gap-2 mb-4">
             <button
               onClick={() => sendMsg({ type: "skip_question" })}
-              className={`flex-1 py-4 rounded-xl ${t.btnGhost} font-semibold text-base`}
+              className={`flex-1 py-4 rounded-xl ${t.btnGhost} font-semibold text-sm`}
             >
-              Skip Question
+              Skip
+            </button>
+            <button
+              onClick={() => gameState?.paused ? sendMsg({ type: "resume_timer" }) : sendMsg({ type: "pause_timer" })}
+              className={`flex-1 py-4 rounded-xl font-semibold text-sm ${gameState?.paused ? "bg-[#f6dc53] text-[#081c48] hover:bg-[#e5cc3c]" : t.btnGhost}`}
+            >
+              {gameState?.paused ? "▶ Resume" : "⏸ Pause"}
             </button>
             <button
               onClick={() => sendMsg({ type: "next_round" })}
-              className={`flex-1 py-4 rounded-xl ${t.btnPrimary} font-semibold text-base`}
+              className={`flex-1 py-4 rounded-xl ${t.btnPrimary} font-semibold text-sm`}
             >
-              Continue Without Waiting
+              Continue
             </button>
           </div>
         )}
@@ -287,20 +294,22 @@ export default function HostGamePage() {
             <div className="flex flex-wrap gap-2">
               {nonHostPlayers.map((p) => {
                 const hasAnswered = (gameState.answeredNicknames ?? []).includes(p.nickname);
+                const isEligible = phase === "phase1" || (gameState.phase1AnsweredNicknames ?? []).includes(p.nickname);
+                const ineligible = phase === "phase2" && !isEligible;
                 return (
                   <div
                     key={p.id}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-medium transition-all ${
-                      hasAnswered
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-medium transition-all ${
+                      ineligible
+                        ? "bg-[#9a3558]/20 text-[#c94f7a] border border-[#9a3558]/30"
+                        : hasAnswered
                         ? "bg-[#25a59f]/20 text-[#4dd9d2] border border-[#25a59f]/30"
                         : `${t.bgPage} ${t.textMuted}`
                     }`}
                   >
-                    <div className={`${resolveAvatarColor(p.nickname, p.emoji)} w-5 h-5 rounded-full flex items-center justify-center text-white text-xs font-bold`}>
-                      {p.nickname.charAt(0).toUpperCase()}
-                    </div>
                     {p.nickname}
-                    {hasAnswered && <span className="text-[#4dd9d2]">✓</span>}
+                    {ineligible && <span className="text-[#c94f7a]">✗</span>}
+                    {!ineligible && hasAnswered && <span className="text-[#4dd9d2]">✓</span>}
                   </div>
                 );
               })}
@@ -382,6 +391,25 @@ export default function HostGamePage() {
             >
               Disband Room
             </button>
+          </div>
+        )}
+        {/* Player connection status */}
+        {nonHostPlayers.length > 0 && (
+          <div className={`${t.bgSurface} rounded-2xl border ${t.borderSurface} p-4 mt-4`}>
+            <p className={`${t.textMuted} text-xs uppercase tracking-widest mb-3`}>Players</p>
+            <div className="flex flex-col gap-2">
+              {nonHostPlayers.map((p) => {
+                const isDisconnected = (lobbyState?.disconnectedNicknames ?? []).includes(p.nickname);
+                const pts = gameState?.leaderboard?.find((s) => s.nickname === p.nickname)?.total ?? 0;
+                return (
+                  <div key={p.nickname} className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isDisconnected ? "bg-gray-500" : "bg-green-400"}`} />
+                    <span className={`text-sm flex-1 ${isDisconnected ? t.textMuted : "text-white"}`}>{p.nickname}</span>
+                    <span className={`text-sm font-bold ${pts > 0 ? t.textYellow : t.textFaint}`}>{pts} pts</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

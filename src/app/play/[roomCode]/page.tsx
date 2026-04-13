@@ -18,47 +18,60 @@ function PlayContent({ roomCode }: { roomCode: string }) {
   const [nicknameError, setNicknameError] = useState("");
   const [roomNotFound, setRoomNotFound] = useState(false);
   const [chosenEmoji, setChosenEmoji] = useState<string | undefined>(undefined);
+  const [hostActive, setHostActive] = useState(true);
 
-  const nicknameRef = useRef("");
-  const joinedRef = useRef(false); // true once we've successfully joined (got `connected`)
-
-  useEffect(() => {
+  // Read saved session synchronously so it's available before the socket opens
+  const savedNickname = (() => {
+    if (typeof window === "undefined") return "";
     try {
       const saved = localStorage.getItem(PLAYER_SESSION_KEY);
       if (saved) {
         const session = JSON.parse(saved) as { roomCode: string; nickname: string };
-        if (session.roomCode === roomCode && session.nickname) {
-          nicknameRef.current = session.nickname;
-          setNickname(session.nickname);
-        }
+        if (session.roomCode === roomCode && session.nickname) return session.nickname;
       }
     } catch { /* ignore */ }
+    return "";
+  })();
+
+  const nicknameRef = useRef(savedNickname);
+
+  // Set nickname state from saved session on mount
+  useEffect(() => {
+    if (savedNickname) setNickname(savedNickname);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Check if host is active
+  useEffect(() => {
+    fetch(`/api/room/${roomCode}`)
+      .then((r) => r.json())
+      .then((data: { exists: boolean; hostActive: boolean }) => {
+        setHostActive(data.hostActive ?? true);
+      })
+      .catch(() => {});
   }, [roomCode]);
 
   const { sendMsg, lobbyState, gameState } = useParty(
     roomCode,
     () => {
-      // Only auto-join on reconnect if we were previously confirmed
-      if (joinedRef.current) {
-        sendMsg({ type: "join", nickname: nicknameRef.current });
-        return;
-      }
-      // First open: only send if we have a saved session (returning player)
       const name = nicknameRef.current;
       if (!name) return;
-      sendMsg({ type: "join", nickname: name });
+      // Always use rejoin when we have a saved session
+      sendMsg({ type: "rejoin", nickname: name });
     },
     (msg) => {
-      if (msg.type === "room_not_found") setRoomNotFound(true);
+      if (msg.type === "room_not_found") {
+        // Room truly gone (server restarted) — clear session and show error
+        localStorage.removeItem(PLAYER_SESSION_KEY);
+        setRoomNotFound(true);
+      }
       if (msg.type === "kicked" || msg.type === "disbanded") {
         localStorage.removeItem(PLAYER_SESSION_KEY);
         router.push("/");
       }
       if (msg.type === "connected") {
-        // Server confirmed join — promote to confirmed nickname
         const name = nicknameRef.current;
         if (name) {
-          joinedRef.current = true;
           setNickname(name);
           setPendingNickname("");
           localStorage.setItem(PLAYER_SESSION_KEY, JSON.stringify({ roomCode, nickname: name }));
@@ -73,12 +86,6 @@ function PlayContent({ roomCode }: { roomCode: string }) {
     },
   );
 
-  useEffect(() => {
-    if (!nickname) return;
-    function handleBeforeUnload(e: BeforeUnloadEvent) { e.preventDefault(); }
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [nickname]);
 
   // Request wake lock to prevent screen dim from killing the WebSocket connection
   useEffect(() => {
@@ -117,19 +124,29 @@ function PlayContent({ roomCode }: { roomCode: string }) {
   }, [lobbyState, nickname, chosenEmoji]);
 
   function handleLeave() {
+    sendMsg({ type: "leave" });
     localStorage.removeItem(PLAYER_SESSION_KEY);
     router.push("/");
   }
 
-  function handleSetNickname() {
+  async function handleSetNickname() {
     const name = nicknameInput.trim();
     if (!name) {
       setNicknameError("Please enter a nickname.");
       return;
     }
     setNicknameError("");
-    nicknameRef.current = name;
     setPendingNickname(name);
+    try {
+      const res = await fetch(`/api/room/${roomCode}`, { cache: "no-store" });
+      const data = await res.json() as { exists: boolean; inProgress: boolean; playerNicknames: string[] };
+      if (data.inProgress && !data.playerNicknames.some((n) => n.toLowerCase() === name.toLowerCase())) {
+        setPendingNickname("");
+        setNicknameError("Game in progress — only existing players can rejoin.");
+        return;
+      }
+    } catch { /* network error — let server handle it */ }
+    nicknameRef.current = name;
     sendMsg({ type: "join", nickname: name });
     // Do NOT set nickname or localStorage yet — wait for server `connected`
     // Safety timeout: if no response in 5s, un-stick the button
@@ -196,6 +213,17 @@ function PlayContent({ roomCode }: { roomCode: string }) {
             </button>
           </div>
         </div>
+        {!hostActive && (
+          <div className="mt-4 w-full max-w-sm text-center">
+            <p className={`${t.textMuted} text-sm mb-2`}>Host disconnected?</p>
+            <a
+              href={`/host/${roomCode}`}
+              className={`inline-block w-full py-3 rounded-xl ${t.btnGhost} font-semibold text-base`}
+            >
+              Rejoin as Host →
+            </a>
+          </div>
+        )}
       </main>
     );
   }
@@ -279,6 +307,18 @@ function PlayContent({ roomCode }: { roomCode: string }) {
         >
           Leave Game
         </button>
+
+        {!hostActive && (
+          <div className="mt-3 w-full text-center">
+            <p className={`${t.textMuted} text-sm mb-2`}>Host disconnected?</p>
+            <a
+              href={`/host/${roomCode}`}
+              className={`inline-block w-full py-3 rounded-xl ${t.btnGhost} font-semibold text-base`}
+            >
+              Rejoin as Host →
+            </a>
+          </div>
+        )}
       </div>
     </main>
   );

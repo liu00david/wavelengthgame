@@ -1,5 +1,7 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
@@ -10,14 +12,18 @@ import type { Player } from "@/lib/types";
 const JOIN_BASE_URL = "https://consensusgame.vercel.app";
 const JOIN_DISPLAY_URL = "consensusgame.vercel.app";
 
-function BigAvatar({ player }: { player: Player }) {
+function BigAvatar({ player, count }: { player: Player; count: number }) {
   const color = resolveAvatarColor(player.nickname, player.emoji);
+  // Scale down avatar and text as player count grows
+  const avatarSize = count <= 6 ? "w-24 h-24 text-5xl" : count <= 10 ? "w-16 h-16 text-3xl" : count <= 16 ? "w-12 h-12 text-2xl" : "w-10 h-10 text-xl";
+  const nameSize = count <= 6 ? "text-xl max-w-[110px]" : count <= 10 ? "text-base max-w-[80px]" : "text-sm max-w-[64px]";
+  const gap = count <= 6 ? "gap-3" : "gap-1.5";
   return (
-    <div className="flex flex-col items-center gap-3 animate-[fadeIn_0.4s_ease-out]">
-      <div className={`${color} w-24 h-24 rounded-full flex items-center justify-center text-5xl shadow-xl ring-4 ring-white/10`}>
+    <div className={`flex flex-col items-center ${gap} animate-[fadeIn_0.4s_ease-out]`}>
+      <div className={`${color} ${avatarSize} rounded-full flex items-center justify-center shadow-xl ring-2 ring-white/10`}>
         {resolveEmoji(player.nickname, player.emoji)}
       </div>
-      <span className="text-white text-xl font-semibold truncate max-w-[110px]">
+      <span className={`text-white font-semibold truncate ${nameSize}`}>
         {player.nickname}
       </span>
     </div>
@@ -112,9 +118,9 @@ export default function TVPage() {
 
         {/* Player bubbles */}
         {players.length > 0 && (
-          <div className="flex flex-wrap justify-center gap-6 max-w-5xl">
+          <div className="flex flex-wrap justify-center gap-4 max-w-5xl">
             {players.map((player) => (
-              <BigAvatar key={player.nickname} player={player} />
+              <BigAvatar key={player.nickname} player={player} count={players.length} />
             ))}
           </div>
         )}
@@ -134,7 +140,7 @@ export default function TVPage() {
           </div>
           <div className="text-center sm:text-left">
             <p className={`${t.textMuted} text-base sm:text-xl uppercase tracking-widest mb-1`}>Join at</p>
-            <p className="text-white text-xl sm:text-3xl font-black font-mono break-all">
+            <p className="text-white text-xl sm:text-2xl lg:text-3xl font-black font-mono break-all">
               {JOIN_DISPLAY_URL}/play/<span className={t.textYellow}>{roomCode}</span>
             </p>
             <p className={`${t.textFaint} text-base mt-1`}>or scan the QR code</p>

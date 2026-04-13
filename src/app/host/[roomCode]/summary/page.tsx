@@ -180,10 +180,10 @@ export default function HostSummaryPage() {
         </div>
 
         <button
-          onClick={() => router.push("/")}
+          onClick={() => router.push(`/host/${roomCode}/game`)}
           className={`w-full py-4 rounded-2xl ${t.btnYellow} text-xl`}
         >
-          Back to Home
+          Back to Game
         </button>
       </div>
     </main>

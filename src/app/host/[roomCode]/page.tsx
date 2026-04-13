@@ -1,17 +1,22 @@
 "use client";
 
+export const dynamic = "force-dynamic";
+
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useParty } from "@/lib/useParty";
 import { t, avatarColor, resolveAvatarColor, resolveEmoji } from "@/lib/theme";
 import type { Player } from "@/lib/types";
 
-function PlayerAvatar({ player }: { player: Player }) {
+function PlayerAvatar({ player, disconnected }: { player: Player; disconnected: boolean }) {
   const color = resolveAvatarColor(player.nickname, player.emoji);
   return (
     <div className="flex flex-col items-center gap-2">
-      <div className={`${color} w-14 h-14 rounded-full flex items-center justify-center text-3xl shadow-lg`}>
-        {resolveEmoji(player.nickname, player.emoji)}
+      <div className="relative">
+        <div className={`${color} w-14 h-14 rounded-full flex items-center justify-center text-3xl shadow-lg`}>
+          {resolveEmoji(player.nickname, player.emoji)}
+        </div>
+        <span className={`absolute bottom-0.5 right-0.5 w-3 h-3 rounded-full border-2 border-[#0a1628] ${disconnected ? "bg-gray-500" : "bg-green-400"}`} />
       </div>
       <span className="text-[#7a96c8] text-base font-medium truncate max-w-[72px]">{player.nickname}</span>
       {player.isHost && <span className={`${t.textYellow} text-sm font-bold -mt-1`}>HOST</span>}
@@ -52,9 +57,7 @@ function SettingRow({ label, value, options, onChange }: {
   );
 }
 
-export default function HostPage() {
-  const params = useParams();
-  const roomCode = (params.roomCode as string).toUpperCase();
+function HostContent({ roomCode }: { roomCode: string }) {
   const router = useRouter();
 
   // Game settings
@@ -249,7 +252,13 @@ export default function HostPage() {
             <p className={`${t.textMuted} text-center text-xl py-8`}>No players yet — share the room code!</p>
           ) : (
             <div className="flex flex-wrap gap-4">
-              {nonHostPlayers.map((player) => <PlayerAvatar key={player.id} player={player} />)}
+              {nonHostPlayers.map((player) => (
+                <PlayerAvatar
+                  key={player.id}
+                  player={player}
+                  disconnected={(lobbyState?.disconnectedNicknames ?? []).includes(player.nickname)}
+                />
+              ))}
             </div>
           )}
         </div>
@@ -289,4 +298,59 @@ export default function HostPage() {
       </div>
     </main>
   );
+}
+
+function HostGuard() {
+  const params = useParams();
+  const roomCode = (params.roomCode as string).toUpperCase();
+  const router = useRouter();
+
+  const [status, setStatus] = useState<"checking" | "ok" | "conflict">("checking");
+
+  useEffect(() => {
+    fetch(`/api/room/${roomCode}`)
+      .then((r) => r.json())
+      .then((data: { exists: boolean; hostActive: boolean }) => {
+        if (data.exists && data.hostActive) {
+          setStatus("conflict");
+        } else {
+          setStatus("ok");
+        }
+      })
+      .catch(() => setStatus("ok")); // on error, let the join attempt proceed
+  }, [roomCode]);
+
+  if (status === "checking") {
+    return (
+      <main className={`min-h-screen ${t.bgPage} flex items-center justify-center`}>
+        <div className={`${t.textMuted} text-lg animate-pulse`}>Loading...</div>
+      </main>
+    );
+  }
+
+  if (status === "conflict") {
+    return (
+      <main className={`min-h-screen ${t.bgPage} flex flex-col items-center justify-center px-4`}>
+        <div className={`w-full max-w-sm ${t.bgSurface} rounded-2xl border border-[#9a3558]/40 shadow-xl p-8 text-center`}>
+          <p className="text-5xl mb-4">🚫</p>
+          <h2 className="text-2xl font-black text-[#c94f7a] mb-2">Host Already Active</h2>
+          <p className={`${t.textMuted} mb-6`}>
+            Room <span className="text-white font-mono font-bold">{roomCode}</span> already has an active host.
+          </p>
+          <button
+            onClick={() => router.push("/")}
+            className={`block w-full py-3 rounded-xl ${t.btnYellow} text-lg text-center`}
+          >
+            Back to Home
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  return <HostContent roomCode={roomCode} />;
+}
+
+export default function HostPage() {
+  return <HostGuard />;
 }

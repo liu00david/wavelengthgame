@@ -1,7 +1,7 @@
 import type * as Party from "partykit/server";
 
 type Player = { id: string; nickname: string; isHost: boolean; emoji?: string };
-type LobbyState = { players: Player[]; locked: boolean; N: number };
+type LobbyState = { players: Player[]; locked: boolean; N: number; disconnectedNicknames: string[] };
 
 type PromptType = "binary" | "multiple_choice" | "scale";
 type Prompt = {
@@ -42,9 +42,12 @@ type GameState = {
   leaderboard: PlayerScore[];
   N: number;
   phase1AnsweredCount: number;
+  phase1AnsweredNicknames: string[];
   answeredCount: number;
   answeredNicknames: string[];
   doubleDownUsed: string[];
+  paused: boolean;
+  pausedTimeRemaining: number | null; // ms remaining when paused
 };
 
 type ClientMessage =
@@ -61,7 +64,10 @@ type ClientMessage =
   | { type: "reset_to_lobby" }
   | { type: "kick_player"; nickname: string }
   | { type: "skip_question" }
-  | { type: "set_emoji"; emoji: string };
+  | { type: "set_emoji"; emoji: string }
+  | { type: "leave" }
+  | { type: "pause_timer" }
+  | { type: "resume_timer" };
 
 // Inline prompt bank (mirrors src/lib/prompts.ts)
 const PROMPTS: Prompt[] = [
@@ -206,7 +212,7 @@ function computeScores(
     const doubled = wagers.get(nickname) ?? false;
 
     if (doubled) {
-      base = isHighlyAccurate(base) ? base * 2 : 0;
+      base = base * 2;
     }
 
     scores[nickname] = Math.round(base);
@@ -217,7 +223,7 @@ function computeScores(
 
 
 export default class GameServer implements Party.Server {
-  private lobby: LobbyState = { players: [], locked: false, N: 0 };
+  private lobby: LobbyState = { players: [], locked: false, N: 0, disconnectedNicknames: [] };
   private hasHost = false; // true once a host has joined this room
   private rejoinTimers: Map<string, ReturnType<typeof setTimeout>> = new Map(); // nickname -> timer
   private game: GameState = {
@@ -232,9 +238,12 @@ export default class GameServer implements Party.Server {
     leaderboard: [],
     N: 0,
     phase1AnsweredCount: 0,
+    phase1AnsweredNicknames: [],
     answeredCount: 0,
     answeredNicknames: [],
     doubleDownUsed: [],
+    paused: false,
+    pausedTimeRemaining: null,
   };
   private prompts: Prompt[] = [];
   private phase1Answers: Map<string, string | number> = new Map();
@@ -246,11 +255,11 @@ export default class GameServer implements Party.Server {
   constructor(readonly room: Party.Room) {}
 
   private broadcastLobby() {
-    // Filter out the host from the player list sent to clients
     const visibleLobby = {
       ...this.lobby,
       players: this.lobby.players.filter((p) => !p.isHost),
       N: this.lobby.players.filter((p) => !p.isHost).length,
+      disconnectedNicknames: [...this.rejoinTimers.keys()],
     };
     const msg = JSON.stringify({ type: "state", lobby: visibleLobby });
     this.room.broadcast(msg);
@@ -314,7 +323,11 @@ export default class GameServer implements Party.Server {
       roundResult: null,
       answeredCount: 0,
       answeredNicknames: [],
+      phase1AnsweredCount: 0,
+      phase1AnsweredNicknames: [],
       doubleDownUsed: this.game.doubleDownUsed,
+      paused: false,
+      pausedTimeRemaining: null,
     };
     this.broadcastGame();
 
@@ -336,9 +349,12 @@ export default class GameServer implements Party.Server {
       phase: "phase2",
       phaseEndsAt,
       phase1AnsweredCount: this.phase1Answers.size,
+      phase1AnsweredNicknames: [...this.phase1Answers.keys()],
       answeredCount: 0,
       answeredNicknames: [],
       doubleDownUsed: this.game.doubleDownUsed,
+      paused: false,
+      pausedTimeRemaining: null,
     };
     this.broadcastGame();
     this.phaseTimer = setTimeout(() => this.startPhase3(), ms);
@@ -427,9 +443,12 @@ export default class GameServer implements Party.Server {
       if (players.length === 0) return false;
       return players.every((p) => this.phase1Answers.has(p.nickname));
     }
-    // phase2: only players who answered phase1 are eligible
+    // phase2: only players who answered phase1 AND are still in the lobby are eligible
     if (this.phase1Answers.size === 0) return true;
-    return [...this.phase1Answers.keys()].every((nick) => this.phase2Predictions.has(nick));
+    const currentNicknames = new Set(this.lobby.players.filter((p) => !p.isHost).map((p) => p.nickname));
+    return [...this.phase1Answers.keys()]
+      .filter((nick) => currentNicknames.has(nick))
+      .every((nick) => this.phase2Predictions.has(nick));
   }
 
   onConnect(conn: Party.Connection) {
@@ -451,6 +470,28 @@ export default class GameServer implements Party.Server {
     // ---- Lobby messages ----
     if (msg.type === "join") {
       console.log("[server] join from", sender.id, "nickname:", msg.nickname, "isHost:", msg.isHost, "locked:", this.lobby.locked, "hasHost:", this.hasHost);
+
+      // Allow takeover of a disconnected player slot regardless of locked state
+      const takenPlayer = this.lobby.players.find(
+        (p) => p.nickname.toLowerCase() === msg.nickname.toLowerCase()
+      );
+      if (takenPlayer) {
+        const isDisconnected = this.rejoinTimers.has(takenPlayer.nickname);
+        if (isDisconnected) {
+          const timer = this.rejoinTimers.get(takenPlayer.nickname);
+          if (timer !== undefined) { clearTimeout(timer); this.rejoinTimers.delete(takenPlayer.nickname); }
+          takenPlayer.id = sender.id;
+          sender.send(JSON.stringify({ type: "connected", roomId: this.room.id, isHost: takenPlayer.isHost }));
+          this.broadcastLobby();
+          if (this.game.phase !== "lobby") {
+            sender.send(JSON.stringify({ type: "game", game: this.game }));
+          }
+        } else {
+          sender.send(JSON.stringify({ type: "nickname_taken" }));
+        }
+        return;
+      }
+
       if (this.lobby.locked) return;
       const existing = this.lobby.players.find((p) => p.id === sender.id);
       if (existing) return;
@@ -460,15 +501,6 @@ export default class GameServer implements Party.Server {
       // Reject non-host joins to rooms that have no host yet
       if (!joiningAsHost && !this.hasHost) {
         sender.send(JSON.stringify({ type: "room_not_found" }));
-        return;
-      }
-
-      // Reject duplicate nicknames (case-insensitive)
-      const takenPlayer = this.lobby.players.find(
-        (p) => p.nickname.toLowerCase() === msg.nickname.toLowerCase()
-      );
-      if (takenPlayer) {
-        sender.send(JSON.stringify({ type: "nickname_taken" }));
         return;
       }
 
@@ -587,9 +619,12 @@ export default class GameServer implements Party.Server {
         leaderboard: [],
         N: playerCount,
         phase1AnsweredCount: 0,
+        phase1AnsweredNicknames: [],
         answeredCount: 0,
         answeredNicknames: [],
         doubleDownUsed: [],
+        paused: false,
+        pausedTimeRemaining: null,
       };
       this.broadcastGame();
 
@@ -682,11 +717,11 @@ export default class GameServer implements Party.Server {
       this.hasHost = false;
       this.clearTimer();
       // Reset state so room appears gone
-      this.lobby = { players: [], locked: false, N: 0 };
+      this.lobby = { players: [], locked: false, N: 0, disconnectedNicknames: [] };
       this.game = {
         phase: "lobby", round: 0, totalRounds: 10,
         prompt: null, phaseEndsAt: null, phase1Duration: 25, phase2Duration: 20,
-        roundResult: null, leaderboard: [], N: 0, phase1AnsweredCount: 0, answeredCount: 0, answeredNicknames: [], doubleDownUsed: [],
+        roundResult: null, leaderboard: [], N: 0, phase1AnsweredCount: 0, phase1AnsweredNicknames: [], answeredCount: 0, answeredNicknames: [], doubleDownUsed: [], paused: false, pausedTimeRemaining: null,
       };
       this.room.broadcast(JSON.stringify({ type: "disbanded" }));
       return;
@@ -736,7 +771,7 @@ export default class GameServer implements Party.Server {
       this.game = {
         phase: "lobby", round: 0, totalRounds: 10,
         prompt: null, phaseEndsAt: null, phase1Duration: 25, phase2Duration: 20,
-        roundResult: null, leaderboard: [], N: 0, phase1AnsweredCount: 0, answeredCount: 0, answeredNicknames: [], doubleDownUsed: [],
+        roundResult: null, leaderboard: [], N: 0, phase1AnsweredCount: 0, phase1AnsweredNicknames: [], answeredCount: 0, answeredNicknames: [], doubleDownUsed: [], paused: false, pausedTimeRemaining: null,
       };
       this.broadcastLobby();
       this.room.broadcast(JSON.stringify({ type: "game", game: this.game }));
@@ -767,6 +802,54 @@ export default class GameServer implements Party.Server {
         this.game.leaderboard.forEach((s, i) => { s.rank = i + 1; });
       }
       this.broadcastLobby();
+      // If a phase is active, re-check whether all remaining players have answered
+      if (this.game.phase === "phase1" && this.checkAllAnswered("phase1")) {
+        this.clearTimer();
+        this.startPhase2();
+      } else if (this.game.phase === "phase2" && this.checkAllAnswered("phase2")) {
+        this.clearTimer();
+        this.startPhase3();
+      }
+      return;
+    }
+
+    if (msg.type === "leave") {
+      const player = this.lobby.players.find((p) => p.id === sender.id);
+      if (!player || player.isHost) return;
+      // Cancel any pending rejoin timer and remove immediately
+      const timer = this.rejoinTimers.get(player.nickname);
+      if (timer !== undefined) { clearTimeout(timer); this.rejoinTimers.delete(player.nickname); }
+      this.lobby.players = this.lobby.players.filter((p) => p.id !== sender.id);
+      this.lobby.N = this.lobby.players.filter((p) => !p.isHost).length;
+      this.broadcastLobby();
+      return;
+    }
+
+    if (msg.type === "pause_timer") {
+      const player = this.lobby.players.find((p) => p.id === sender.id);
+      if (!player?.isHost) return;
+      if (this.game.phase !== "phase1" && this.game.phase !== "phase2") return;
+      if (this.game.paused) return;
+      const remaining = this.game.phaseEndsAt ? Math.max(0, this.game.phaseEndsAt - Date.now()) : 0;
+      this.clearTimer();
+      this.game = { ...this.game, paused: true, pausedTimeRemaining: remaining, phaseEndsAt: null };
+      this.broadcastGame();
+      return;
+    }
+
+    if (msg.type === "resume_timer") {
+      const player = this.lobby.players.find((p) => p.id === sender.id);
+      if (!player?.isHost) return;
+      if (!this.game.paused) return;
+      const remaining = this.game.pausedTimeRemaining ?? 0;
+      const phaseEndsAt = Date.now() + remaining;
+      const phase = this.game.phase;
+      this.game = { ...this.game, paused: false, pausedTimeRemaining: null, phaseEndsAt };
+      this.broadcastGame();
+      this.phaseTimer = setTimeout(
+        () => phase === "phase1" ? this.startPhase2() : this.startPhase3(),
+        remaining
+      );
       return;
     }
 
@@ -787,7 +870,14 @@ export default class GameServer implements Party.Server {
 
   async onRequest(req: Party.Request) {
     if (req.method === "GET") {
-      return new Response(JSON.stringify({ exists: this.hasHost }), {
+      const inProgress = this.hasHost && this.lobby.locked;
+      const playerNicknames = this.lobby.players.filter((p) => !p.isHost).map((p) => p.nickname);
+      return new Response(JSON.stringify({
+        exists: this.hasHost,
+        hostActive: this.hasHost && !this.rejoinTimers.has("Host"),
+        inProgress,
+        playerNicknames,
+      }), {
         headers: { "Content-Type": "application/json" }
       });
     }
@@ -803,14 +893,30 @@ export default class GameServer implements Party.Server {
     // This handles screen dim, brief disconnects, page refreshes
     const timer = setTimeout(() => {
       this.rejoinTimers.delete(nickname);
-      this.lobby.players = this.lobby.players.filter((p) => p.nickname !== nickname);
-      this.lobby.N = this.lobby.players.filter((p) => !p.isHost).length;
-      this.broadcastLobby();
+      if (player.isHost) {
+        // Host timed out — disband the room
+        this.hasHost = false;
+        this.clearTimer();
+        this.lobby = { players: [], locked: false, N: 0, disconnectedNicknames: [] };
+        this.game = {
+          phase: "lobby", round: 0, totalRounds: 10,
+          prompt: null, phaseEndsAt: null, phase1Duration: 25, phase2Duration: 20,
+          roundResult: null, leaderboard: [], N: 0, phase1AnsweredCount: 0, phase1AnsweredNicknames: [], answeredCount: 0, answeredNicknames: [], doubleDownUsed: [], paused: false, pausedTimeRemaining: null,
+        };
+        this.room.broadcast(JSON.stringify({ type: "disbanded" }));
+      } else {
+        this.lobby.players = this.lobby.players.filter((p) => p.nickname !== nickname);
+        this.lobby.N = this.lobby.players.filter((p) => !p.isHost).length;
+        this.broadcastLobby();
+      }
     }, 2 * 60 * 1000);
 
     // Cancel any existing timer for this nickname
     const existing = this.rejoinTimers.get(nickname);
     if (existing !== undefined) clearTimeout(existing);
     this.rejoinTimers.set(nickname, timer);
+
+    // Broadcast immediately so host sees the grey dot right away
+    this.broadcastLobby();
   }
 }

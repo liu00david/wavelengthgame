@@ -4,6 +4,7 @@ export type LobbyState = {
   players: Player[];
   locked: boolean;
   N: number;
+  disconnectedNicknames: string[];
 };
 
 export type PromptType = "binary" | "multiple_choice" | "scale";
@@ -54,9 +55,12 @@ export type GameState = {
   leaderboard: PlayerScore[];
   N: number;
   phase1AnsweredCount: number; // how many players answered phase1 (used as N for binary scoring)
+  phase1AnsweredNicknames: string[]; // who answered phase1 (used to determine phase2 eligibility)
   answeredCount: number;
   answeredNicknames: string[]; // who has submitted in current phase
   doubleDownUsed: string[]; // nicknames who have already used their one double down
+  paused: boolean;
+  pausedTimeRemaining: number | null; // ms remaining when paused
 };
 
 export type ServerMessage =
@@ -83,4 +87,7 @@ export type ClientMessage =
   | { type: "reset_to_lobby" } // host only — unlock room, return to lobby phase
   | { type: "kick_player"; nickname: string }
   | { type: "skip_question" }
-  | { type: "set_emoji"; emoji: string };
+  | { type: "set_emoji"; emoji: string }
+  | { type: "leave" } // player voluntarily leaves lobby
+  | { type: "pause_timer" } // host only — pause current phase timer
+  | { type: "resume_timer" }; // host only — resume current phase timer

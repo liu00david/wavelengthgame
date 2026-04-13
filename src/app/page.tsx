@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { t } from "@/lib/theme";
 
 function generateRoomCode(): string {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const chars = "BCDFGHJKLMNPQRSTVWXYZ";
   let code = "";
   for (let i = 0; i < 4; i++) {
     code += chars[Math.floor(Math.random() * chars.length)];
@@ -64,9 +64,9 @@ export default function Home() {
       </div>
 
       {/* Host + Join stacked */}
-      <div className="flex flex-col gap-4 w-full max-w-md mb-6">
+      <div className="flex flex-col gap-4 w-full max-w-sm mb-6">
         {/* Host */}
-        <div className={`${t.bgSurface} rounded-2xl shadow-xl p-6 flex flex-col gap-4 border ${t.borderSurface}`}>
+        <div className={`${t.bgSurface} rounded-2xl shadow-xl p-4 flex flex-col gap-3 border ${t.borderSurface}`}>
           <h2 className="text-xl font-bold text-white">Host a Game</h2>
           <p className={`${t.textMuted} text-base`}>
             Create a room and control the game from your device.
@@ -80,7 +80,7 @@ export default function Home() {
         </div>
 
         {/* Join */}
-        <div className={`${t.bgSurface} rounded-2xl shadow-xl p-6 flex flex-col gap-3 border ${t.borderSurface}`}>
+        <div className={`${t.bgSurface} rounded-2xl shadow-xl p-4 flex flex-col gap-3 border ${t.borderSurface}`}>
           <h2 className="text-xl font-bold text-white">Join a Game</h2>
           <input
             type="text"
