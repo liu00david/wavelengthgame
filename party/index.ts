@@ -754,9 +754,12 @@ export default class GameServer implements Party.Server {
         leaderboard: [],
         N: playerCount,
         phase1AnsweredCount: 0,
+        phase1AnsweredNicknames: [],
         answeredCount: 0,
         answeredNicknames: [],
         doubleDownUsed: [],
+        paused: false,
+        pausedTimeRemaining: null,
       };
       this.startPhase1();
       return;
