@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Consensus
 
-## Getting Started
+A real-time party game about reading the room. Players answer questions, then predict what the group said — points go to whoever best understands the crowd.
 
-First, run the development server:
+## How It Works
+
+**Setup**
+- One person hosts a game and shares a room code
+- Players join on their phones at the game URL
+- Optionally cast the TV screen to a display for everyone to watch
+
+**Each Round Has 3 Phases**
+
+1. **Answer** — Everyone answers the same question (Yes/No, Multiple Choice, or Scale 1–10). Timer counts down, answers are hidden from other players.
+
+2. **Predict** — Players see the question again and predict what the group said (e.g. how many said YES, which option was most popular, or what the average was). Optionally use your one-time **Double Down** to bet x2 points — but you score 0 if wrong.
+
+3. **Results** — The real answer is revealed on the TV screen with a breakdown. Points are awarded based on how close each player's prediction was.
+
+**Scoring**
+- Closer predictions = more points
+- Double Down: correct = 2× points, wrong = 0 points
+- Leaderboard updates after each round
+
+**End of Game**
+- Final podium shows top 3 players
+- Host can view a full round-by-round summary
+
+## Question Types
+
+- **Yes / No** — Binary questions. Predict how many people said YES.
+- **Multiple Choice** — 4 options. Predict which option got the most votes.
+- **Scale 1–10** — Numeric questions. Predict the group's average.
+
+## Tech Stack
+
+- **Next.js** (App Router) — frontend
+- **PartyKit** — real-time WebSocket server
+- **Tailwind CSS v4** — styling
+- **Vercel** — deployment
+
+## Running Locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+This starts both the Next.js frontend and the PartyKit dev server. Open [http://localhost:3000](http://localhost:3000) to host or join a game.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Roles
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| URL | Role |
+|-----|------|
+| `/` | Landing page — host or join |
+| `/host/[roomCode]` | Host lobby & game controls |
+| `/play/[roomCode]` | Player view (mobile) |
+| `/tv/[roomCode]` | TV/display screen |

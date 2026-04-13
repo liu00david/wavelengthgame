@@ -453,7 +453,12 @@ export default class GameServer implements Party.Server {
 
   onConnect(conn: Party.Connection) {
     console.log("[server] onConnect", conn.id, "room:", this.room.id, "hasHost:", this.hasHost, "players:", this.lobby.players.length);
-    conn.send(JSON.stringify({ type: "state", lobby: this.lobby }));
+    const visibleLobby = {
+      ...this.lobby,
+      players: this.lobby.players.filter((p) => !p.isHost),
+      disconnectedNicknames: [...this.rejoinTimers.keys()],
+    };
+    conn.send(JSON.stringify({ type: "state", lobby: visibleLobby }));
     if (this.game.phase !== "lobby") {
       conn.send(JSON.stringify({ type: "game", game: this.game }));
     }
@@ -802,7 +807,11 @@ export default class GameServer implements Party.Server {
           leaderboard: this.game.leaderboard.filter((s) => s.nickname !== msg.nickname),
           N: this.lobby.N,
         };
-        this.game.leaderboard.forEach((s, i) => { s.rank = i + 1; });
+        let rank = 1;
+        this.game.leaderboard.forEach((s, i) => {
+          if (i > 0 && s.total < this.game.leaderboard[i - 1].total) rank = i + 1;
+          s.rank = rank;
+        });
       }
       this.broadcastLobby();
       // If a phase is active, re-check whether all remaining players have answered

@@ -62,8 +62,8 @@ function HostContent({ roomCode }: { roomCode: string }) {
 
   // Game settings
   const [numQuestions, setNumQuestions] = useState(10);
-  const [phase1Time, setPhase1Time] = useState(20);
-  const [phase2Time, setPhase2Time] = useState(30);
+  const [phase1Time, setPhase1Time] = useState(30);
+  const [phase2Time, setPhase2Time] = useState(45);
 
   // Menu state
   type MenuState = "closed" | "main" | "kick" | "disband_confirm";
@@ -290,7 +290,7 @@ function HostContent({ roomCode }: { roomCode: string }) {
 
         <button onClick={handleLock} disabled={nonHostPlayers.length < 3}
           className={`w-full py-4 rounded-2xl ${t.btnYellow} text-xl shadow-xl ${t.btnPrimaryDisabled}`}>
-          Lock &amp; Start Game
+          Lock & Start Game
         </button>
         {nonHostPlayers.length < 3 && (
           <p className={`${t.textFaint} text-sm text-center mt-2`}>Need at least 3 players to start</p>

@@ -79,8 +79,8 @@ type MenuState = "closed" | "main" | "kick" | "end_confirm" | "disband_confirm";
 
 const HOST_SESSION_KEY = "consensus_host_session";
 const DEFAULT_NUM_QUESTIONS = 10;
-const DEFAULT_PHASE1_TIME = 25;
-const DEFAULT_PHASE2_TIME = 20;
+const DEFAULT_PHASE1_TIME = 30;
+const DEFAULT_PHASE2_TIME = 45;
 
 export default function HostGamePage() {
   const params = useParams();
