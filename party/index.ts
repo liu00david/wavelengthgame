@@ -74,38 +74,68 @@ type ClientMessage =
 // Inline prompt bank (mirrors src/lib/prompts.ts)
 const PROMPTS: Prompt[] = [
   // Binary
-  { id: "b1",  text: "Have you ever pulled an all-nighter for something non-work related?", type: "binary" },
-  { id: "b2",  text: "Do you think you could survive a week without your phone?", type: "binary" },
-  { id: "b3",  text: "Have you ever lied to get out of a social event?", type: "binary" },
+  { id: "b1",  text: "Have you pulled an all-nighter this year?", type: "binary" },
+  { id: "b2",  text: "Do you think you could survive a week with no phone?", type: "binary" },
+  { id: "b3",  text: "Have you ever missed a flight that was your fault?", type: "binary" },
   { id: "b4",  text: "Do you believe in love at first sight?", type: "binary" },
-  { id: "b5",  text: "Have you ever eaten an entire pizza by yourself?", type: "binary" },
-  { id: "b6",  text: "Would you rather be famous but broke than rich but anonymous?", type: "binary" },
-  { id: "b7",  text: "Have you ever ghosted someone you were actively dating?", type: "binary" },
-  { id: "b8",  text: "Do you read the terms and conditions before clicking accept?", type: "binary" },
-  { id: "b9",  text: "Have you ever pretended to laugh at a joke you didn't understand?", type: "binary" },
-  { id: "b10", text: "Would you take a free one-way trip to Mars if you could never come back?", type: "binary" },
+  { id: "b5",  text: "Have you ever asked someone out in public?", type: "binary" },
+  { id: "b6",  text: "Can you run a half marathon?", type: "binary" },
+  { id: "b7",  text: "Have you been on a Hinge date?", type: "binary" },
+  { id: "b8",  text: "Have you ever kissed the opposite sex?", type: "binary" },
+  { id: "b9",  text: "Have you stolen from a retail store?", type: "binary" },
+  { id: "b10", text: "Can you swim?", type: "binary" },
+  { id: "b11", text: "Can someone in a relationship have a best friend of the opposite sex?", type: "binary" },
+  { id: "b12", text: "Have you ever slept over on the first date?", type: "binary" },
+  { id: "b13", text: "Can you ride a bike?", type: "binary" },
+  { id: "b14", text: "Did you learn piano as a kid?", type: "binary" },
+  { id: "b15", text: "Can you separate the art from the artist?", type: "binary" },
+  { id: "b16", text: "Have you ever permed or dyed your hair?", type: "binary" },
+  { id: "b17", text: "Do you think you are better at driving than most people in this room?", type: "binary" },
+  { id: "b18", text: "Do you think men should always pay for the first date?", type: "binary" },
+  { id: "b19", text: "Do you think you can date someone vegetarian?", type: "binary" },
+  { id: "b20", text: "Do you think you are better at singing than most people in this room?", type: "binary" },
+
   // Multiple Choice
-  { id: "mc1",  text: "What's your go-to comfort food?", type: "multiple_choice", options: ["Pizza", "Ice Cream", "Ramen", "Tacos"] },
-  { id: "mc2",  text: "How do you prefer to spend a free Saturday?", type: "multiple_choice", options: ["Outdoors / active", "Netflix binge", "Social hangout", "Doing nothing"] },
-  { id: "mc3",  text: "What's your sleep schedule like?", type: "multiple_choice", options: ["Early bird (before 10 pm)", "Normal (10 pm – midnight)", "Night owl (after midnight)", "It varies wildly"] },
+  { id: "mc1",  text: "What country would you spend a week in?", type: "multiple_choice", options: ["Bolivia", "Cape Town", "Poland", "Kyrgyzstan"] },
+  { id: "mc2",  text: "Which would you choose as a first date?", type: "multiple_choice", options: ["Movies", "Bar", "Lunch", "Activity"] },
+  { id: "mc3",  text: "What's your favorite season?", type: "multiple_choice", options: ["Winter", "Spring", "Summer", "Fall"] },
   { id: "mc4",  text: "Which superpower would you pick?", type: "multiple_choice", options: ["Flight", "Invisibility", "Mind reading", "Teleportation"] },
-  { id: "mc5",  text: "Pick your vibe this week:", type: "multiple_choice", options: ["Thriving", "Surviving", "Barely functioning", "On another planet"] },
-  { id: "mc6",  text: "What's your go-to drink order?", type: "multiple_choice", options: ["Coffee / espresso", "Bubble tea / smoothie", "Alcohol", "Just water"] },
+  { id: "mc5",  text: "Pick your vibe this week.", type: "multiple_choice", options: ["Thriving", "Surviving", "Barely functioning", "On another planet"] },
+  { id: "mc6",  text: "Which protein would you eliminate for the rest of your life?", type: "multiple_choice", options: ["Chicken", "Beef", "Pork", "Fish"] },
   { id: "mc7",  text: "Which would you rather give up forever?", type: "multiple_choice", options: ["Social media", "Music", "Takeout food", "Streaming services"] },
   { id: "mc8",  text: "How do you handle conflict?", type: "multiple_choice", options: ["Address it head-on", "Avoid it entirely", "Passive-aggressive hints", "Vent to a friend first"] },
-  { id: "mc9",  text: "What's your texting style?", type: "multiple_choice", options: ["Reply instantly", "Reply when I feel like it", "Leave on read sometimes", "I'm always on Do Not Disturb"] },
-  { id: "mc10", text: "If you had to eat only one cuisine for a year, which would you pick?", type: "multiple_choice", options: ["Japanese", "Mexican", "Italian", "Indian"] },
+  { id: "mc9",  text: "What's your texting style?", type: "multiple_choice", options: ["Reply ASAP", "Check once in a while", "Respond to everyone at once", "I'm always Do Not Disturb"] },
+  { id: "mc10", text: "If you had to eat only one cuisine for a year, which would you pick?", type: "multiple_choice", options: ["Indian", "Mexican", "Italian", "Greek"] },
+  { id: "mc11", text: "What's the minimum you'd take to be vegetarian for a year?", type: "multiple_choice", options: ["$1,000", "$10,000", "$100,000", "$1,000,000"] },
+  { id: "mc12", text: "How many kids do you want?", type: "multiple_choice", options: ["0", "1", "2", "3+"] },
+  { id: "mc13", text: "What kind of drunk are you?", type: "multiple_choice", options: ["Party", "Affectionate", "Gossiping", "Chilled out"] },
+  { id: "mc14", text: "How often do you cry?", type: "multiple_choice", options: ["Never", "Once a blue moon", "Several times a year", "It happens"] },
+  { id: "mc15", text: "What career would you choose if they paid the same?", type: "multiple_choice", options: ["Doctor", "Pilot", "Bar bouncer", "TSA Agent"] },
+  { id: "mc16", text: "Which would you prefer to take on in a fight?", type: "multiple_choice", options: ["1 kangaroo", "3 wolves", "10 monkeys", "100 geese"] },
+  { id: "mc17", text: "Which finger would you choose if you had to lose one?", type: "multiple_choice", options: ["Ring", "Middle", "Index", "Thumb"] },
+  { id: "mc18", text: "What part of the face would you find the most physically attractive?", type: "multiple_choice", options: ["Hair", "Nose", "Eyes", "Mouth"] },
+  { id: "mc19", text: "What's your ideal vacation vibe?", type: "multiple_choice", options: ["Nature and hiking", "Historic towns", "Urban city", "Beachy resort"] },
+  { id: "mc20", text: "If you had to listen to 1 song on repeat for a day, which would it be?", type: "multiple_choice", options: ["Baby", "All I Want For Christmas", "Thunder", "Despacito"] },
+
   // Scale
   { id: "s1",  text: "How messy is your room right now?", type: "scale", labelLow: "Spotless", labelHigh: "Disaster Zone" },
   { id: "s2",  text: "How spicy do you like your food?", type: "scale", labelLow: "No Spice", labelHigh: "Maximum Heat" },
   { id: "s3",  text: "How extroverted are you feeling today?", type: "scale", labelLow: "Total Hermit", labelHigh: "Social Butterfly" },
   { id: "s4",  text: "Rate your current life satisfaction.", type: "scale", labelLow: "Rock Bottom", labelHigh: "Absolutely Thriving" },
-  { id: "s5",  text: "How likely are you to cancel plans last minute?", type: "scale", labelLow: "Never", labelHigh: "Always" },
+  { id: "s5",  text: "How likely are you to flake on plans last minute?", type: "scale", labelLow: "Never", labelHigh: "Always" },
   { id: "s6",  text: "How much of a morning person are you?", type: "scale", labelLow: "Hate Mornings", labelHigh: "Love Them" },
   { id: "s7",  text: "How adventurous are you with food?", type: "scale", labelLow: "Chicken Tenders Only", labelHigh: "Eat Anything" },
-  { id: "s8",  text: "How financially responsible are you right now?", type: "scale", labelLow: "Chaos", labelHigh: "Spreadsheet King/Queen" },
-  { id: "s9",  text: "How petty can you be when someone wrongs you?", type: "scale", labelLow: "Saint", labelHigh: "Never Forget, Never Forgive" },
+  { id: "s8",  text: "How financially responsible are you right now?", type: "scale", labelLow: "Chaos", labelHigh: "On Lock" },
+  { id: "s9",  text: "How petty can you be when someone wrongs you?", type: "scale", labelLow: "Saint", labelHigh: "Grudging" },
   { id: "s10", text: "How often do you actually follow through on your New Year's resolutions?", type: "scale", labelLow: "Never", labelHigh: "Always" },
+  { id: "s11", text: "Can you cook well?", type: "scale", labelLow: "Barely Edible", labelHigh: "Cheffing" },
+  { id: "s12", text: "Do you enjoy your job?", type: "scale", labelLow: "I Wanna Quit", labelHigh: "Amazing" },
+  { id: "s13", text: "Do you get sick often?", type: "scale", labelLow: "Never", labelHigh: "Too Often" },
+  { id: "s14", text: "Do you enjoy designer clothing?", type: "scale", labelLow: "Nope", labelHigh: "Definitely" },
+  { id: "s15", text: "How often are you the one to initiate plans with friends?", type: "scale", labelLow: "Never", labelHigh: "Always" },
+  { id: "s16", text: "Rate your middle school experience.", type: "scale", labelLow: "Horrible", labelHigh: "Perfect" },
+  { id: "s17", text: "Do you have a lot of free time?", type: "scale", labelLow: "Not At All", labelHigh: "Plenty" },
+  { id: "s18", text: "How often do you overthink decisions?", type: "scale", labelLow: "Never", labelHigh: "Always" },
 ];
 
 function getPromptsForGame(n: number): Prompt[] {
@@ -928,7 +958,7 @@ export default class GameServer implements Party.Server {
         this.lobby.N = this.lobby.players.filter((p) => !p.isHost).length;
         this.broadcastLobby();
       }
-    }, 2 * 60 * 1000);
+    }, 5 * 60 * 1000);
 
     // Cancel any existing timer for this nickname
     const existing = this.rejoinTimers.get(nickname);
