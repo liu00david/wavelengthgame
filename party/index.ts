@@ -9,6 +9,8 @@ type Prompt = {
   text: string;
   type: PromptType;
   options?: string[];
+  labelLow?: string;
+  labelHigh?: string;
 };
 
 type GamePhase = "lobby" | "countdown" | "phase1" | "phase2" | "phase3" | "leaderboard" | "ended";
@@ -94,16 +96,16 @@ const PROMPTS: Prompt[] = [
   { id: "mc9",  text: "What's your texting style?", type: "multiple_choice", options: ["Reply instantly", "Reply when I feel like it", "Leave on read sometimes", "I'm always on Do Not Disturb"] },
   { id: "mc10", text: "If you had to eat only one cuisine for a year, which would you pick?", type: "multiple_choice", options: ["Japanese", "Mexican", "Italian", "Indian"] },
   // Scale
-  { id: "s1",  text: "How messy is your room right now? (1 = spotless, 10 = disaster zone)", type: "scale" },
-  { id: "s2",  text: "How spicy do you like your food? (1 = no spice, 10 = maximum heat)", type: "scale" },
-  { id: "s3",  text: "How extroverted are you feeling today? (1 = total hermit, 10 = social butterfly)", type: "scale" },
-  { id: "s4",  text: "Rate your current life satisfaction. (1 = rock bottom, 10 = absolutely thriving)", type: "scale" },
-  { id: "s5",  text: "How likely are you to cancel plans last minute? (1 = never, 10 = always)", type: "scale" },
-  { id: "s6",  text: "How much of a morning person are you? (1 = hate mornings, 10 = love them)", type: "scale" },
-  { id: "s7",  text: "How adventurous are you with food? (1 = chicken tenders only, 10 = eat anything)", type: "scale" },
-  { id: "s8",  text: "How financially responsible are you right now? (1 = chaos, 10 = spreadsheet king/queen)", type: "scale" },
-  { id: "s9",  text: "How petty can you be when someone wrongs you? (1 = saint, 10 = never forget, never forgive)", type: "scale" },
-  { id: "s10", text: "How often do you actually follow through on your New Year's resolutions? (1 = never, 10 = always)", type: "scale" },
+  { id: "s1",  text: "How messy is your room right now?", type: "scale", labelLow: "Spotless", labelHigh: "Disaster Zone" },
+  { id: "s2",  text: "How spicy do you like your food?", type: "scale", labelLow: "No Spice", labelHigh: "Maximum Heat" },
+  { id: "s3",  text: "How extroverted are you feeling today?", type: "scale", labelLow: "Total Hermit", labelHigh: "Social Butterfly" },
+  { id: "s4",  text: "Rate your current life satisfaction.", type: "scale", labelLow: "Rock Bottom", labelHigh: "Absolutely Thriving" },
+  { id: "s5",  text: "How likely are you to cancel plans last minute?", type: "scale", labelLow: "Never", labelHigh: "Always" },
+  { id: "s6",  text: "How much of a morning person are you?", type: "scale", labelLow: "Hate Mornings", labelHigh: "Love Them" },
+  { id: "s7",  text: "How adventurous are you with food?", type: "scale", labelLow: "Chicken Tenders Only", labelHigh: "Eat Anything" },
+  { id: "s8",  text: "How financially responsible are you right now?", type: "scale", labelLow: "Chaos", labelHigh: "Spreadsheet King/Queen" },
+  { id: "s9",  text: "How petty can you be when someone wrongs you?", type: "scale", labelLow: "Saint", labelHigh: "Never Forget, Never Forgive" },
+  { id: "s10", text: "How often do you actually follow through on your New Year's resolutions?", type: "scale", labelLow: "Never", labelHigh: "Always" },
 ];
 
 function getPromptsForGame(n: number): Prompt[] {

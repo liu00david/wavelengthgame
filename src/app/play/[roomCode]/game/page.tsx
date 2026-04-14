@@ -76,13 +76,14 @@ function MultipleChoiceInput({ options, onSubmit, disabled }: { options: string[
 }
 
 // ---- Scale Input ----
-function ScaleInput({ onSubmit, disabled, step = 1, min = 1, max = 10, label }: {
+function ScaleInput({ onSubmit, disabled, step = 1, min = 1, max = 10, labelLow, labelHigh }: {
   onSubmit: (val: number) => void;
   disabled: boolean;
   step?: number;
   min?: number;
   max?: number;
-  label?: string;
+  labelLow?: string;
+  labelHigh?: string;
 }) {
   const [value, setValue] = useState(step === 1 ? 5 : 5.0);
 
@@ -95,18 +96,24 @@ function ScaleInput({ onSubmit, disabled, step = 1, min = 1, max = 10, label }: 
 
   return (
     <div className="flex flex-col items-center gap-6 w-full">
-      {label && <p className={`${t.textMuted} text-base text-center`}>{label}</p>}
       <div className={`text-8xl font-black ${t.textYellow}`}>
         {step === 1 ? value : value.toFixed(1)}
+        <span className={`text-2xl font-bold ${t.textMuted} ml-2`}>/ 10</span>
       </div>
-      <div className="flex items-center gap-4 w-full">
-        <button onClick={() => adjust(-step)} disabled={disabled}
-          className={`w-16 h-16 rounded-full ${t.btnGhost} text-white text-3xl font-black disabled:opacity-40 transition-all shadow`}>−</button>
-        <input type="range" min={min} max={max} step={step} value={value} disabled={disabled}
-          onChange={(e) => setValue(parseFloat(e.target.value))}
-          className="flex-1 accent-[#7862FF] h-3 cursor-pointer" />
-        <button onClick={() => adjust(step)} disabled={disabled}
-          className={`w-16 h-16 rounded-full ${t.btnGhost} text-white text-3xl font-black disabled:opacity-40 transition-all shadow`}>+</button>
+      <div className="flex flex-col gap-2 w-full mt-4">
+        <div className="flex justify-between px-1">
+          <span className={`${t.textMuted} text-xl font-semibold`}>{labelLow ?? "1"}</span>
+          <span className={`${t.textMuted} text-xl font-semibold`}>{labelHigh ?? "10"}</span>
+        </div>
+        <div className="flex items-center gap-4 w-full">
+          <button onClick={() => adjust(-step)} disabled={disabled}
+            className={`w-12 h-12 rounded-full ${t.btnGhost} text-white text-2xl font-black disabled:opacity-40 transition-all shadow leading-none flex items-center justify-center`}>−</button>
+          <input type="range" min={min} max={max} step={step} value={value} disabled={disabled}
+            onChange={(e) => setValue(parseFloat(e.target.value))}
+            className="flex-1 accent-[#7862FF] h-3 cursor-pointer" />
+          <button onClick={() => adjust(step)} disabled={disabled}
+            className={`w-12 h-12 rounded-full ${t.btnGhost} text-white text-2xl font-black disabled:opacity-40 transition-all shadow leading-none flex items-center justify-center`}>+</button>
+        </div>
       </div>
       <button onClick={() => !disabled && onSubmit(value)} disabled={disabled}
         className={`w-full py-5 rounded-2xl ${t.btnYellow} text-xl shadow-xl disabled:opacity-40`}>
@@ -267,7 +274,7 @@ function Phase1View({ game, onSubmit, submitted }: {
       </div>
       {prompt.type === "binary" && <BinaryInput onSubmit={onSubmit} disabled={submitted} />}
       {prompt.type === "multiple_choice" && <MultipleChoiceInput options={prompt.options!} onSubmit={onSubmit} disabled={submitted} />}
-      {prompt.type === "scale" && <ScaleInput onSubmit={onSubmit} disabled={submitted} step={1} />}
+      {prompt.type === "scale" && <ScaleInput onSubmit={onSubmit} disabled={submitted} step={1} labelLow={prompt.labelLow} labelHigh={prompt.labelHigh} />}
     </div>
   );
 }
@@ -329,7 +336,7 @@ function Phase2View({ game, nickname, onSubmit, submitted }: {
       {prompt.type === "scale" && (
         <div className="flex flex-col gap-4">
           <ScaleInput onSubmit={(v) => handleSubmit(v)} disabled={submitted} step={0.1} min={1} max={10}
-            label="Predict the group average (1.0 – 10.0)" />
+            labelLow={prompt.labelLow} labelHigh={prompt.labelHigh} />
           {canDoubleDown && <DoubleDownToggle active={doubleDown} onToggle={() => setDoubleDown((d) => !d)} disabled={submitted} />}
         </div>
       )}

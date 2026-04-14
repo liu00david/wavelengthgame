@@ -14,6 +14,8 @@ export type Prompt = {
   text: string;
   type: PromptType;
   options?: string[]; // only for multiple_choice, exactly 4 items
+  labelLow?: string;  // only for scale, label for 1
+  labelHigh?: string; // only for scale, label for 10
 };
 
 export type GamePhase =

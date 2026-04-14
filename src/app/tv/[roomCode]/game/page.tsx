@@ -61,20 +61,20 @@ function AnswerBar({ label, value, pct, color, isWinner }: { label: string; valu
   }, [safePct]);
 
   return (
-    <div className={`flex items-center gap-4 ${isWinner ? "opacity-100" : "opacity-60"}`}>
-      <span className={`text-white font-bold text-xl w-28 text-right shrink-0 ${isWinner ? t.textTeal : ""}`}>
+    <div className={`contents ${isWinner ? "opacity-100" : "opacity-60"}`}>
+      <span className={`text-white font-bold text-xl text-right whitespace-nowrap self-center ${isWinner ? t.textTeal : ""}`}>
         {label}
       </span>
-      <div className="flex-1 relative h-14 bg-[#2a4a8a] rounded-xl overflow-hidden">
+      <div className="relative h-14 bg-[#2a4a8a] rounded-xl overflow-hidden">
         <div
           className={`absolute left-0 top-0 h-full ${color} rounded-xl transition-all duration-1000 ease-out`}
           style={{ width: `${width}%` }}
         />
-        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-white font-black text-xl z-10">
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 font-black text-xl z-10 text-[#081c48]">
           {value}{safePct > 0 ? ` (${Math.round(safePct)}%)` : ""}
         </span>
       </div>
-      <span className="w-16 text-center text-5xl shrink-0">
+      <span className="w-16 text-center text-5xl self-center">
         {isWinner ? <span className={t.textTeal}>✓</span> : null}
       </span>
     </div>
@@ -215,6 +215,16 @@ function Phase1View({ game }: { game: GameState }) {
         </div>
       )}
 
+      {game.prompt!.type === "scale" && (
+        <div className="w-full max-w-2xl mt-2">
+          <div className="flex justify-between mb-2 px-1">
+            <span className={`${t.textMuted} text-3xl font-semibold`}>1 — {game.prompt!.labelLow ?? ""}</span>
+            <span className={`${t.textMuted} text-3xl font-semibold`}>{game.prompt!.labelHigh ?? ""} — 10</span>
+          </div>
+          <div className="h-3 bg-[#2a4a8a] rounded-full" />
+        </div>
+      )}
+
       <div className="flex flex-col items-center gap-3 mt-4">
         <div className="relative">
           <CircleTimer secs={frozenSecs} total={total} />
@@ -247,6 +257,16 @@ function Phase2View({ game }: { game: GameState }) {
           {game.prompt!.text}
         </h2>
       </div>
+
+      {game.prompt!.type === "scale" && (
+        <div className="w-full max-w-2xl">
+          <div className="flex justify-between mb-2 px-1">
+            <span className={`${t.textMuted} text-3xl font-semibold`}>1 — {game.prompt!.labelLow ?? ""}</span>
+            <span className={`${t.textMuted} text-3xl font-semibold`}>{game.prompt!.labelHigh ?? ""} — 10</span>
+          </div>
+          <div className="h-3 bg-[#2a4a8a] rounded-full" />
+        </div>
+      )}
 
       <div className="flex flex-col items-center gap-2">
         <p className="text-[#7a96c8] text-xl">Players are predicting...</p>
@@ -300,7 +320,7 @@ function Phase3View({ game }: { game: GameState }) {
           <span className={t.textTeal}>{yesCount}</span> out of <span className={t.textTeal}>{N}</span> said YES
         </p>
 
-        <div className="flex flex-col gap-4 w-full max-w-2xl mx-auto mt-4">
+        <div className="grid gap-4 w-full max-w-2xl mx-auto mt-4" style={{ gridTemplateColumns: "auto 1fr auto" }}>
           <AnswerBar label="YES" value={yesCount} pct={yesPct} color="bg-[#25a59f]" isWinner={yesCount >= noCount} />
           <AnswerBar label="NO" value={noCount} pct={noPct} color="bg-[#9a3558]" isWinner={noCount > yesCount} />
         </div>
@@ -327,7 +347,7 @@ function Phase3View({ game }: { game: GameState }) {
           </h2>
         </div>
 
-        <div className="flex flex-col gap-4 w-full max-w-2xl mx-auto mt-4">
+        <div className="grid gap-4 w-full max-w-2xl mx-auto mt-4" style={{ gridTemplateColumns: "auto 1fr auto" }}>
           {prompt.options!.map((opt, i) => {
             const count = counts[opt] ?? 0;
             const pct = N > 0 ? (count / N) * 100 : 0;
@@ -362,9 +382,9 @@ function Phase3View({ game }: { game: GameState }) {
       </div>
 
       <div className="max-w-2xl mx-auto w-full mt-4">
-        <div className={`flex justify-between ${t.textMuted} text-sm mb-2 px-1`}>
-          <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
-          <span>6</span><span>7</span><span>8</span><span>9</span><span>10</span>
+        <div className="flex justify-between mb-2 px-1">
+          <span className={`${t.textMuted} text-3xl font-semibold`}>{prompt.labelLow ?? "1"}</span>
+          <span className={`${t.textMuted} text-3xl font-semibold`}>{prompt.labelHigh ?? "10"}</span>
         </div>
         <div className="relative h-14 bg-[#2a4a8a] rounded-2xl overflow-hidden">
           <ScaleBar avg={avg} />
