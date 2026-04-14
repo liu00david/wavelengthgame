@@ -1,14 +1,14 @@
-# Consensus — Points System
+# Scoring System
 
-Points are awarded at the end of **Phase 2** based on how accurately you predicted the group's answer.
+Points are awarded in **Phase 2** based on how close your prediction was to the actual group result. Maximum base score per round is **1,000 points**. There are no points for Phase 1 — that phase is pure input.
 
 ---
 
-## Scoring Formulas
+## Formulas by Question Type
 
 ### Yes / No
 
-Predict how many players said YES (a number from 0 to N).
+Predict how many players (out of N who answered) said YES.
 
 **Formula:** `max(0, round(1000 − 2000 × |guess − actual| / N))`
 
@@ -20,7 +20,7 @@ Predict how many players said YES (a number from 0 to N).
 | Guess 3 or 9 (off by 3) | 400 |
 | Guess 1 or 0 (off by 5+) | 0 |
 
-The penalty scales linearly with your miss distance relative to N.
+Score degrades linearly — you reach 0 when you're off by 50% of N.
 
 ---
 
@@ -38,60 +38,42 @@ Predict the group's average answer (to 1 decimal place).
 | 1.5 | 438 |
 | 2.0 | 0 |
 
-The penalty grows quickly — being off by 2 or more scores 0.
+Score drops steeply — off by 2.0 or more always scores 0.
 
 ---
 
 ### Multiple Choice
 
-Predict which option was most popular. Only correct guesses score points. **Rarer answers score higher** — if everyone picked the same answer, it's worth less.
+Predict which option got the most votes. Wrong guess = 0. Correct guess scores higher when the winning option was less dominant.
 
-**N = number of players who answered Phase 1.**
-
-**Formula (correct guess only):** `max(0, round(1125 − 500 × votes_for_winner / N))`
+**Formula (correct only):** `max(0, round(1125 − 500 × winner_votes / N))`
 
 | Winner vote share | Score |
 |-------------------|-------|
-| 25% of answerers (minority) | 1000 |
-| 50% of answerers | 875 |
-| 75% of answerers | 750 |
-| 100% of answerers | 625 |
+| 25% (minority winner) | ~1000 |
+| 50% | 875 |
+| 75% | 750 |
+| 100% (unanimous) | 625 |
 
-> Ties: if two answers are equally popular, predicting either one counts as correct (using that option's vote count).
+Ties: if multiple options tie for most votes, predicting any tied winner counts as correct.
 
 ---
 
 ## Double Down
 
-During Phase 2, players can optionally Double Down before submitting.
+Each player has **one Double Down** per game, usable in Phase 2 before submitting.
 
-- **Score ≥ 750:** score × 2
-- **Score < 750:** score = 0
+| Outcome | Points |
+|---------|--------|
+| Any non-zero base score | **2× base score** |
+| Score would be 0 | **0 points** |
 
-Double Down is all-or-nothing — only use it when you're confident.
-
----
-
-## Round Multiplier
-
-Points scale up in later rounds to create comeback opportunities.
-
-| Rounds | Multiplier |
-|--------|------------|
-| 1–4 | 1× |
-| 5–8 | 1.5× |
-| 9+ | 3× |
-
-The multiplier is applied after Double Down.
+Once used, it's gone for the rest of the game. Use it when you're confident — a wrong prediction wastes it entirely.
 
 ---
 
-## Example Round
+## Notes
 
-10 players, round 6 (1.5× multiplier). Question: "Would you rather live alone in the woods for a year?" — 6 said YES.
-
-- Player A guessed **6** → `1000 − 2000×0/10 = 1000` × 1.5 = **1500 pts**
-- Player B guessed **5** (off by 1) → `1000 − 2000×1/10 = 800` × 1.5 = **1200 pts**
-- Player C guessed **5** with Double Down → 800 ≥ 750 → `800 × 2 = 1600` × 1.5 = **2400 pts**
-- Player D guessed **2** (off by 4) → `1000 − 2000×4/10 = 200` × 1.5 = **300 pts**
-- Player E guessed **0** (off by 6) → `1000 − 2000×6/10 = −200 → 0` × 1.5 = **0 pts**
+- N is always the number of players who actually answered Phase 1 that round (not total players in lobby)
+- If nobody answers Phase 1, the round is skipped and no points are awarded
+- Leaderboard uses **dense ranking** — tied players share a rank (e.g. two players tied at 1st, next player is 2nd)

@@ -190,6 +190,7 @@ function CountdownOverlay({ onDone }: { onDone: () => void }) {
 function Phase1View({ game }: { game: GameState }) {
   const total = game.phase1Duration;
   const countdown = useCountdown(game.phaseEndsAt);
+  const frozenSecs = game.paused ? (game.pausedTimeRemaining ?? 0) / 1000 : countdown;
 
   return (
     <div className="flex flex-col items-center justify-center flex-1 gap-8 px-8 text-center">
@@ -215,13 +216,15 @@ function Phase1View({ game }: { game: GameState }) {
       )}
 
       <div className="flex flex-col items-center gap-3 mt-4">
-        {game.paused ? (
-          <div className="flex flex-col items-center gap-2">
-            <span className={`text-4xl font-black ${t.textYellow} animate-pulse`}>⏸ PAUSED</span>
-          </div>
-        ) : (
-          <CircleTimer secs={countdown} total={total} />
-        )}
+        <div className="relative">
+          <CircleTimer secs={frozenSecs} total={total} />
+          {game.paused && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className={`text-3xl font-black ${t.textYellow} animate-pulse`}>⏸</span>
+            </div>
+          )}
+        </div>
+        <p className="text-[#7a96c8] text-xl">Players are answering...</p>
         <p className={`${t.textMuted} text-lg`}>
           <span className="text-white font-bold">{game.answeredCount}</span> / <span className="text-white font-bold">{game.N}</span> answered
         </p>
@@ -233,11 +236,12 @@ function Phase1View({ game }: { game: GameState }) {
 function Phase2View({ game }: { game: GameState }) {
   const total = game.phase2Duration;
   const countdown = useCountdown(game.phaseEndsAt);
+  const frozenSecs = game.paused ? (game.pausedTimeRemaining ?? 0) / 1000 : countdown;
 
   return (
     <div className="flex flex-col items-center justify-center flex-1 gap-8 px-8 text-center">
       <div className="flex flex-col items-center gap-2">
-        <span className={`${t.textCyan} text-sm font-bold uppercase tracking-widest`}>What did the room say?</span>
+        <span className={`${t.textCyan} text-3xl font-bold uppercase tracking-widest`}>What did the room say?</span>
         <PromptTypeIcon type={game.prompt!.type} />
         <h2 className="text-4xl font-semibold text-white leading-tight max-w-4xl mt-2">
           {game.prompt!.text}
@@ -246,14 +250,16 @@ function Phase2View({ game }: { game: GameState }) {
 
       <div className="flex flex-col items-center gap-2">
         <p className="text-[#7a96c8] text-xl">Players are predicting...</p>
-        <p className={`${t.textMuted} text-base`}>Double Down available on your phone</p>
       </div>
 
-      {game.paused ? (
-        <span className={`text-4xl font-black ${t.textYellow} animate-pulse`}>⏸ PAUSED</span>
-      ) : (
-        <CircleTimer secs={countdown} total={total} />
-      )}
+      <div className="relative">
+        <CircleTimer secs={frozenSecs} total={total} />
+        {game.paused && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className={`text-3xl font-black ${t.textYellow} animate-pulse`}>⏸</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -551,14 +557,14 @@ function EndedView({ game }: { game: GameState }) {
       </div>
 
       {/* Podium */}
-      <div className="flex items-end justify-center gap-4 mt-2">
-        <div className="flex flex-col items-center flex-1 min-w-0">
+      <div className="flex items-end justify-center gap-1 mt-2">
+        <div className="flex flex-col items-center w-40 min-w-0">
           {leftSlot && <TVPodiumSlot p={leftSlot} />}
         </div>
-        <div className="flex flex-col items-center flex-1 min-w-0">
+        <div className="flex flex-col items-center w-40 min-w-0">
           {centerSlot && <TVPodiumSlot p={centerSlot} />}
         </div>
-        <div className="flex flex-col items-center flex-1 min-w-0">
+        <div className="flex flex-col items-center w-40 min-w-0">
           {rightSlot && <TVPodiumSlot p={rightSlot} />}
         </div>
       </div>
@@ -683,7 +689,7 @@ export default function TVGamePage() {
       </div>
 
       {/* Content */}
-      <div className="relative z-10 flex flex-col flex-1">
+      <div className="relative z-10 flex flex-col flex-1 pt-6">
         {!gameState || phase === "lobby" || phase === "countdown" ? (
           <div className="flex flex-col items-center justify-center flex-1 text-center">
             <p className={`${t.textTeal} text-3xl font-black animate-pulse`}>Waiting for game to start...</p>

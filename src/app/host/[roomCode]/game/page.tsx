@@ -246,16 +246,16 @@ export default function HostGamePage() {
           )}
 
           {/* Smooth timer bar */}
-          {gameState?.phaseEndsAt && (phase === "phase1" || phase === "phase2") && (
+          {(phase === "phase1" || phase === "phase2") && (gameState?.phaseEndsAt || gameState?.paused) && (
             <div className="flex items-center gap-3">
               <div className="flex-1 bg-[#1a3580] rounded-full h-2 overflow-hidden">
                 <div
-                  className={`h-2 rounded-full transition-none ${timerUrgent ? "bg-[#c94f7a]" : "bg-[#7862FF]"}`}
-                  style={{ width: `${timerPct}%` }}
+                  className={`h-2 rounded-full transition-none ${timerUrgent ? "bg-[#c94f7a]" : gameState?.paused ? "bg-[#f6dc53]" : "bg-[#7862FF]"}`}
+                  style={{ width: `${gameState?.paused ? (((gameState.pausedTimeRemaining ?? 0) / 1000) / totalSecs) * 100 : timerPct}%` }}
                 />
               </div>
-              <span className={`${timerUrgent ? "text-[#c94f7a]" : t.textYellow} font-mono font-bold text-lg w-10 text-right`}>
-                {Math.ceil(countdown)}s
+              <span className={`${gameState?.paused ? t.textYellow : timerUrgent ? "text-[#c94f7a]" : t.textYellow} font-mono font-bold text-lg w-20 text-right`}>
+                {gameState?.paused ? `⏸ ${Math.ceil((gameState.pausedTimeRemaining ?? 0) / 1000)}s` : `${Math.ceil(countdown)}s`}
               </span>
             </div>
           )}

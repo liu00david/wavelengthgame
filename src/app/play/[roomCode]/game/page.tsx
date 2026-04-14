@@ -186,8 +186,17 @@ function DoubleDownToggle({ active, onToggle, disabled }: { active: boolean; onT
       className={`w-full py-4 rounded-2xl font-black text-xl transition-all active:scale-95 shadow ${
         active ? "bg-[#f6dc53] text-[#081c48]" : `${t.btnGhost} text-[#7a96c8]`
       } ${disabled ? "opacity-40" : ""}`}>
-      {active ? "Double Down On!" : "Double Down? (One Time Use)"}
-      {active && <p className="text-[#081c48]/70 text-sm font-semibold mt-0.5">Get x2 points if correct</p>}
+      {active ? (
+        <>
+          Double Down On!
+          <p className="text-[#081c48]/70 text-sm font-semibold mt-0.5">Get x2 points if correct</p>
+        </>
+      ) : (
+        <>
+          Double Down?
+          <p className={`text-sm font-semibold mt-0.5 ${disabled ? "" : "text-[#7a96c8]/70"}`}>One Time Use</p>
+        </>
+      )}
     </button>
   );
 }
@@ -225,7 +234,8 @@ function Phase1View({ game, onSubmit, submitted }: {
   const countdown = useCountdown(game.phaseEndsAt);
   const prompt = game.prompt!;
   const totalTime = game.phase1Duration;
-  const displaySecs = Math.ceil(countdown);
+  const frozenSecs = game.paused ? (game.pausedTimeRemaining ?? 0) / 1000 : countdown;
+  const displaySecs = Math.ceil(frozenSecs);
 
   if (submitted) {
     return (
@@ -250,9 +260,9 @@ function Phase1View({ game, onSubmit, submitted }: {
         <p className="text-white text-2xl font-bold leading-snug">{prompt.text}</p>
       </div>
       <div>
-        <TimerBar secs={countdown} total={totalTime} />
+        <TimerBar secs={frozenSecs} total={totalTime} />
         <p className={`text-xl mt-1 text-right font-mono ${game.paused ? `${t.textYellow} animate-pulse` : t.textFaint}`}>
-          {game.paused ? "⏸ Paused" : `${displaySecs}s`}
+          {game.paused ? `⏸ ${displaySecs}s` : `${displaySecs}s`}
         </p>
       </div>
       {prompt.type === "binary" && <BinaryInput onSubmit={onSubmit} disabled={submitted} />}
@@ -271,7 +281,8 @@ function Phase2View({ game, nickname, onSubmit, submitted }: {
   const [doubleDown, setDoubleDown] = useState(false);
   const prompt = game.prompt!;
   const totalTime = game.phase2Duration;
-  const displaySecs = Math.ceil(countdown);
+  const frozenSecs = game.paused ? (game.pausedTimeRemaining ?? 0) / 1000 : countdown;
+  const displaySecs = Math.ceil(frozenSecs);
   const canDoubleDown = !(game.doubleDownUsed ?? []).includes(nickname);
 
   function handleSubmit(val: string | number) { onSubmit(val, doubleDown); }
@@ -298,9 +309,9 @@ function Phase2View({ game, nickname, onSubmit, submitted }: {
         <p className="text-white text-2xl font-bold leading-snug">{prompt.text}</p>
       </div>
       <div>
-        <TimerBar secs={countdown} total={totalTime} color="bg-[#4dd9d2]" />
+        <TimerBar secs={frozenSecs} total={totalTime} color="bg-[#4dd9d2]" />
         <p className={`text-base mt-1 text-right ${game.paused ? `${t.textYellow} animate-pulse` : t.textFaint}`}>
-          {game.paused ? "⏸ Paused" : `${displaySecs}s`}
+          {game.paused ? `⏸ ${displaySecs}s` : `${displaySecs}s`}
         </p>
       </div>
       {prompt.type === "binary" && (

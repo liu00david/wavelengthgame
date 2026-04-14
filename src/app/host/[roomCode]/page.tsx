@@ -26,7 +26,7 @@ function PlayerAvatar({ player, disconnected }: { player: Player; disconnected: 
 
 const HOST_SESSION_KEY = "consensus_host_session";
 
-const QUESTION_OPTIONS = [5, 10, 15, 20];
+const QUESTION_OPTIONS = [5, 10, 15, 20, 25];
 const TIME_OPTIONS = [15, 20, 30, 45, 60];
 
 function SettingRow({ label, value, options, onChange }: {
@@ -37,13 +37,13 @@ function SettingRow({ label, value, options, onChange }: {
 }) {
   return (
     <div className="flex items-center justify-between gap-4">
-      <span className="text-white text-base font-medium">{label}</span>
+      <span className="text-white text-base font-medium whitespace-nowrap">{label}</span>
       <div className="flex gap-2">
         {options.map((opt) => (
           <button
             key={opt}
             onClick={() => onChange(opt)}
-            className={`px-4 py-2 rounded-lg text-base font-bold transition-all ${
+            className={`w-12 py-2 rounded-lg text-base font-bold transition-all ${
               value === opt
                 ? "bg-[#7862FF] text-white"
                 : `${t.btnGhost} ${t.textMuted}`

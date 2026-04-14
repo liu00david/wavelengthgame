@@ -10,6 +10,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ cod
     const data = await res.json();
     return NextResponse.json(data);
   } catch {
-    return NextResponse.json({ exists: false }, { status: 502 });
+    return NextResponse.json({ error: "upstream_unavailable" }, { status: 502 });
   }
 }

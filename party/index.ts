@@ -107,7 +107,11 @@ const PROMPTS: Prompt[] = [
 ];
 
 function getPromptsForGame(n: number): Prompt[] {
-  const shuffled = [...PROMPTS].sort(() => Math.random() - 0.5);
+  const shuffled = [...PROMPTS];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
   return shuffled.slice(0, Math.min(n, shuffled.length));
 }
 
@@ -465,6 +469,7 @@ export default class GameServer implements Party.Server {
   }
 
   onMessage(message: string, sender: Party.Connection) {
+    if (message.length > 1024) return;
     let msg: ClientMessage;
     try {
       msg = JSON.parse(message) as ClientMessage;
@@ -513,7 +518,7 @@ export default class GameServer implements Party.Server {
       const playerIsHost = joiningAsHost || isFirst;
       this.lobby.players.push({
         id: sender.id,
-        nickname: msg.nickname,
+        nickname: msg.nickname.trim(),
         isHost: playerIsHost,
       });
       if (playerIsHost) this.hasHost = true;
