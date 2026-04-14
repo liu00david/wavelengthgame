@@ -93,7 +93,7 @@ export default function TVPage() {
         </div>
         <div className="text-right">
           <p className={`${t.textMuted} text-sm sm:text-lg uppercase tracking-widest`}>Room Code</p>
-          <div className={`text-4xl sm:text-7xl font-black text-white font-mono tracking-widest drop-shadow-2xl`}>
+          <div className={`text-4xl sm:text-7xl font-black ${t.textYellow} font-mono tracking-widest drop-shadow-2xl`}>
             {roomCode}
           </div>
         </div>
