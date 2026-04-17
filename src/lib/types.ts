@@ -20,6 +20,7 @@ export type Prompt = {
 
 export type GamePhase =
   | "lobby"
+  | "question_submission"
   | "countdown"
   | "phase1"
   | "phase2"
@@ -63,6 +64,8 @@ export type GameState = {
   doubleDownUsed: string[]; // nicknames who have already used their one double down
   paused: boolean;
   pausedTimeRemaining: number | null; // ms remaining when paused
+  submittedQuestionCount: number;
+  mode: "game_questions" | "player_questions";
 };
 
 export type ServerMessage =
@@ -73,13 +76,14 @@ export type ServerMessage =
   | { type: "kicked" }
   | { type: "disbanded" }
   | { type: "duplicate_tab" }
-  | { type: "nickname_taken" };
+  | { type: "nickname_taken" }
+  | { type: "question_received"; question: { id: string; text: string; type: "binary" | "multiple_choice" | "scale"; options?: string[]; labelLow?: string; labelHigh?: string; submittedBy: string } };
 
 export type ClientMessage =
   | { type: "join"; nickname: string; isHost?: boolean }
   | { type: "rejoin"; nickname: string }
   | { type: "lock" }
-  | { type: "start_game"; numQuestions: number; phase1Time: number; phase2Time: number }
+  | { type: "start_game"; numQuestions: number; phase1Time: number; phase2Time: number; mode: "game_questions" | "player_questions" }
   | { type: "submit_answer"; answer: string | number }
   | { type: "submit_prediction"; prediction: string | number; doubleDown: boolean }
   | { type: "next_round" } // host only
@@ -92,4 +96,6 @@ export type ClientMessage =
   | { type: "set_emoji"; emoji: string }
   | { type: "leave" } // player voluntarily leaves lobby
   | { type: "pause_timer" } // host only — pause current phase timer
-  | { type: "resume_timer" }; // host only — resume current phase timer
+  | { type: "resume_timer" } // host only — resume current phase timer
+  | { type: "submit_question"; text: string; questionType: "binary" | "multiple_choice" | "scale"; options?: string[]; labelLow?: string; labelHigh?: string }
+  | { type: "begin_game" }; // host only — start countdown after question_submission phase

@@ -187,6 +187,21 @@ function CountdownOverlay({ onDone }: { onDone: () => void }) {
   );
 }
 
+function QuestionSubmissionView({ game }: { game: GameState }) {
+  return (
+    <div className="flex flex-col items-center justify-center flex-1 gap-6 text-center px-8">
+      <p className={`${t.textCyan} text-2xl font-bold uppercase tracking-widest`}>Players are submitting questions</p>
+      <div className="flex items-baseline gap-3">
+        <span className={`font-black ${t.textYellow}`} style={{ fontSize: "10rem", lineHeight: 1 }}>
+          {game.submittedQuestionCount}
+        </span>
+        <span className="text-white font-black text-5xl">/ {game.totalRounds}</span>
+      </div>
+      <p className={`${t.textMuted} text-xl`}>questions submitted</p>
+    </div>
+  );
+}
+
 function Phase1View({ game }: { game: GameState }) {
   const total = game.phase1Duration;
   const countdown = useCountdown(game.phaseEndsAt);
@@ -696,10 +711,12 @@ export default function TVGamePage() {
         </div>
         {gameState && (
           <div className="flex items-center gap-4 sm:gap-8">
-            <div className="text-center">
-              <p className={`${t.textFaint} text-sm uppercase tracking-widest`}>Round</p>
-              <p className="text-white font-black text-xl xl:text-3xl leading-tight">{gameState.round}<span className={`${t.textFaint} text-base xl:text-xl`}> / {gameState.totalRounds}</span></p>
-            </div>
+            {gameState.phase !== "question_submission" && (
+              <div className="text-center">
+                <p className={`${t.textFaint} text-sm uppercase tracking-widest`}>Round</p>
+                <p className="text-white font-black text-xl xl:text-3xl leading-tight">{gameState.round}<span className={`${t.textFaint} text-base xl:text-xl`}> / {gameState.totalRounds}</span></p>
+              </div>
+            )}
             <div className="text-center">
               <p className={`${t.textFaint} text-sm uppercase tracking-widest`}>Room</p>
               <p className={`${t.textYellow} font-black text-xl xl:text-3xl font-mono leading-tight`}>{roomCode}</p>
@@ -714,6 +731,8 @@ export default function TVGamePage() {
           <div className="flex flex-col items-center justify-center flex-1 text-center">
             <p className={`${t.textTeal} text-3xl font-black animate-pulse`}>Waiting for game to start...</p>
           </div>
+        ) : phase === "question_submission" ? (
+          <QuestionSubmissionView game={gameState} />
         ) : phase === "phase1" ? (
           <Phase1View game={gameState} />
         ) : phase === "phase2" ? (

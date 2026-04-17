@@ -13,7 +13,7 @@ type Prompt = {
   labelHigh?: string;
 };
 
-type GamePhase = "lobby" | "countdown" | "phase1" | "phase2" | "phase3" | "leaderboard" | "ended";
+type GamePhase = "lobby" | "question_submission" | "countdown" | "phase1" | "phase2" | "phase3" | "leaderboard" | "ended";
 
 type PlayerScore = {
   nickname: string;
@@ -50,13 +50,15 @@ type GameState = {
   doubleDownUsed: string[];
   paused: boolean;
   pausedTimeRemaining: number | null; // ms remaining when paused
+  submittedQuestionCount: number;
+  mode: "game_questions" | "player_questions";
 };
 
 type ClientMessage =
   | { type: "join"; nickname: string; isHost?: boolean }
   | { type: "rejoin"; nickname: string }
   | { type: "lock" }
-  | { type: "start_game"; numQuestions: number; phase1Time: number; phase2Time: number }
+  | { type: "start_game"; numQuestions: number; phase1Time: number; phase2Time: number; mode: "game_questions" | "player_questions" }
   | { type: "submit_answer"; answer: string | number }
   | { type: "submit_prediction"; prediction: string | number; doubleDown: boolean }
   | { type: "next_round" }
@@ -69,7 +71,9 @@ type ClientMessage =
   | { type: "set_emoji"; emoji: string }
   | { type: "leave" }
   | { type: "pause_timer" }
-  | { type: "resume_timer" };
+  | { type: "resume_timer" }
+  | { type: "submit_question"; text: string; questionType: "binary" | "multiple_choice" | "scale"; options?: string[]; labelLow?: string; labelHigh?: string }
+  | { type: "begin_game" };
 
 // Inline prompt bank (mirrors src/lib/prompts.ts)
 const PROMPTS: Prompt[] = [
@@ -145,6 +149,15 @@ function getPromptsForGame(n: number): Prompt[] {
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
   return shuffled.slice(0, Math.min(n, shuffled.length));
+}
+
+function shuffleArray<T>(arr: T[]): T[] {
+  const shuffled = [...arr];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
 }
 
 
@@ -280,7 +293,10 @@ export default class GameServer implements Party.Server {
     doubleDownUsed: [],
     paused: false,
     pausedTimeRemaining: null,
+    submittedQuestionCount: 0,
+    mode: "game_questions",
   };
+  private submittedQuestions: Prompt[] = [];
   private prompts: Prompt[] = [];
   private phase1Answers: Map<string, string | number> = new Map();
   private phase2Predictions: Map<string, string | number> = new Map();
@@ -501,7 +517,7 @@ export default class GameServer implements Party.Server {
   }
 
   onMessage(message: string, sender: Party.Connection) {
-    if (message.length > 1024) return;
+    if (message.length > 2048) return;
     let msg: ClientMessage;
     try {
       msg = JSON.parse(message) as ClientMessage;
@@ -642,6 +658,37 @@ export default class GameServer implements Party.Server {
       const totalRounds = Math.min(msg.numQuestions, PROMPTS.length);
       const phase1Duration = Math.max(10, Math.min(60, msg.phase1Time));
       const phase2Duration = Math.max(10, Math.min(60, msg.phase2Time));
+      const mode = msg.mode ?? "game_questions";
+
+      if (mode === "player_questions") {
+        this.submittedQuestions = [];
+        this.totalScores.clear();
+        this.lobby.locked = true;
+        this.game = {
+          phase: "question_submission",
+          round: 0,
+          totalRounds,
+          prompt: null,
+          phaseEndsAt: null,
+          phase1Duration,
+          phase2Duration,
+          roundResult: null,
+          leaderboard: [],
+          N: playerCount,
+          phase1AnsweredCount: 0,
+          phase1AnsweredNicknames: [],
+          answeredCount: 0,
+          answeredNicknames: [],
+          doubleDownUsed: [],
+          paused: false,
+          pausedTimeRemaining: null,
+          submittedQuestionCount: 0,
+          mode: "player_questions",
+        };
+        this.broadcastGame();
+        return;
+      }
+
       this.prompts = getPromptsForGame(totalRounds);
       this.totalScores.clear();
 
@@ -660,6 +707,83 @@ export default class GameServer implements Party.Server {
         roundResult: null,
         leaderboard: [],
         N: playerCount,
+        phase1AnsweredCount: 0,
+        phase1AnsweredNicknames: [],
+        answeredCount: 0,
+        answeredNicknames: [],
+        doubleDownUsed: [],
+        paused: false,
+        pausedTimeRemaining: null,
+        submittedQuestionCount: 0,
+        mode: "game_questions",
+      };
+      this.broadcastGame();
+
+      this.clearTimer();
+      this.phaseTimer = setTimeout(() => this.startPhase1(), 6000);
+      return;
+    }
+
+    if (msg.type === "submit_question") {
+      if (this.game.phase !== "question_submission") return;
+      const senderPlayer = this.lobby.players.find((p) => p.id === sender.id);
+      if (!senderPlayer) return;
+      const nickname = senderPlayer.isHost ? "Host" : senderPlayer.nickname;
+
+      // Validate
+      const text = msg.text?.trim() ?? "";
+      if (!text || text.length > 300) return;
+      const validTypes = ["binary", "multiple_choice", "scale"] as const;
+      if (!validTypes.includes(msg.questionType)) return;
+      if (msg.questionType === "multiple_choice") {
+        if (!Array.isArray(msg.options) || msg.options.length !== 4) return;
+        if (msg.options.some((o) => !o || !String(o).trim())) return;
+      }
+
+      const id = "pq_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7);
+      const prompt: Prompt = {
+        id,
+        text,
+        type: msg.questionType,
+        ...(msg.questionType === "multiple_choice" ? { options: msg.options!.map((o) => String(o).trim()) } : {}),
+        ...(msg.questionType === "scale" && msg.labelLow ? { labelLow: msg.labelLow } : {}),
+        ...(msg.questionType === "scale" && msg.labelHigh ? { labelHigh: msg.labelHigh } : {}),
+      };
+
+      this.submittedQuestions.push(prompt);
+      this.game = { ...this.game, submittedQuestionCount: this.submittedQuestions.length };
+      this.broadcastGame();
+
+      // Send privately to host
+      const hostPlayer = this.lobby.players.find((p) => p.isHost);
+      if (hostPlayer) {
+        const hostConn = this.room.getConnection(hostPlayer.id);
+        if (hostConn) {
+          hostConn.send(JSON.stringify({
+            type: "question_received",
+            question: { ...prompt, submittedBy: nickname },
+          }));
+        }
+      }
+      return;
+    }
+
+    if (msg.type === "begin_game") {
+      const player = this.lobby.players.find((p) => p.id === sender.id);
+      if (!player?.isHost) return;
+      if (this.game.phase !== "question_submission") return;
+      if (this.submittedQuestions.length < this.game.totalRounds) return;
+
+      this.prompts = shuffleArray(this.submittedQuestions).slice(0, this.game.totalRounds);
+      this.totalScores.clear();
+      this.lobby.players
+        .filter((p) => !p.isHost)
+        .forEach((p) => this.totalScores.set(p.nickname, 0));
+
+      this.game = {
+        ...this.game,
+        phase: "countdown",
+        round: 1,
         phase1AnsweredCount: 0,
         phase1AnsweredNicknames: [],
         answeredCount: 0,
@@ -758,12 +882,14 @@ export default class GameServer implements Party.Server {
       if (!player?.isHost) return;
       this.hasHost = false;
       this.clearTimer();
+      this.submittedQuestions = [];
       // Reset state so room appears gone
       this.lobby = { players: [], locked: false, N: 0, disconnectedNicknames: [] };
       this.game = {
         phase: "lobby", round: 0, totalRounds: 10,
         prompt: null, phaseEndsAt: null, phase1Duration: 25, phase2Duration: 20,
         roundResult: null, leaderboard: [], N: 0, phase1AnsweredCount: 0, phase1AnsweredNicknames: [], answeredCount: 0, answeredNicknames: [], doubleDownUsed: [], paused: false, pausedTimeRemaining: null,
+        submittedQuestionCount: 0, mode: "game_questions",
       };
       this.room.broadcast(JSON.stringify({ type: "disbanded" }));
       return;
@@ -802,6 +928,8 @@ export default class GameServer implements Party.Server {
         doubleDownUsed: [],
         paused: false,
         pausedTimeRemaining: null,
+        submittedQuestionCount: 0,
+        mode: "game_questions",
       };
       this.startPhase1();
       return;
@@ -811,12 +939,14 @@ export default class GameServer implements Party.Server {
       const player = this.lobby.players.find((p) => p.id === sender.id);
       if (!player?.isHost) return;
       this.clearTimer();
+      this.submittedQuestions = [];
       this.lobby.locked = false;
       this.lobby.N = this.lobby.players.length;
       this.game = {
         phase: "lobby", round: 0, totalRounds: 10,
         prompt: null, phaseEndsAt: null, phase1Duration: 25, phase2Duration: 20,
         roundResult: null, leaderboard: [], N: 0, phase1AnsweredCount: 0, phase1AnsweredNicknames: [], answeredCount: 0, answeredNicknames: [], doubleDownUsed: [], paused: false, pausedTimeRemaining: null,
+        submittedQuestionCount: 0, mode: "game_questions",
       };
       this.broadcastLobby();
       this.room.broadcast(JSON.stringify({ type: "game", game: this.game }));
@@ -946,11 +1076,13 @@ export default class GameServer implements Party.Server {
         // Host timed out — disband the room
         this.hasHost = false;
         this.clearTimer();
+        this.submittedQuestions = [];
         this.lobby = { players: [], locked: false, N: 0, disconnectedNicknames: [] };
         this.game = {
           phase: "lobby", round: 0, totalRounds: 10,
           prompt: null, phaseEndsAt: null, phase1Duration: 25, phase2Duration: 20,
           roundResult: null, leaderboard: [], N: 0, phase1AnsweredCount: 0, phase1AnsweredNicknames: [], answeredCount: 0, answeredNicknames: [], doubleDownUsed: [], paused: false, pausedTimeRemaining: null,
+          submittedQuestionCount: 0, mode: "game_questions",
         };
         this.room.broadcast(JSON.stringify({ type: "disbanded" }));
       } else {

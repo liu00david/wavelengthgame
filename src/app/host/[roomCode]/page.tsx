@@ -64,6 +64,7 @@ function HostContent({ roomCode }: { roomCode: string }) {
   const [numQuestions, setNumQuestions] = useState(10);
   const [phase1Time, setPhase1Time] = useState(30);
   const [phase2Time, setPhase2Time] = useState(45);
+  const [gameMode, setGameMode] = useState<"game_questions" | "player_questions">("game_questions");
 
   // Menu state
   type MenuState = "closed" | "main" | "kick" | "disband_confirm";
@@ -111,9 +112,10 @@ function HostContent({ roomCode }: { roomCode: string }) {
     sessionStorage.setItem(`${roomCode}_numQ`, String(numQuestions));
     sessionStorage.setItem(`${roomCode}_p1t`, String(phase1Time));
     sessionStorage.setItem(`${roomCode}_p2t`, String(phase2Time));
+    sessionStorage.setItem(`${roomCode}_mode`, gameMode);
     sessionStorage.setItem(`${roomCode}_started`, "1");
     sendMsg({ type: "lock" });
-    sendMsg({ type: "start_game", numQuestions, phase1Time, phase2Time });
+    sendMsg({ type: "start_game", numQuestions, phase1Time, phase2Time, mode: gameMode });
     router.push(`/host/${roomCode}/game`);
   }
 
@@ -285,6 +287,31 @@ function HostContent({ roomCode }: { roomCode: string }) {
               options={TIME_OPTIONS}
               onChange={setPhase2Time}
             />
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-white text-base font-medium whitespace-nowrap">Game Mode</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setGameMode("game_questions")}
+                  className={`w-40 py-2 rounded-lg text-base font-bold transition-all ${
+                    gameMode === "game_questions"
+                      ? "bg-[#7862FF] text-white"
+                      : `${t.btnGhost} ${t.textMuted}`
+                  }`}
+                >
+                  Game Questions
+                </button>
+                <button
+                  onClick={() => setGameMode("player_questions")}
+                  className={`w-40 py-2 rounded-lg text-base font-bold transition-all ${
+                    gameMode === "player_questions"
+                      ? "bg-[#7862FF] text-white"
+                      : `${t.btnGhost} ${t.textMuted}`
+                  }`}
+                >
+                  Player Questions
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 

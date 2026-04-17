@@ -34,20 +34,20 @@ function TimerBar({ secs, total, color = "bg-[#7862FF]" }: { secs: number; total
 // ---- Binary Input ----
 function BinaryInput({ onSubmit, disabled }: { onSubmit: (val: string) => void; disabled: boolean }) {
   return (
-    <div className="flex flex-col gap-4 w-full">
-      <button
-        onClick={() => !disabled && onSubmit("yes")}
-        disabled={disabled}
-        className="w-full py-8 rounded-2xl bg-[#25a59f] hover:bg-[#1d8c87] active:scale-95 disabled:opacity-40 transition-all text-white text-4xl font-black shadow-xl"
-      >
-        YES
-      </button>
+    <div className="flex gap-4 w-full">
       <button
         onClick={() => !disabled && onSubmit("no")}
         disabled={disabled}
-        className="w-full py-8 rounded-2xl bg-[#9a3558] hover:bg-[#7e2b47] active:scale-95 disabled:opacity-40 transition-all text-white text-4xl font-black shadow-xl"
+        className="flex-1 py-5 rounded-2xl bg-[#9a3558] hover:bg-[#7e2b47] active:scale-95 disabled:opacity-40 transition-all text-white text-3xl font-black shadow-xl"
       >
         NO
+      </button>
+      <button
+        onClick={() => !disabled && onSubmit("yes")}
+        disabled={disabled}
+        className="flex-1 py-5 rounded-2xl bg-[#25a59f] hover:bg-[#1d8c87] active:scale-95 disabled:opacity-40 transition-all text-white text-3xl font-black shadow-xl"
+      >
+        YES
       </button>
     </div>
   );
@@ -583,6 +583,160 @@ function EndedView({ game, nickname }: { game: GameState; nickname: string }) {
   );
 }
 
+// ---- Question Submission View ----
+function QuestionSubmissionView({ onSubmit }: { onSubmit: (q: { text: string; questionType: "binary" | "multiple_choice" | "scale"; options?: string[]; labelLow?: string; labelHigh?: string }) => void }) {
+  const [qType, setQType] = useState<"binary" | "multiple_choice" | "scale">("binary");
+  const [qText, setQText] = useState("");
+  const [qOptions, setQOptions] = useState<[string, string, string, string]>(["", "", "", ""]);
+  const [qLabelLow, setQLabelLow] = useState("");
+  const [qLabelHigh, setQLabelHigh] = useState("");
+  const [submittedCount, setSubmittedCount] = useState(0);
+  const [flashSuccess, setFlashSuccess] = useState(false);
+
+  const typeDescriptions: Record<string, string> = {
+    binary: "Players answer Yes or No",
+    scale: "Players rate from 1 to 10",
+    multiple_choice: "Players choose one of four options",
+  };
+
+  const trimmedOptions = qOptions.map((o) => o.trim());
+  const hasDuplicateMC = qType === "multiple_choice" && trimmedOptions.some((o, i) => o.length > 0 && trimmedOptions.indexOf(o) !== i);
+  const isValid = qText.trim().length > 0 && (qType !== "multiple_choice" || (qOptions.every((o) => o.trim().length > 0) && !hasDuplicateMC));
+
+  function handleSubmit() {
+    if (!isValid) return;
+    const payload: Parameters<typeof onSubmit>[0] = { text: qText.trim(), questionType: qType };
+    if (qType === "multiple_choice") payload.options = qOptions.map((o) => o.trim());
+    if (qType === "scale") {
+      if (qLabelLow.trim()) payload.labelLow = qLabelLow.trim();
+      if (qLabelHigh.trim()) payload.labelHigh = qLabelHigh.trim();
+    }
+    onSubmit(payload);
+    setSubmittedCount((c) => c + 1);
+    setFlashSuccess(true);
+    setQText("");
+    setQOptions(["", "", "", ""]);
+    setQLabelLow("");
+    setQLabelHigh("");
+    setTimeout(() => setFlashSuccess(false), 2000);
+  }
+
+  return (
+    <div className="flex flex-col gap-5 px-5 py-6">
+      <div className="text-center">
+        <p className={`${t.textCyan} text-xl uppercase tracking-widest mb-1`}>Submit a Question</p>
+        <p className={`${t.textMuted} text-base`}>Help build the question pool for this round!</p>
+      </div>
+
+      {/* Type selector */}
+      <div className="flex flex-col gap-2">
+        <p className={`${t.textMuted} text-sm uppercase tracking-widest`}>Question Type</p>
+        <div className="flex gap-2">
+          {(["binary", "scale", "multiple_choice"] as const).map((type) => (
+            <button
+              key={type}
+              onClick={() => setQType(type)}
+              className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
+                qType === type ? "bg-[#7862FF] text-white" : `${t.btnGhost} ${t.textMuted}`
+              }`}
+            >
+              {type === "binary" ? "Yes/No" : type === "scale" ? "Scale" : "Multi"}
+            </button>
+          ))}
+        </div>
+        <p className={`${t.textFaint} text-sm`}>{typeDescriptions[qType]}</p>
+      </div>
+
+      {/* Question text */}
+      <div className="flex flex-col gap-2">
+        <p className={`${t.textMuted} text-sm uppercase tracking-widest`}>Question</p>
+        <input
+          type="text"
+          value={qText}
+          onChange={(e) => setQText(e.target.value)}
+          placeholder={qType === "binary" ? "Have you drank soda today?" : qType === "scale" ? "How much do you enjoy rock music?" : "What's your favorite pizza topping?"}
+          maxLength={60}
+          className={`w-full px-4 py-3 rounded-xl bg-[#0f2660] border border-[#2a4a8a] text-white text-base placeholder:italic placeholder:text-[#3a5a9a] outline-none focus:border-[#7862FF]`}
+        />
+      </div>
+
+      {/* Scale labels */}
+      {qType === "scale" && (
+        <div className="flex flex-col gap-2">
+          <p className={`${t.textMuted} text-sm uppercase tracking-widest`}>Labels (optional)</p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={qLabelLow}
+              onChange={(e) => setQLabelLow(e.target.value)}
+              placeholder="Not at all"
+              maxLength={10}
+              className={`flex-1 px-3 py-2 rounded-xl bg-[#0f2660] border border-[#2a4a8a] text-white text-sm placeholder:italic placeholder:text-[#3a5a9a] outline-none focus:border-[#7862FF]`}
+            />
+            <input
+              type="text"
+              value={qLabelHigh}
+              onChange={(e) => setQLabelHigh(e.target.value)}
+              placeholder="My favorite"
+              maxLength={10}
+              className={`flex-1 px-3 py-2 rounded-xl bg-[#0f2660] border border-[#2a4a8a] text-white text-sm placeholder:italic placeholder:text-[#3a5a9a] outline-none focus:border-[#7862FF]`}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* MC options */}
+      {qType === "multiple_choice" && (
+        <div className="flex flex-col gap-2">
+          <p className={`${t.textMuted} text-sm uppercase tracking-widest`}>Options</p>
+          {qOptions.map((opt, i) => {
+            const mcPlaceholders = ["Pepperoni", "Green pepper", "Onion", "Pineapple"];
+            const isDupe = opt.trim().length > 0 && trimmedOptions.indexOf(opt.trim()) !== i;
+            return (
+              <div key={i} className="flex items-center gap-2">
+                <span className={`${t.textMuted} text-sm font-bold w-4 shrink-0`}>{String.fromCharCode(65 + i)}</span>
+                <input
+                  type="text"
+                  value={opt}
+                  onChange={(e) => {
+                    const next = [...qOptions] as [string, string, string, string];
+                    next[i] = e.target.value;
+                    setQOptions(next);
+                  }}
+                  placeholder={mcPlaceholders[i]}
+                  maxLength={15}
+                  className={`flex-1 px-3 py-2 rounded-xl bg-[#0f2660] border text-white text-sm placeholder:italic placeholder:text-[#3a5a9a] outline-none focus:border-[#7862FF] ${isDupe ? "border-[#c94f7a]" : "border-[#2a4a8a]"}`}
+                />
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <button
+        onClick={handleSubmit}
+        disabled={!isValid}
+        className={`w-full py-5 rounded-2xl ${t.btnYellow} text-xl font-black shadow-xl disabled:opacity-40`}
+      >
+        Submit Question
+      </button>
+
+      {submittedCount > 0 && (
+        <p className={`${t.textMuted} text-base text-center`}>
+          You&apos;ve submitted <span className="text-white font-bold">{submittedCount}</span> question{submittedCount === 1 ? "" : "s"} — submit more!
+        </p>
+      )}
+
+      {flashSuccess && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 justify-center bg-[#25a59f] text-white px-6 py-3 rounded-2xl shadow-xl z-50 pointer-events-none">
+          <span className="text-xl">✓</span>
+          <p className="font-bold">Question submitted!</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ---- Leave Game Menu ----
 function LeaveGameMenu({ onClose, onLeave }: { onClose: () => void; onLeave: () => void }) {
   const [confirming, setConfirming] = useState(false);
@@ -846,7 +1000,7 @@ function PlayGameContent() {
         </div>
         <div className="flex flex-col items-center">
           <span className={`${t.textYellow} font-black text-base font-mono tracking-widest`}>{roomCode}</span>
-          <span className={`${t.textFaint} text-xs`}>Round {gameState.round}/{gameState.totalRounds}</span>
+          <span className={`${t.textFaint} text-xs`}>{phase === "question_submission" ? "Collecting Questions" : `Round ${gameState.round}/${gameState.totalRounds}`}</span>
         </div>
         <div className="flex items-center gap-2">
           <p className={`${t.textTeal} font-black text-sm`}>{myTotal} pts</p>
@@ -857,6 +1011,9 @@ function PlayGameContent() {
 
       {/* Content — mobile-width constrained */}
       <div className="pb-8 max-w-md mx-auto w-full">
+        {phase === "question_submission" && (
+          <QuestionSubmissionView onSubmit={(q) => sendMsg({ type: "submit_question", text: q.text, questionType: q.questionType, options: q.options, labelLow: q.labelLow, labelHigh: q.labelHigh })} />
+        )}
         {phase === "phase1" && (
           <Phase1View game={gameState} nickname={nickname} onSubmit={handleAnswerSubmit} submitted={phase1Submitted} />
         )}

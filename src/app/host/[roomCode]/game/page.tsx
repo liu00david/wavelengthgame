@@ -6,6 +6,148 @@ import { useParty } from "@/lib/useParty";
 import { t, avatarColor, resolveAvatarColor, resolveEmoji } from "@/lib/theme";
 import type { RoundResult } from "@/lib/types";
 
+type CollectedQuestion = {
+  id: string;
+  text: string;
+  type: string;
+  options?: string[];
+  labelLow?: string;
+  labelHigh?: string;
+  submittedBy: string;
+};
+
+type QuestionPayload = {
+  text: string;
+  questionType: "binary" | "multiple_choice" | "scale";
+  options?: string[];
+  labelLow?: string;
+  labelHigh?: string;
+};
+
+function HostQuestionForm({ onSubmit }: { onSubmit: (q: QuestionPayload) => void }) {
+  const [qType, setQType] = useState<"binary" | "multiple_choice" | "scale">("binary");
+  const [text, setText] = useState("");
+  const [options, setOptions] = useState<[string, string, string, string]>(["", "", "", ""]);
+  const [labelLow, setLabelLow] = useState("");
+  const [labelHigh, setLabelHigh] = useState("");
+
+  function handleSubmit() {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    if (qType === "multiple_choice" && options.some((o) => !o.trim())) return;
+
+    const payload: QuestionPayload = { text: trimmed, questionType: qType };
+    if (qType === "multiple_choice") payload.options = options.map((o) => o.trim());
+    if (qType === "scale") {
+      if (labelLow.trim()) payload.labelLow = labelLow.trim();
+      if (labelHigh.trim()) payload.labelHigh = labelHigh.trim();
+    }
+    onSubmit(payload);
+    setText("");
+    setOptions(["", "", "", ""]);
+    setLabelLow("");
+    setLabelHigh("");
+  }
+
+  const typeDescriptions: Record<string, string> = {
+    binary: "Players answer Yes or No",
+    scale: "Players rate from 1 to 10",
+    multiple_choice: "Players choose one of four options",
+  };
+
+  const trimmedOptions = options.map((o) => o.trim());
+  const hasDuplicateMC = qType === "multiple_choice" && trimmedOptions.some((o, i) => o.length > 0 && trimmedOptions.indexOf(o) !== i);
+  const isValid = text.trim().length > 0 && (qType !== "multiple_choice" || (options.every((o) => o.trim().length > 0) && !hasDuplicateMC));
+
+  return (
+    <div className={`${t.bgPage} rounded-xl p-4 mb-2`}>
+      <p className={`${t.textMuted} text-xs uppercase tracking-widest mb-3`}>Submit a Question</p>
+      {/* Type selector */}
+      <div className="flex gap-2 mb-3">
+        {(["binary", "scale", "multiple_choice"] as const).map((type) => (
+          <button
+            key={type}
+            onClick={() => setQType(type)}
+            className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              qType === type ? "bg-[#7862FF] text-white" : `${t.btnGhost} ${t.textMuted}`
+            }`}
+          >
+            {type === "binary" ? "Yes/No" : type === "scale" ? "Scale" : "Multi Choice"}
+          </button>
+        ))}
+      </div>
+      <p className={`${t.textFaint} text-xs mb-2`}>{typeDescriptions[qType]}</p>
+
+      {/* Question text */}
+      <input
+        type="text"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder={qType === "binary" ? "Have you drank soda today?" : qType === "scale" ? "How much do you enjoy rock music?" : "What's your favorite pizza topping?"}
+        maxLength={60}
+        className={`w-full px-3 py-2 rounded-lg bg-[#0f2660] border border-[#2a4a8a] text-white text-sm placeholder:italic placeholder:${t.textFaint} outline-none focus:border-[#7862FF] mb-2`}
+      />
+
+      {/* Scale labels */}
+      {qType === "scale" && (
+        <div className="flex gap-2 mb-2">
+          <input
+            type="text"
+            value={labelLow}
+            onChange={(e) => setLabelLow(e.target.value)}
+            placeholder="Not at all"
+            maxLength={10}
+            className={`flex-1 px-3 py-2 rounded-lg bg-[#0f2660] border border-[#2a4a8a] text-white text-sm placeholder:italic placeholder:${t.textFaint} outline-none focus:border-[#7862FF]`}
+          />
+          <input
+            type="text"
+            value={labelHigh}
+            onChange={(e) => setLabelHigh(e.target.value)}
+            placeholder="My favorite"
+            maxLength={10}
+            className={`flex-1 px-3 py-2 rounded-lg bg-[#0f2660] border border-[#2a4a8a] text-white text-sm placeholder:italic placeholder:${t.textFaint} outline-none focus:border-[#7862FF]`}
+          />
+        </div>
+      )}
+
+      {/* MC options */}
+      {qType === "multiple_choice" && (
+        <div className="flex flex-col gap-1.5 mb-2">
+          {options.map((opt, i) => {
+            const mcPlaceholders = ["Pepperoni", "Green pepper", "Onion", "Pineapple"];
+            const isDupe = opt.trim().length > 0 && trimmedOptions.indexOf(opt.trim()) !== i;
+            return (
+              <div key={i} className="flex items-center gap-2">
+                <span className={`${t.textMuted} text-sm font-bold w-4 shrink-0`}>{String.fromCharCode(65 + i)}</span>
+                <input
+                  type="text"
+                  value={opt}
+                  onChange={(e) => {
+                    const next = [...options] as [string, string, string, string];
+                    next[i] = e.target.value;
+                    setOptions(next);
+                  }}
+                  placeholder={mcPlaceholders[i]}
+                  maxLength={15}
+                  className={`flex-1 px-3 py-2 rounded-lg bg-[#0f2660] border text-white text-sm placeholder:italic placeholder:${t.textFaint} outline-none focus:border-[#7862FF] ${isDupe ? "border-[#c94f7a]" : "border-[#2a4a8a]"}`}
+                />
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <button
+        onClick={handleSubmit}
+        disabled={!isValid}
+        className={`w-full py-2 rounded-lg ${t.btnYellow} text-sm font-bold disabled:opacity-40`}
+      >
+        Submit Question
+      </button>
+    </div>
+  );
+}
+
 function useCountdown(phaseEndsAt: number | null): number {
   const [secs, setSecs] = useState(0);
   useEffect(() => {
@@ -101,9 +243,15 @@ export default function HostGamePage() {
     if (typeof window === "undefined") return DEFAULT_PHASE2_TIME;
     return parseInt(sessionStorage.getItem(`${roomCode}_p2t`) ?? "") || DEFAULT_PHASE2_TIME;
   });
+  const [gameMode] = useState(() => {
+    if (typeof window === "undefined") return "game_questions";
+    return sessionStorage.getItem(`${roomCode}_mode`) ?? "game_questions";
+  });
 
   const roundHistoryRef = useRef<RoundResult[]>([]);
   const seenRoundsRef = useRef<Set<number>>(new Set());
+  const collectedQuestionsRef = useRef<CollectedQuestion[]>([]);
+  const [collectedCount, setCollectedCount] = useState(0);
 
   const { sendMsg, lobbyState, gameState } = useParty(
     roomCode,
@@ -116,7 +264,13 @@ export default function HostGamePage() {
       if (!startedRef.current && !alreadyStarted) {
         startedRef.current = true;
         sessionStorage.setItem(startedKey, "1");
-        sendMsg({ type: "start_game", numQuestions, phase1Time, phase2Time });
+        sendMsg({ type: "start_game", numQuestions, phase1Time, phase2Time, mode: gameMode as "game_questions" | "player_questions" });
+      }
+    },
+    (msg) => {
+      if (msg.type === "question_received") {
+        collectedQuestionsRef.current = [...collectedQuestionsRef.current, msg.question];
+        setCollectedCount((c) => c + 1);
       }
     },
   );
@@ -180,6 +334,7 @@ export default function HostGamePage() {
 
   const phaseLabel: Record<string, string> = {
     lobby: "Lobby",
+    question_submission: "Question Collection",
     countdown: "Starting...",
     phase1: "Phase 1 — Answer",
     phase2: "Phase 2 — Predict",
@@ -260,6 +415,48 @@ export default function HostGamePage() {
             </div>
           )}
         </div>
+
+        {/* Question submission phase */}
+        {phase === "question_submission" && gameState && (
+          <div className={`${t.bgSurface} rounded-2xl border ${t.borderSurface} p-6 mb-4`}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-white font-bold text-lg">
+                Questions <span className={t.textCyan}>({collectedCount} / {gameState.totalRounds})</span>
+              </h3>
+            </div>
+
+            <HostQuestionForm onSubmit={(q) => sendMsg({ type: "submit_question", text: q.text, questionType: q.questionType, options: q.options, labelLow: q.labelLow, labelHigh: q.labelHigh })} />
+
+            <div className="flex flex-col gap-2 mt-4">
+              {collectedQuestionsRef.current.map((q) => (
+                <div key={q.id} className={`flex items-start justify-between gap-3 ${t.bgPage} rounded-xl px-4 py-3`}>
+                  <div className="flex-1 min-w-0">
+                    <span className={`${t.textMuted} text-xs uppercase tracking-widest`}>{q.type.replace("_", " ")} · {q.submittedBy}</span>
+                    <p className="text-white text-sm mt-0.5 leading-snug">{q.text}</p>
+                    {q.options && <p className={`${t.textFaint} text-xs mt-0.5`}>{q.options.join(" / ")}</p>}
+                  </div>
+                  <button
+                    onClick={() => {
+                      collectedQuestionsRef.current = collectedQuestionsRef.current.filter((x) => x.id !== q.id);
+                      setCollectedCount(collectedQuestionsRef.current.length);
+                    }}
+                    className={`shrink-0 px-3 py-1 rounded-lg text-xs font-semibold text-[#c94f7a] border border-[#9a3558]/30 hover:bg-[#9a3558]/20 active:scale-95 transition-all`}
+                  >
+                    Delete
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={() => sendMsg({ type: "begin_game" })}
+              disabled={collectedCount < (gameState?.totalRounds ?? 0)}
+              className={`w-full py-4 rounded-2xl ${t.btnYellow} text-xl font-black mt-4 disabled:opacity-40`}
+            >
+              {collectedCount >= (gameState?.totalRounds ?? 0) ? "Start Game! →" : `Need ${(gameState?.totalRounds ?? 0) - collectedCount} more question${(gameState?.totalRounds ?? 0) - collectedCount === 1 ? "" : "s"}`}
+            </button>
+          </div>
+        )}
 
         {/* Inline host controls during answering phases */}
         {(phase === "phase1" || phase === "phase2") && (
