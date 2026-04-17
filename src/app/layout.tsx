@@ -21,21 +21,12 @@ export const metadata: Metadata = {
     description: "Predict what your group thinks. Score points for getting close.",
     url: "https://consensusgame.vercel.app",
     siteName: "Consensus",
-    images: [
-      {
-        url: "https://consensusgame.vercel.app/og-image.svg",
-        width: 1200,
-        height: 630,
-        alt: "Consensus — Wisdom of the Crowds",
-      },
-    ],
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "Consensus — Wisdom of the Crowds",
     description: "Predict what your group thinks. Score points for getting close.",
-    images: ["https://consensusgame.vercel.app/og-image.svg"],
   },
 };
 
