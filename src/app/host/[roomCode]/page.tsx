@@ -36,14 +36,14 @@ function SettingRow({ label, value, options, onChange }: {
   onChange: (v: number) => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4">
-      <span className="text-white text-base font-medium whitespace-nowrap">{label}</span>
-      <div className="flex gap-2">
+    <div className="flex items-center gap-3">
+      <span className="text-white text-sm font-medium whitespace-nowrap w-24 shrink-0">{label}</span>
+      <div className="flex gap-1.5 flex-1">
         {options.map((opt) => (
           <button
             key={opt}
             onClick={() => onChange(opt)}
-            className={`w-12 py-2 rounded-lg text-base font-bold transition-all ${
+            className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
               value === opt
                 ? "bg-[#7862FF] text-white"
                 : `${t.btnGhost} ${t.textMuted}`
@@ -276,39 +276,39 @@ function HostContent({ roomCode }: { roomCode: string }) {
               onChange={setNumQuestions}
             />
             <SettingRow
-              label="Answer time (s)"
+              label="Answer time"
               value={phase1Time}
               options={TIME_OPTIONS}
               onChange={setPhase1Time}
             />
             <SettingRow
-              label="Guess time (s)"
+              label="Guess time"
               value={phase2Time}
               options={TIME_OPTIONS}
               onChange={setPhase2Time}
             />
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-white text-base font-medium whitespace-nowrap">Game Mode</span>
-              <div className="flex gap-2">
+            <div className="flex items-center gap-3">
+              <span className="text-white text-sm font-medium whitespace-nowrap w-24 shrink-0">Questions by</span>
+              <div className="flex gap-1.5 flex-1">
                 <button
                   onClick={() => setGameMode("game_questions")}
-                  className={`w-40 py-2 rounded-lg text-base font-bold transition-all ${
+                  className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
                     gameMode === "game_questions"
                       ? "bg-[#7862FF] text-white"
                       : `${t.btnGhost} ${t.textMuted}`
                   }`}
                 >
-                  Game Questions
+                  Game
                 </button>
                 <button
                   onClick={() => setGameMode("player_questions")}
-                  className={`w-40 py-2 rounded-lg text-base font-bold transition-all ${
+                  className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
                     gameMode === "player_questions"
                       ? "bg-[#7862FF] text-white"
                       : `${t.btnGhost} ${t.textMuted}`
                   }`}
                 >
-                  Player Questions
+                  Players
                 </button>
               </div>
             </div>

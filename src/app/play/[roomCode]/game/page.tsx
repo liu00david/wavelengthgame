@@ -584,7 +584,7 @@ function EndedView({ game, nickname }: { game: GameState; nickname: string }) {
 }
 
 // ---- Question Submission View ----
-function QuestionSubmissionView({ onSubmit }: { onSubmit: (q: { text: string; questionType: "binary" | "multiple_choice" | "scale"; options?: string[]; labelLow?: string; labelHigh?: string }) => void }) {
+function QuestionSubmissionView({ onSubmit, isFull }: { onSubmit: (q: { text: string; questionType: "binary" | "multiple_choice" | "scale"; options?: string[]; labelLow?: string; labelHigh?: string }) => void; isFull: boolean }) {
   const [qType, setQType] = useState<"binary" | "multiple_choice" | "scale">("binary");
   const [qText, setQText] = useState("");
   const [qOptions, setQOptions] = useState<[string, string, string, string]>(["", "", "", ""]);
@@ -654,7 +654,7 @@ function QuestionSubmissionView({ onSubmit }: { onSubmit: (q: { text: string; qu
           type="text"
           value={qText}
           onChange={(e) => setQText(e.target.value)}
-          placeholder={qType === "binary" ? "Have you drank soda today?" : qType === "scale" ? "How much do you enjoy rock music?" : "What's your favorite pizza topping?"}
+          placeholder={qType === "binary" ? "Have you drank soda today?" : qType === "scale" ? "How much do you like EDM?" : "What's your favorite pizza topping?"}
           maxLength={60}
           className={`w-full px-4 py-3 rounded-xl bg-[#0f2660] border border-[#2a4a8a] text-white text-base placeholder:italic placeholder:text-[#3a5a9a] outline-none focus:border-[#7862FF]`}
         />
@@ -664,14 +664,14 @@ function QuestionSubmissionView({ onSubmit }: { onSubmit: (q: { text: string; qu
       {qType === "scale" && (
         <div className="flex flex-col gap-2">
           <p className={`${t.textMuted} text-sm uppercase tracking-widest`}>Labels (optional)</p>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <input
               type="text"
               value={qLabelLow}
               onChange={(e) => setQLabelLow(e.target.value)}
               placeholder="Not at all"
               maxLength={10}
-              className={`flex-1 px-3 py-2 rounded-xl bg-[#0f2660] border border-[#2a4a8a] text-white text-sm placeholder:italic placeholder:text-[#3a5a9a] outline-none focus:border-[#7862FF]`}
+              className={`w-full px-3 py-2 rounded-xl bg-[#0f2660] border border-[#2a4a8a] text-white text-sm placeholder:italic placeholder:text-[#3a5a9a] outline-none focus:border-[#7862FF]`}
             />
             <input
               type="text"
@@ -679,7 +679,7 @@ function QuestionSubmissionView({ onSubmit }: { onSubmit: (q: { text: string; qu
               onChange={(e) => setQLabelHigh(e.target.value)}
               placeholder="My favorite"
               maxLength={10}
-              className={`flex-1 px-3 py-2 rounded-xl bg-[#0f2660] border border-[#2a4a8a] text-white text-sm placeholder:italic placeholder:text-[#3a5a9a] outline-none focus:border-[#7862FF]`}
+              className={`w-full px-3 py-2 rounded-xl bg-[#0f2660] border border-[#2a4a8a] text-white text-sm placeholder:italic placeholder:text-[#3a5a9a] outline-none focus:border-[#7862FF]`}
             />
           </div>
         </div>
@@ -705,7 +705,7 @@ function QuestionSubmissionView({ onSubmit }: { onSubmit: (q: { text: string; qu
                   }}
                   placeholder={mcPlaceholders[i]}
                   maxLength={15}
-                  className={`flex-1 px-3 py-2 rounded-xl bg-[#0f2660] border text-white text-sm placeholder:italic placeholder:text-[#3a5a9a] outline-none focus:border-[#7862FF] ${isDupe ? "border-[#c94f7a]" : "border-[#2a4a8a]"}`}
+                  className={`flex-1 min-w-0 px-3 py-2 rounded-xl bg-[#0f2660] border text-white text-sm placeholder:italic placeholder:text-[#3a5a9a] outline-none focus:border-[#7862FF] ${isDupe ? "border-[#c94f7a]" : "border-[#2a4a8a]"}`}
                 />
               </div>
             );
@@ -715,10 +715,10 @@ function QuestionSubmissionView({ onSubmit }: { onSubmit: (q: { text: string; qu
 
       <button
         onClick={handleSubmit}
-        disabled={!isValid}
+        disabled={!isValid || isFull}
         className={`w-full py-5 rounded-2xl ${t.btnYellow} text-xl font-black shadow-xl disabled:opacity-40`}
       >
-        Submit Question
+        {isFull ? "Question limit reached" : "Submit Question"}
       </button>
 
       {submittedCount > 0 && (
@@ -988,10 +988,13 @@ function PlayGameContent() {
   const myTotal = gameState.leaderboard.find((p) => p.nickname === nickname)?.total ?? 0;
   const myLobbyEmoji = lobbyState?.players.find((p) => p.nickname === nickname)?.emoji;
 
+  const phaseBg = phase === "phase1" ? "bg-[#0d1e54]" : phase === "phase2" ? "bg-[#081e3e]" : t.bgPage;
+  const phaseTopBar = phase === "phase1" ? "bg-[#0d1e54] border-[#3a4a9a]" : phase === "phase2" ? "bg-[#081e3e] border-[#1a4060]" : `${t.bgPage} border-[#2a4a8a]`;
+
   return (
-    <main className={`min-h-screen ${t.bgPage} text-white`}>
+    <main className={`min-h-screen ${phaseBg} text-white transition-colors duration-500`}>
       {/* Top bar */}
-      <div className={`flex items-center justify-between px-4 py-3 border-b border-[#2a4a8a] sticky top-0 ${t.bgPage} z-10`}>
+      <div className={`flex items-center justify-between px-4 py-3 border-b sticky top-0 z-10 transition-colors duration-500 ${phaseTopBar}`}>
         <div className="flex items-center gap-2">
           <div className={`${resolveAvatarColor(nickname, myLobbyEmoji)} w-9 h-9 rounded-full flex items-center justify-center text-lg`}>
             {resolveEmoji(nickname, myLobbyEmoji)}
@@ -1009,10 +1012,20 @@ function PlayGameContent() {
         </div>
       </div>
 
+      {/* Phase banner */}
+      {(phase === "phase1" || phase === "phase2") && (
+        <div className={`w-full text-center py-3 text-2xl font-black uppercase tracking-widest transition-colors duration-500 ${phase === "phase1" ? "bg-[#7862FF]/20 text-[#a99dff]" : "bg-[#25a59f]/20 text-[#4dd9d2]"}`}>
+          {phase === "phase1" ? "Phase 1 — Answer" : "Phase 2 — Predict"}
+        </div>
+      )}
+
       {/* Content — mobile-width constrained */}
       <div className="pb-8 max-w-md mx-auto w-full">
         {phase === "question_submission" && (
-          <QuestionSubmissionView onSubmit={(q) => sendMsg({ type: "submit_question", text: q.text, questionType: q.questionType, options: q.options, labelLow: q.labelLow, labelHigh: q.labelHigh })} />
+          <QuestionSubmissionView
+            onSubmit={(q) => sendMsg({ type: "submit_question", text: q.text, questionType: q.questionType, options: q.options, labelLow: q.labelLow, labelHigh: q.labelHigh })}
+            isFull={(gameState.submittedQuestionCount ?? 0) >= gameState.totalRounds}
+          />
         )}
         {phase === "phase1" && (
           <Phase1View game={gameState} nickname={nickname} onSubmit={handleAnswerSubmit} submitted={phase1Submitted} />

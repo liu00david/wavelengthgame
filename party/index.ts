@@ -726,6 +726,7 @@ export default class GameServer implements Party.Server {
 
     if (msg.type === "submit_question") {
       if (this.game.phase !== "question_submission") return;
+      if (this.submittedQuestions.length >= this.game.totalRounds) return;
       const senderPlayer = this.lobby.players.find((p) => p.id === sender.id);
       if (!senderPlayer) return;
       const nickname = senderPlayer.isHost ? "Host" : senderPlayer.nickname;

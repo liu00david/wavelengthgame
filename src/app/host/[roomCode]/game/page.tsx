@@ -83,21 +83,21 @@ function HostQuestionForm({ onSubmit }: { onSubmit: (q: QuestionPayload) => void
         type="text"
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder={qType === "binary" ? "Have you drank soda today?" : qType === "scale" ? "How much do you enjoy rock music?" : "What's your favorite pizza topping?"}
+        placeholder={qType === "binary" ? "Have you drank soda today?" : qType === "scale" ? "How much do you like EDM?" : "What's your favorite pizza topping?"}
         maxLength={60}
         className={`w-full px-3 py-2 rounded-lg bg-[#0f2660] border border-[#2a4a8a] text-white text-sm placeholder:italic placeholder:${t.textFaint} outline-none focus:border-[#7862FF] mb-2`}
       />
 
       {/* Scale labels */}
       {qType === "scale" && (
-        <div className="flex gap-2 mb-2">
+        <div className="grid grid-cols-2 gap-2 mb-2">
           <input
             type="text"
             value={labelLow}
             onChange={(e) => setLabelLow(e.target.value)}
             placeholder="Not at all"
             maxLength={10}
-            className={`flex-1 px-3 py-2 rounded-lg bg-[#0f2660] border border-[#2a4a8a] text-white text-sm placeholder:italic placeholder:${t.textFaint} outline-none focus:border-[#7862FF]`}
+            className={`w-full px-3 py-2 rounded-lg bg-[#0f2660] border border-[#2a4a8a] text-white text-sm placeholder:italic placeholder:${t.textFaint} outline-none focus:border-[#7862FF]`}
           />
           <input
             type="text"
@@ -105,7 +105,7 @@ function HostQuestionForm({ onSubmit }: { onSubmit: (q: QuestionPayload) => void
             onChange={(e) => setLabelHigh(e.target.value)}
             placeholder="My favorite"
             maxLength={10}
-            className={`flex-1 px-3 py-2 rounded-lg bg-[#0f2660] border border-[#2a4a8a] text-white text-sm placeholder:italic placeholder:${t.textFaint} outline-none focus:border-[#7862FF]`}
+            className={`w-full px-3 py-2 rounded-lg bg-[#0f2660] border border-[#2a4a8a] text-white text-sm placeholder:italic placeholder:${t.textFaint} outline-none focus:border-[#7862FF]`}
           />
         </div>
       )}
@@ -129,7 +129,7 @@ function HostQuestionForm({ onSubmit }: { onSubmit: (q: QuestionPayload) => void
                   }}
                   placeholder={mcPlaceholders[i]}
                   maxLength={15}
-                  className={`flex-1 px-3 py-2 rounded-lg bg-[#0f2660] border text-white text-sm placeholder:italic placeholder:${t.textFaint} outline-none focus:border-[#7862FF] ${isDupe ? "border-[#c94f7a]" : "border-[#2a4a8a]"}`}
+                  className={`flex-1 min-w-0 px-3 py-2 rounded-lg bg-[#0f2660] border text-white text-sm placeholder:italic placeholder:${t.textFaint} outline-none focus:border-[#7862FF] ${isDupe ? "border-[#c94f7a]" : "border-[#2a4a8a]"}`}
                 />
               </div>
             );
@@ -384,7 +384,7 @@ export default function HostGamePage() {
         <div className={`${t.bgSurface} rounded-2xl border ${t.borderSurface} p-6 mb-4`}>
           <div className="flex items-center justify-between mb-3">
             <span className={`${t.textYellow} font-bold text-lg`}>{phaseLabel[phase]}</span>
-            {gameState && (
+            {gameState && phase !== "question_submission" && (
               <span className={`${t.textMuted} text-lg`}>
                 Round {gameState.round} / {gameState.totalRounds}
               </span>
