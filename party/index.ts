@@ -720,7 +720,7 @@ export default class GameServer implements Party.Server {
       this.broadcastGame();
 
       this.clearTimer();
-      this.phaseTimer = setTimeout(() => this.startPhase1(), 6000);
+      this.phaseTimer = setTimeout(() => this.startPhase1(), 21000);
       return;
     }
 
@@ -796,7 +796,7 @@ export default class GameServer implements Party.Server {
       this.broadcastGame();
 
       this.clearTimer();
-      this.phaseTimer = setTimeout(() => this.startPhase1(), 6000);
+      this.phaseTimer = setTimeout(() => this.startPhase1(), 21000);
       return;
     }
 

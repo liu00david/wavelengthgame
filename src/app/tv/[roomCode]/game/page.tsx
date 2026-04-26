@@ -124,25 +124,108 @@ function GameOverIntro({ onDone }: { onDone: () => void }) {
   );
 }
 
+const RULES = [
+  { icon: "💬", color: "#7862FF", label: "Phase 1", title: "Answer", body: "Every round, answer the question honestly for yourself." },
+  { icon: "🔮", color: "#4dd9d2", label: "Phase 2", title: "Predict", body: "Guess what the majority of the group answered." },
+  { icon: "⚡", color: "#f6dc53", label: "Score", title: "Double Down", body: "Risk your token to double your points — one use per game!" },
+];
+
+function JumpWord({ word, color, delay = 0 }: { word: string; color: string; delay?: number }) {
+  return (
+    <span className="inline-flex gap-[0.05em]" aria-label={word}>
+      {word.split("").map((ch, i) => (
+        <span
+          key={i}
+          className="inline-block font-black"
+          style={{
+            color,
+            animation: `wordJump 0.5s ease-out forwards`,
+            animationDelay: `${delay + i * 60}ms`,
+            opacity: 0,
+          }}
+        >
+          {ch === " " ? "\u00A0" : ch}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 function CountdownOverlay({ onDone }: { onDone: () => void }) {
-  const [step, setStep] = useState<"tagline_in" | "tagline_out" | "3" | "2" | "1" | "done">("tagline_in");
+  const [step, setStep] = useState<"rules0" | "rules1" | "rules2" | "rules_out" | "tagline_in" | "tagline_out" | "3" | "2" | "1" | "done">("rules0");
 
   useEffect(() => {
     const timers = [
-      setTimeout(() => setStep("tagline_out"), 1800),
-      setTimeout(() => setStep("3"), 2600),
-      setTimeout(() => setStep("2"), 3600),
-      setTimeout(() => setStep("1"), 4600),
-      setTimeout(() => { setStep("done"); onDone(); }, 5400),
+      setTimeout(() => setStep("rules1"),      5000),
+      setTimeout(() => setStep("rules2"),      10000),
+      setTimeout(() => setStep("rules_out"),   15000),
+      setTimeout(() => setStep("tagline_in"),  15400),
+      setTimeout(() => setStep("tagline_out"), 17200),
+      setTimeout(() => setStep("3"),           18000),
+      setTimeout(() => setStep("2"),           19000),
+      setTimeout(() => setStep("1"),           20000),
+      setTimeout(() => { setStep("done"); onDone(); }, 20800),
     ];
     return () => timers.forEach(clearTimeout);
   }, [onDone]);
 
+  const ruleIndex = step === "rules0" ? 0 : step === "rules1" ? 1 : step === "rules2" ? 2 : null;
+  const isRules = ruleIndex !== null || step === "rules_out";
   const isTagline = step === "tagline_in" || step === "tagline_out";
   const digit = step === "3" ? "3" : step === "2" ? "2" : step === "1" ? "1" : null;
+  const rule = ruleIndex !== null ? RULES[ruleIndex] : null;
 
   return (
-    <div className={`absolute inset-0 z-50 flex flex-col items-center justify-center ${t.bgPage}`}>
+    <div className={`absolute inset-0 z-50 flex flex-col items-center justify-center ${t.bgPage} overflow-hidden`}>
+      <style>{`
+        @keyframes countdownPop {
+          0%   { transform: scale(1.6); opacity: 0; }
+          20%  { transform: scale(1.0); opacity: 1; }
+          70%  { transform: scale(1.0); opacity: 1; }
+          100% { transform: scale(0.7); opacity: 0; }
+        }
+        @keyframes ruleSlideIn {
+          0%   { transform: translateY(40px) scale(0.95); opacity: 0; }
+          100% { transform: translateY(0) scale(1); opacity: 1; }
+        }
+        @keyframes wordJump {
+          0%   { transform: translateY(20px) scale(0.8); opacity: 0; }
+          60%  { transform: translateY(-8px) scale(1.15); opacity: 1; }
+          80%  { transform: translateY(3px) scale(0.97); opacity: 1; }
+          100% { transform: translateY(0) scale(1); opacity: 1; }
+        }
+      `}</style>
+
+      {/* Rules cards */}
+      {isRules && rule && (
+        <div
+          key={ruleIndex}
+          className="flex flex-col items-center gap-8 text-center px-16"
+          style={{ animation: "ruleSlideIn 0.4s ease-out forwards" }}
+        >
+          {/* Step dots */}
+          <div className="flex gap-3">
+            {RULES.map((_, i) => (
+              <div key={i} className="w-3 h-3 rounded-full transition-all duration-300"
+                style={{ background: i === ruleIndex ? rule.color : "#2a4a8a" }} />
+            ))}
+          </div>
+          {/* Card */}
+          <div className="rounded-3xl px-20 py-14 flex flex-col items-center gap-6"
+            style={{ background: `${rule.color}18`, border: `2px solid ${rule.color}44` }}>
+            <span style={{ fontSize: "6rem" }}>{rule.icon}</span>
+            <div>
+              <p className="text-2xl font-bold uppercase tracking-widest mb-4" style={{ color: rule.color }}>{rule.label}</p>
+              <p className="text-7xl mb-6" style={{ lineHeight: 1.1 }}>
+                <JumpWord key={`${ruleIndex}-title`} word={rule.title} color="white" delay={200} />
+              </p>
+              <p className="text-3xl text-[#a8c0e8] max-w-2xl leading-snug">{rule.body}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tagline */}
       {isTagline && (
         <div
           className="flex flex-col items-center gap-4 transition-all duration-500"
@@ -152,37 +235,25 @@ function CountdownOverlay({ onDone }: { onDone: () => void }) {
           }}
         >
           <span className="text-8xl">🎯</span>
-          <p className={`text-5xl font-black text-white text-center leading-tight`}>
+          <p className="text-5xl font-black text-white text-center leading-tight">
             Ready to read<br />the room?
           </p>
         </div>
       )}
+
+      {/* Digit countdown */}
       {digit && (
-        <div
-          key={digit}
-          className="flex items-center justify-center"
-          style={{ animation: "countdownPop 0.9s ease-out forwards" }}
-        >
-          <span
-            className={`font-black leading-none`}
-            style={{
-              fontSize: "20rem",
-              color: digit === "3" ? "#7862FF" : digit === "2" ? "#4dd9d2" : "#f6dc53",
-              textShadow: `0 0 80px ${digit === "3" ? "#7862FF88" : digit === "2" ? "#4dd9d288" : "#f6dc5388"}`,
-            }}
-          >
+        <div key={digit} className="flex items-center justify-center"
+          style={{ animation: "countdownPop 0.9s ease-out forwards" }}>
+          <span className="font-black leading-none" style={{
+            fontSize: "20rem",
+            color: digit === "3" ? "#7862FF" : digit === "2" ? "#4dd9d2" : "#f6dc53",
+            textShadow: `0 0 80px ${digit === "3" ? "#7862FF88" : digit === "2" ? "#4dd9d288" : "#f6dc5388"}`,
+          }}>
             {digit}
           </span>
         </div>
       )}
-      <style>{`
-        @keyframes countdownPop {
-          0%   { transform: scale(1.6); opacity: 0; }
-          20%  { transform: scale(1.0); opacity: 1; }
-          70%  { transform: scale(1.0); opacity: 1; }
-          100% { transform: scale(0.7); opacity: 0; }
-        }
-      `}</style>
     </div>
   );
 }

@@ -160,51 +160,54 @@ function useCountdown(phaseEndsAt: number | null): number {
   return secs;
 }
 
+const RULES = [
+  { icon: "💬", color: "#7862FF", label: "Phase 1", title: "Answer", body: "Answer the question honestly for yourself." },
+  { icon: "🔮", color: "#4dd9d2", label: "Phase 2", title: "Predict", body: "Guess what the majority of the group answered." },
+  { icon: "⚡", color: "#f6dc53", label: "Score", title: "Double Down", body: "Risk your token to double your points — one use per game!" },
+];
+
+function JumpWord({ word, color, delay = 0 }: { word: string; color: string; delay?: number }) {
+  return (
+    <span className="inline-flex gap-[0.05em]" aria-label={word}>
+      {word.split("").map((ch, i) => (
+        <span key={i} className="inline-block font-black" style={{
+          color,
+          animation: "wordJump 0.5s ease-out forwards",
+          animationDelay: `${delay + i * 60}ms`,
+          opacity: 0,
+        }}>
+          {ch === " " ? "\u00A0" : ch}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 function CountdownScreen() {
-  const [step, setStep] = useState<"tagline_in" | "tagline_out" | "3" | "2" | "1">("tagline_in");
+  const [step, setStep] = useState<"rules0" | "rules1" | "rules2" | "rules_out" | "tagline_in" | "tagline_out" | "3" | "2" | "1">("rules0");
 
   useEffect(() => {
     const timers = [
-      setTimeout(() => setStep("tagline_out"), 1800),
-      setTimeout(() => setStep("3"), 2600),
-      setTimeout(() => setStep("2"), 3600),
-      setTimeout(() => setStep("1"), 4600),
+      setTimeout(() => setStep("rules1"),      5000),
+      setTimeout(() => setStep("rules2"),      10000),
+      setTimeout(() => setStep("rules_out"),   15000),
+      setTimeout(() => setStep("tagline_in"),  15400),
+      setTimeout(() => setStep("tagline_out"), 17200),
+      setTimeout(() => setStep("3"),           18000),
+      setTimeout(() => setStep("2"),           19000),
+      setTimeout(() => setStep("1"),           20000),
     ];
     return () => timers.forEach(clearTimeout);
   }, []);
 
+  const ruleIndex = step === "rules0" ? 0 : step === "rules1" ? 1 : step === "rules2" ? 2 : null;
+  const isRules = ruleIndex !== null || step === "rules_out";
   const isTagline = step === "tagline_in" || step === "tagline_out";
   const digit = step === "3" ? "3" : step === "2" ? "2" : step === "1" ? "1" : null;
+  const rule = ruleIndex !== null ? RULES[ruleIndex] : null;
 
   return (
-    <div className={`fixed inset-0 z-50 flex flex-col items-center justify-center ${t.bgPage}`}>
-      {isTagline && (
-        <div
-          className="flex flex-col items-center gap-4 transition-all duration-500"
-          style={{
-            opacity: step === "tagline_in" ? 1 : 0,
-            transform: step === "tagline_in" ? "scale(1) translateY(0)" : "scale(0.9) translateY(-20px)",
-          }}
-        >
-          <span className="text-7xl">🎯</span>
-          <p className="text-4xl font-black text-white text-center leading-tight">
-            Ready to read<br />the room?
-          </p>
-        </div>
-      )}
-      {digit && (
-        <div key={digit} style={{ animation: "cdPop 0.9s ease-out forwards" }}>
-          <span
-            className="font-black leading-none"
-            style={{
-              fontSize: "16rem",
-              color: digit === "3" ? "#7862FF" : digit === "2" ? "#4dd9d2" : "#f6dc53",
-            }}
-          >
-            {digit}
-          </span>
-        </div>
-      )}
+    <div className={`fixed inset-0 z-50 flex flex-col items-center justify-center ${t.bgPage} overflow-hidden`}>
       <style>{`
         @keyframes cdPop {
           0%   { transform: scale(1.5); opacity: 0; }
@@ -212,7 +215,65 @@ function CountdownScreen() {
           70%  { transform: scale(1.0); opacity: 1; }
           100% { transform: scale(0.7); opacity: 0; }
         }
+        @keyframes ruleSlideIn {
+          0%   { transform: translateY(30px) scale(0.96); opacity: 0; }
+          100% { transform: translateY(0) scale(1); opacity: 1; }
+        }
+        @keyframes wordJump {
+          0%   { transform: translateY(20px) scale(0.8); opacity: 0; }
+          60%  { transform: translateY(-6px) scale(1.15); opacity: 1; }
+          80%  { transform: translateY(2px) scale(0.97); opacity: 1; }
+          100% { transform: translateY(0) scale(1); opacity: 1; }
+        }
       `}</style>
+
+      {/* Rules cards */}
+      {isRules && rule && (
+        <div key={ruleIndex} className="flex flex-col items-center gap-5 text-center px-8"
+          style={{ animation: "ruleSlideIn 0.4s ease-out forwards" }}>
+          <div className="flex gap-2">
+            {RULES.map((_, i) => (
+              <div key={i} className="w-2.5 h-2.5 rounded-full transition-all duration-300"
+                style={{ background: i === ruleIndex ? rule.color : "#2a4a8a" }} />
+            ))}
+          </div>
+          <div className="rounded-2xl px-8 py-8 flex flex-col items-center gap-4"
+            style={{ background: `${rule.color}18`, border: `2px solid ${rule.color}44` }}>
+            <span className="text-6xl">{rule.icon}</span>
+            <p className="text-sm font-bold uppercase tracking-widest" style={{ color: rule.color }}>{rule.label}</p>
+            <p className="text-4xl" style={{ lineHeight: 1.1 }}>
+              <JumpWord key={`${ruleIndex}-title`} word={rule.title} color="white" delay={200} />
+            </p>
+            <p className="text-lg text-[#a8c0e8] max-w-xs leading-snug">{rule.body}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Tagline */}
+      {isTagline && (
+        <div className="flex flex-col items-center gap-4 transition-all duration-500"
+          style={{
+            opacity: step === "tagline_in" ? 1 : 0,
+            transform: step === "tagline_in" ? "scale(1) translateY(0)" : "scale(0.9) translateY(-20px)",
+          }}>
+          <span className="text-7xl">🎯</span>
+          <p className="text-4xl font-black text-white text-center leading-tight">
+            Ready to read<br />the room?
+          </p>
+        </div>
+      )}
+
+      {/* Digit countdown */}
+      {digit && (
+        <div key={digit} style={{ animation: "cdPop 0.9s ease-out forwards" }}>
+          <span className="font-black leading-none" style={{
+            fontSize: "16rem",
+            color: digit === "3" ? "#7862FF" : digit === "2" ? "#4dd9d2" : "#f6dc53",
+          }}>
+            {digit}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

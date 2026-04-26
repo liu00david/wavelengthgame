@@ -584,6 +584,95 @@ function EndedView({ game, nickname }: { game: GameState; nickname: string }) {
 }
 
 // ---- Question Submission View ----
+const RULES = [
+  { icon: "💬", color: "#7862FF", label: "Phase 1", title: "Answer", body: "Answer the question honestly for yourself." },
+  { icon: "🔮", color: "#4dd9d2", label: "Phase 2", title: "Predict", body: "Guess what the majority of the group answered." },
+  { icon: "⚡", color: "#f6dc53", label: "Score", title: "Double Down", body: "Risk your token to double your points — one use per game!" },
+];
+
+function JumpWord({ word, color, delay = 0 }: { word: string; color: string; delay?: number }) {
+  return (
+    <span className="inline-flex gap-[0.05em]" aria-label={word}>
+      {word.split("").map((ch, i) => (
+        <span key={i} className="inline-block font-black" style={{
+          color,
+          animation: "wordJump 0.5s ease-out forwards",
+          animationDelay: `${delay + i * 60}ms`,
+          opacity: 0,
+        }}>
+          {ch === " " ? "\u00A0" : ch}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function PlayerCountdownScreen() {
+  const [step, setStep] = useState<"rules0" | "rules1" | "rules2" | "rules_out" | "tagline">("rules0");
+
+  useEffect(() => {
+    const timers = [
+      setTimeout(() => setStep("rules1"),    5000),
+      setTimeout(() => setStep("rules2"),    10000),
+      setTimeout(() => setStep("rules_out"), 15000),
+      setTimeout(() => setStep("tagline"),   15400),
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  const ruleIndex = step === "rules0" ? 0 : step === "rules1" ? 1 : step === "rules2" ? 2 : null;
+  const rule = ruleIndex !== null ? RULES[ruleIndex] : null;
+  const isRules = ruleIndex !== null || step === "rules_out";
+
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center px-6 gap-6 min-h-[70vh]">
+      <style>{`
+        @keyframes ruleSlideIn {
+          0%   { transform: translateY(24px) scale(0.96); opacity: 0; }
+          100% { transform: translateY(0) scale(1); opacity: 1; }
+        }
+        @keyframes wordJump {
+          0%   { transform: translateY(20px) scale(0.8); opacity: 0; }
+          60%  { transform: translateY(-6px) scale(1.15); opacity: 1; }
+          80%  { transform: translateY(2px) scale(0.97); opacity: 1; }
+          100% { transform: translateY(0) scale(1); opacity: 1; }
+        }
+      `}</style>
+
+      {isRules && rule && (
+        <div key={ruleIndex} className="flex flex-col items-center gap-4 w-full"
+          style={{ animation: "ruleSlideIn 0.4s ease-out forwards" }}>
+          <div className="flex gap-2 mb-1">
+            {RULES.map((_, i) => (
+              <div key={i} className="w-2 h-2 rounded-full transition-all duration-300"
+                style={{ background: i === ruleIndex ? rule.color : "#2a4a8a" }} />
+            ))}
+          </div>
+          <div className="w-full rounded-2xl px-6 py-8 flex flex-col items-center gap-3"
+            style={{ background: `${rule.color}18`, border: `2px solid ${rule.color}44` }}>
+            <span className="text-5xl">{rule.icon}</span>
+            <p className="text-xs font-bold uppercase tracking-widest" style={{ color: rule.color }}>{rule.label}</p>
+            <p className="text-3xl" style={{ lineHeight: 1.1 }}>
+              <JumpWord key={`${ruleIndex}-title`} word={rule.title} color="white" delay={200} />
+            </p>
+            <p className="text-base text-[#a8c0e8] leading-snug">{rule.body}</p>
+          </div>
+        </div>
+      )}
+
+      {step === "tagline" && (
+        <div className="flex flex-col items-center gap-4" style={{ animation: "ruleSlideIn 0.4s ease-out forwards" }}>
+          <span className="text-6xl">🎯</span>
+          <p className="text-3xl font-black text-white text-center leading-tight">
+            Ready to read<br />the room?
+          </p>
+          <p className={`${t.textMuted} text-lg animate-pulse`}>Game starting now!</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function QuestionSubmissionView({ onSubmit, isFull }: { onSubmit: (q: { text: string; questionType: "binary" | "multiple_choice" | "scale"; options?: string[]; labelLow?: string; labelHigh?: string }) => void; isFull: boolean }) {
   const [qType, setQType] = useState<"binary" | "multiple_choice" | "scale">("binary");
   const [qText, setQText] = useState("");
@@ -1047,17 +1136,13 @@ function PlayGameContent() {
           <GameOverIntroPlayer onDone={() => { setShowGameOverIntro(false); setEndedVisible(true); }} />
         )}
         {phase === "ended" && endedVisible && <EndedView game={gameState} nickname={nickname} />}
-        {(phase === "lobby" || phase === "countdown") && (
+        {phase === "lobby" && (
           <div className="flex flex-col items-center justify-center py-20 text-center px-6 gap-4">
-            <span className="text-6xl">{phase === "countdown" ? "🎯" : "⏳"}</span>
-            <p className={`${t.textYellow} text-3xl font-black ${phase === "countdown" ? "animate-bounce" : "animate-pulse"}`}>
-              {phase === "countdown" ? "Get Ready!" : "Waiting to start..."}
-            </p>
-            {phase === "countdown" && (
-              <p className={`${t.textMuted} text-lg`}>Game starting now!</p>
-            )}
+            <span className="text-6xl">⏳</span>
+            <p className={`${t.textYellow} text-3xl font-black animate-pulse`}>Waiting to start...</p>
           </div>
         )}
+        {phase === "countdown" && <PlayerCountdownScreen />}
       </div>
 
       {/* Answered count badge */}

@@ -315,12 +315,12 @@ function HostContent({ roomCode }: { roomCode: string }) {
           </div>
         </div>
 
-        <button onClick={handleLock} disabled={nonHostPlayers.length < 3}
+        <button onClick={handleLock} disabled={nonHostPlayers.length < 2}
           className={`w-full py-4 rounded-2xl ${t.btnYellow} text-xl shadow-xl ${t.btnPrimaryDisabled}`}>
           Lock & Start Game
         </button>
-        {nonHostPlayers.length < 3 && (
-          <p className={`${t.textFaint} text-sm text-center mt-2`}>Need at least 3 players to start</p>
+        {nonHostPlayers.length < 2 && (
+          <p className={`${t.textFaint} text-sm text-center mt-2`}>Need at least 2 players to start</p>
         )}
       </div>
     </main>
