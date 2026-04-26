@@ -281,7 +281,7 @@ function Phase1View({ game }: { game: GameState }) {
   return (
     <div className="flex flex-col items-center justify-center flex-1 gap-8 px-8 text-center">
       <div className="flex flex-col items-center gap-2">
-        <PromptTypeIcon type={game.prompt!.type} />
+        <p className={`${t.textMuted} text-xl font-bold uppercase tracking-widest`}>Phase One: <PromptTypeIcon type={game.prompt!.type} /></p>
         <h2 className="text-4xl font-semibold text-white leading-tight max-w-4xl mt-2">
           {game.prompt!.text}
         </h2>
@@ -337,8 +337,7 @@ function Phase2View({ game }: { game: GameState }) {
   return (
     <div className="flex flex-col items-center justify-center flex-1 gap-8 px-8 text-center">
       <div className="flex flex-col items-center gap-2">
-        <span className={`${t.textCyan} text-3xl font-bold uppercase tracking-widest`}>What did the room say?</span>
-        <PromptTypeIcon type={game.prompt!.type} />
+        <p className={`${t.textCyan} text-3xl font-bold uppercase tracking-widest`}>Phase Two: What did the room say?</p>
         <h2 className="text-4xl font-semibold text-white leading-tight max-w-4xl mt-2">
           {game.prompt!.text}
         </h2>
@@ -396,8 +395,8 @@ function Phase3View({ game }: { game: GameState }) {
     return (
       <div className="flex flex-col flex-1 items-center px-8 py-8 gap-8">
         <div className="text-center">
-          <PromptTypeIcon type="binary" />
-          <h2 className="text-4xl font-semibold text-white mt-2 leading-tight max-w-4xl mx-auto">
+          <p className={`${t.textYellow} text-3xl font-black uppercase tracking-widest mb-2`}>The Consensus Was...</p>
+          <h2 className="text-4xl font-semibold text-white leading-tight max-w-4xl mx-auto">
             {prompt.text}
           </h2>
         </div>
@@ -427,8 +426,8 @@ function Phase3View({ game }: { game: GameState }) {
     return (
       <div className="flex flex-col flex-1 items-center px-8 py-8 gap-8">
         <div className="text-center">
-          <PromptTypeIcon type="multiple_choice" />
-          <h2 className="text-4xl font-semibold text-white mt-2 leading-tight max-w-4xl mx-auto">
+          <p className={`${t.textYellow} text-3xl font-black uppercase tracking-widest mb-2`}>The Consensus Was...</p>
+          <h2 className="text-4xl font-semibold text-white leading-tight max-w-4xl mx-auto">
             {prompt.text}
           </h2>
         </div>
@@ -461,8 +460,8 @@ function Phase3View({ game }: { game: GameState }) {
   return (
     <div className="flex flex-col flex-1 items-center px-8 py-8 gap-8">
       <div className="text-center">
-        <PromptTypeIcon type="scale" />
-        <h2 className="text-4xl font-semibold text-white mt-2 leading-tight max-w-4xl mx-auto">
+        <p className={`${t.textYellow} text-3xl font-black uppercase tracking-widest mb-2`}>The Consensus Was...</p>
+        <h2 className="text-4xl font-semibold text-white leading-tight max-w-4xl mx-auto">
           {prompt.text}
         </h2>
       </div>
@@ -476,7 +475,8 @@ function Phase3View({ game }: { game: GameState }) {
           <ScaleBar avg={avg} />
         </div>
         <div className="text-center mt-4">
-          <span className={`${t.textCyan} text-5xl font-black`}>{avg.toFixed(1)}</span>
+          <p className={`${t.textMuted} text-2xl uppercase tracking-widest mb-1`}>Average Answer:</p>
+          <span className={`${t.textCyan} text-6xl font-black`}>{avg.toFixed(1)}</span>
           <span className={`${t.textMuted} text-2xl`}> / 10</span>
         </div>
       </div>
@@ -761,7 +761,7 @@ export default function TVGamePage() {
   const N = gameState?.N ?? 0;
 
   return (
-    <main className={`min-h-screen ${t.bgPage} flex flex-col relative overflow-hidden`}>
+    <main className={`min-h-screen flex flex-col relative overflow-hidden transition-colors duration-500 ${phase === "phase1" ? t.bgPhase1 : phase === "phase2" ? t.bgPhase2 : t.bgPage}`}>
       {phase === "countdown" && (
         <CountdownOverlay onDone={() => {}} />
       )}

@@ -18,6 +18,8 @@
 export const t = {
   // Backgrounds
   bgPage: "bg-[#081c48]",
+  bgPhase1: "bg-[#0d1e54]",      // phase 1 answer screen tint
+  bgPhase2: "bg-[#062c36]",      // phase 2 predict screen tint
   bgSurface: "bg-[#0f2660]",
   bgSurface2: "bg-[#1a3580]",
 

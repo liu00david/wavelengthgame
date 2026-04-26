@@ -1077,8 +1077,8 @@ function PlayGameContent() {
   const myTotal = gameState.leaderboard.find((p) => p.nickname === nickname)?.total ?? 0;
   const myLobbyEmoji = lobbyState?.players.find((p) => p.nickname === nickname)?.emoji;
 
-  const phaseBg = phase === "phase1" ? "bg-[#0d1e54]" : phase === "phase2" ? "bg-[#081e3e]" : t.bgPage;
-  const phaseTopBar = phase === "phase1" ? "bg-[#0d1e54] border-[#3a4a9a]" : phase === "phase2" ? "bg-[#081e3e] border-[#1a4060]" : `${t.bgPage} border-[#2a4a8a]`;
+  const phaseBg = phase === "phase1" ? t.bgPhase1 : phase === "phase2" ? t.bgPhase2 : t.bgPage;
+  const phaseTopBar = phase === "phase1" ? `${t.bgPhase1} border-[#3a4a9a]` : phase === "phase2" ? `${t.bgPhase2} border-[#1a6060]` : `${t.bgPage} border-[#2a4a8a]`;
 
   return (
     <main className={`min-h-screen ${phaseBg} text-white transition-colors duration-500`}>
@@ -1103,7 +1103,7 @@ function PlayGameContent() {
 
       {/* Phase banner */}
       {(phase === "phase1" || phase === "phase2") && (
-        <div className={`w-full text-center py-3 text-2xl font-black uppercase tracking-widest transition-colors duration-500 ${phase === "phase1" ? "bg-[#7862FF]/20 text-[#a99dff]" : "bg-[#25a59f]/20 text-[#4dd9d2]"}`}>
+        <div className={`w-full text-center py-3 text-2xl font-black uppercase tracking-widest transition-colors duration-500 ${phase === "phase1" ? "bg-[#7862FF]/20 text-[#a99dff]" : "bg-[#25a59f]/25 text-[#4dd9d2]"}`}>
           {phase === "phase1" ? "Phase 1 — Answer" : "Phase 2 — Predict"}
         </div>
       )}
