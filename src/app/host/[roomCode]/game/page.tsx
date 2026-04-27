@@ -605,7 +605,7 @@ export default function HostGamePage() {
         {phase === "phase3" && (
           <button
             onClick={() => sendMsg({ type: "next_round" })}
-            className={`w-full py-5 rounded-2xl ${t.btnYellow} text-2xl shadow-xl`}
+            className={`w-full py-3 rounded-xl ${t.btnYellow} text-base shadow-xl`}
           >
             Go to Round Results →
           </button>
@@ -615,7 +615,7 @@ export default function HostGamePage() {
         {phase === "leaderboard" && (
           <button
             onClick={() => sendMsg({ type: "next_round" })}
-            className={`w-full py-5 rounded-2xl ${t.btnYellow} text-2xl shadow-xl`}
+            className={`w-full py-3 rounded-xl ${t.btnYellow} text-base shadow-xl`}
           >
             Next Question →
           </button>

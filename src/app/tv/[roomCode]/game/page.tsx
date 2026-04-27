@@ -337,7 +337,7 @@ function Phase2View({ game }: { game: GameState }) {
   return (
     <div className="flex flex-col items-center justify-center flex-1 gap-8 px-8 text-center">
       <div className="flex flex-col items-center gap-2">
-        <p className={`${t.textCyan} text-3xl font-bold uppercase tracking-widest`}>Phase Two: What did the room say?</p>
+        <p className={`${t.textCyan} text-3xl font-bold uppercase tracking-widest`}>Phase Two: Predict the consensus!</p>
         <h2 className="text-4xl font-semibold text-white leading-tight max-w-4xl mt-2">
           {game.prompt!.text}
         </h2>
@@ -621,6 +621,64 @@ const TV_RANK_STYLE: Record<number, { color: string; label: string; emoji: strin
   3: { color: "text-[#cd853f]",   label: "3rd", emoji: "🥉", height: "h-24", bg: "bg-[#cd853f]/10 border border-[#cd853f]/20" },
 };
 
+function Confetti() {
+  useEffect(() => {
+    const container = document.createElement("div");
+    container.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:100;overflow:hidden";
+    document.body.appendChild(container);
+
+    const colors = ["#7862FF","#f6dc53","#4dd9d2","#c94f7a","#25a59f","#ffffff","#eebf2d"];
+    const pieces: HTMLDivElement[] = [];
+
+    for (let i = 0; i < 120; i++) {
+      const el = document.createElement("div");
+      const color = colors[i % colors.length];
+      const size = 8 + Math.random() * 8;
+      const left = Math.random() * 100;
+      const delay = Math.random() * 1.5;
+      const duration = 2.5 + Math.random() * 2;
+      const rotation = Math.random() * 720;
+      const isRect = Math.random() > 0.5;
+      el.style.cssText = `
+        position:absolute;
+        left:${left}%;top:-20px;
+        width:${isRect ? size * 0.5 : size}px;
+        height:${size}px;
+        background:${color};
+        border-radius:${isRect ? "2px" : "50%"};
+        opacity:0;
+        animation: confettiFall ${duration}s ease-in ${delay}s forwards;
+        --rot: ${rotation}deg;
+      `;
+      container.appendChild(el);
+      pieces.push(el);
+    }
+
+    const style = document.createElement("style");
+    style.textContent = `
+      @keyframes confettiFall {
+        0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+        80%  { opacity: 1; }
+        100% { transform: translateY(110vh) rotate(var(--rot)); opacity: 0; }
+      }
+    `;
+    document.head.appendChild(style);
+
+    const cleanup = setTimeout(() => {
+      container.remove();
+      style.remove();
+    }, 5000);
+
+    return () => {
+      clearTimeout(cleanup);
+      container.remove();
+      style.remove();
+    };
+  }, []);
+
+  return null;
+}
+
 function EndedView({ game }: { game: GameState }) {
   const lb = game.leaderboard;
 
@@ -657,9 +715,9 @@ function EndedView({ game }: { game: GameState }) {
 
   return (
     <div className="flex flex-col flex-1 px-16 py-6 gap-6">
+      <Confetti />
       <div className="text-center">
-        <p className={`${t.textTeal} text-2xl uppercase tracking-widest mb-1`}>Game Over</p>
-        <h2 className={`text-6xl text-white`}>CONSENSUS</h2>
+        <p className={`${t.textTeal} text-2xl uppercase tracking-widest`}>Game Over</p>
       </div>
 
       {/* Podium */}
