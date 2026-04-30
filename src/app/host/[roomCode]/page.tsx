@@ -62,8 +62,8 @@ function HostContent({ roomCode }: { roomCode: string }) {
 
   // Game settings
   const [numQuestions, setNumQuestions] = useState(10);
-  const [phase1Time, setPhase1Time] = useState(30);
-  const [phase2Time, setPhase2Time] = useState(45);
+  const [phase1Time, setPhase1Time] = useState(20);
+  const [phase2Time, setPhase2Time] = useState(30);
   const [gameMode, setGameMode] = useState<"game_questions" | "player_questions">("game_questions");
 
   // Menu state

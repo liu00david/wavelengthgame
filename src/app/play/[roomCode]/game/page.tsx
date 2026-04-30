@@ -171,7 +171,7 @@ function BinaryPrediction({ N, onSubmit, disabled }: { N: number; onSubmit: (val
 function MultipleChoicePrediction({ options, onSubmit, disabled }: { options: string[]; onSubmit: (val: string) => void; disabled: boolean }) {
   return (
     <div className="flex flex-col gap-3 w-full">
-      <p className={`${t.textMuted} text-base text-center mb-1`}>Which option was most popular?</p>
+      <p className={`${t.textMuted} text-2xl font-bold text-center mb-1`}>Which option was most popular?</p>
       {options.map((opt, i) => {
         const c = t.answerChoiceColors[i % t.answerChoiceColors.length];
         return (
@@ -200,7 +200,7 @@ function DoubleDownToggle({ active, onToggle, disabled }: { active: boolean; onT
         </>
       ) : (
         <>
-          Double Down?
+          Enable Double Down?
           <p className={`text-sm font-semibold mt-0.5 ${disabled ? "" : "text-[#7a96c8]/70"}`}>One Time Use</p>
         </>
       )}

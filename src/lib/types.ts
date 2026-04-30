@@ -98,4 +98,5 @@ export type ClientMessage =
   | { type: "pause_timer" } // host only — pause current phase timer
   | { type: "resume_timer" } // host only — resume current phase timer
   | { type: "submit_question"; text: string; questionType: "binary" | "multiple_choice" | "scale"; options?: string[]; labelLow?: string; labelHigh?: string }
+  | { type: "delete_question"; id: string } // host only
   | { type: "begin_game" }; // host only — start countdown after question_submission phase

@@ -282,8 +282,8 @@ type MenuState = "closed" | "main" | "kick" | "end_confirm" | "disband_confirm";
 
 const HOST_SESSION_KEY = "consensus_host_session";
 const DEFAULT_NUM_QUESTIONS = 10;
-const DEFAULT_PHASE1_TIME = 30;
-const DEFAULT_PHASE2_TIME = 45;
+const DEFAULT_PHASE1_TIME = 20;
+const DEFAULT_PHASE2_TIME = 30;
 
 export default function HostGamePage() {
   const params = useParams();
@@ -415,7 +415,7 @@ export default function HostGamePage() {
   return (
     <main className={`min-h-screen ${t.bgPage} text-white px-6 py-8`}>
       {phase === "countdown" && <CountdownScreen />}
-      <div className="max-w-2xl mx-auto">
+      <div className={`mx-auto w-full ${phase === "question_submission" ? "max-w-3xl" : "max-w-2xl"}`}>
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -441,11 +441,22 @@ export default function HostGamePage() {
           </div>
         </div>
 
+        {/* Centered heading for question collection */}
+        {phase === "question_submission" && (
+          <div className="text-center mb-4">
+            <p className={`${t.textMuted} text-xs uppercase tracking-widest mb-1`}>Question Collection</p>
+            <h2 className={`text-2xl font-black text-white`}>
+              {collectedCount} <span className={t.textCyan}>/ {gameState?.totalRounds}</span> questions
+            </h2>
+          </div>
+        )}
+
         {/* Phase status */}
+        {phase !== "question_submission" && (
         <div className={`${t.bgSurface} rounded-2xl border ${t.borderSurface} p-6 mb-4`}>
           <div className="flex items-center justify-between mb-3">
             <span className={`${t.textYellow} font-bold text-lg`}>{phaseLabel[phase]}</span>
-            {gameState && phase !== "question_submission" && (
+            {gameState && (
               <span className={`${t.textMuted} text-lg`}>
                 Round {gameState.round} / {gameState.totalRounds}
               </span>
@@ -476,15 +487,11 @@ export default function HostGamePage() {
             </div>
           )}
         </div>
+        )}
 
         {/* Question submission phase */}
         {phase === "question_submission" && gameState && (
-          <div className={`${t.bgSurface} rounded-2xl border ${t.borderSurface} p-6 mb-4`}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-white font-bold text-lg">
-                Questions <span className={t.textCyan}>({collectedCount} / {gameState.totalRounds})</span>
-              </h3>
-            </div>
+          <div className={`${t.bgSurface} rounded-2xl border ${t.borderSurface} p-6 mb-4 w-full`}>
 
             <HostQuestionForm onSubmit={(q) => sendMsg({ type: "submit_question", text: q.text, questionType: q.questionType, options: q.options, labelLow: q.labelLow, labelHigh: q.labelHigh })} />
 
@@ -500,6 +507,7 @@ export default function HostGamePage() {
                     onClick={() => {
                       collectedQuestionsRef.current = collectedQuestionsRef.current.filter((x) => x.id !== q.id);
                       setCollectedCount(collectedQuestionsRef.current.length);
+                      sendMsg({ type: "delete_question", id: q.id });
                     }}
                     className={`shrink-0 px-3 py-1 rounded-lg text-xs font-semibold text-[#c94f7a] border border-[#9a3558]/30 hover:bg-[#9a3558]/20 active:scale-95 transition-all`}
                   >
@@ -633,19 +641,19 @@ export default function HostGamePage() {
           <div className="flex flex-col gap-3">
             <button
               onClick={() => router.push(`/host/${roomCode}/summary`)}
-              className={`w-full py-5 rounded-2xl ${t.btnPrimary} text-xl font-black shadow-xl`}
+              className={`w-full py-4 rounded-2xl ${t.btnPrimary} text-base font-bold shadow-xl`}
             >
               View Game Summary →
             </button>
             <button
               onClick={handlePlayAgain}
-              className={`w-full py-4 rounded-2xl ${t.btnYellow} text-xl shadow-xl`}
+              className={`w-full py-4 rounded-2xl ${t.btnYellow} text-base shadow-xl`}
             >
               Play Again
             </button>
             <button
               onClick={() => setMenuState("disband_confirm")}
-              className={`w-full py-3 rounded-2xl ${t.btnDanger} font-bold`}
+              className={`w-full py-4 rounded-2xl ${t.btnDanger} text-base font-bold`}
             >
               Disband Room
             </button>

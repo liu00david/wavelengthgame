@@ -73,6 +73,7 @@ type ClientMessage =
   | { type: "pause_timer" }
   | { type: "resume_timer" }
   | { type: "submit_question"; text: string; questionType: "binary" | "multiple_choice" | "scale"; options?: string[]; labelLow?: string; labelHigh?: string }
+  | { type: "delete_question"; id: string }
   | { type: "begin_game" };
 
 // Inline prompt bank (mirrors src/lib/prompts.ts)
@@ -824,6 +825,16 @@ export default class GameServer implements Party.Server {
           }));
         }
       }
+      return;
+    }
+
+    if (msg.type === "delete_question") {
+      const player = this.lobby.players.find((p) => p.id === sender.id);
+      if (!player?.isHost) return;
+      if (this.game.phase !== "question_submission") return;
+      this.submittedQuestions = this.submittedQuestions.filter((q) => q.id !== msg.id);
+      this.game = { ...this.game, submittedQuestionCount: this.submittedQuestions.length };
+      this.broadcastGame();
       return;
     }
 

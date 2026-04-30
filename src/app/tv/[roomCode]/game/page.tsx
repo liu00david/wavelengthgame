@@ -200,27 +200,27 @@ function CountdownOverlay({ onDone }: { onDone: () => void }) {
       {isRules && rule && (
         <div
           key={ruleIndex}
-          className="flex flex-col items-center gap-8 text-center px-16"
+          className="flex flex-col items-center gap-5 text-center px-16"
           style={{ animation: "ruleSlideIn 0.4s ease-out forwards" }}
         >
+          {/* Card */}
+          <div className="rounded-2xl px-14 py-8 flex flex-col items-center gap-4"
+            style={{ background: `${rule.color}18`, border: `2px solid ${rule.color}44` }}>
+            <span style={{ fontSize: "4rem" }}>{rule.icon}</span>
+            <div>
+              <p className="text-lg font-bold uppercase tracking-widest mb-2" style={{ color: rule.color }}>{rule.label}</p>
+              <p className="text-5xl mb-4" style={{ lineHeight: 1.1 }}>
+                <JumpWord key={`${ruleIndex}-title`} word={rule.title} color="white" delay={200} />
+              </p>
+              <p className="text-xl text-[#a8c0e8] max-w-xl leading-snug">{rule.body}</p>
+            </div>
+          </div>
           {/* Step dots */}
           <div className="flex gap-3">
             {RULES.map((_, i) => (
               <div key={i} className="w-3 h-3 rounded-full transition-all duration-300"
                 style={{ background: i === ruleIndex ? rule.color : "#2a4a8a" }} />
             ))}
-          </div>
-          {/* Card */}
-          <div className="rounded-3xl px-20 py-14 flex flex-col items-center gap-6"
-            style={{ background: `${rule.color}18`, border: `2px solid ${rule.color}44` }}>
-            <span style={{ fontSize: "6rem" }}>{rule.icon}</span>
-            <div>
-              <p className="text-2xl font-bold uppercase tracking-widest mb-4" style={{ color: rule.color }}>{rule.label}</p>
-              <p className="text-7xl mb-6" style={{ lineHeight: 1.1 }}>
-                <JumpWord key={`${ruleIndex}-title`} word={rule.title} color="white" delay={200} />
-              </p>
-              <p className="text-3xl text-[#a8c0e8] max-w-2xl leading-snug">{rule.body}</p>
-            </div>
           </div>
         </div>
       )}
@@ -281,7 +281,7 @@ function Phase1View({ game }: { game: GameState }) {
   return (
     <div className="flex flex-col items-center justify-center flex-1 gap-8 px-8 text-center">
       <div className="flex flex-col items-center gap-2">
-        <p className={`${t.textMuted} text-xl font-bold uppercase tracking-widest`}>Phase One: <PromptTypeIcon type={game.prompt!.type} /></p>
+        <p className={`${t.textMuted} text-xl font-bold uppercase tracking-widest`}>Phase One: Answer</p>
         <h2 className="text-4xl font-semibold text-white leading-tight max-w-4xl mt-2">
           {game.prompt!.text}
         </h2>
@@ -337,7 +337,7 @@ function Phase2View({ game }: { game: GameState }) {
   return (
     <div className="flex flex-col items-center justify-center flex-1 gap-8 px-8 text-center">
       <div className="flex flex-col items-center gap-2">
-        <p className={`${t.textCyan} text-3xl font-bold uppercase tracking-widest`}>Phase Two: Predict the consensus!</p>
+        <p className={`${t.textCyan} text-3xl font-bold uppercase tracking-widest`}>Phase Two: Predict</p>
         <h2 className="text-4xl font-semibold text-white leading-tight max-w-4xl mt-2">
           {game.prompt!.text}
         </h2>
@@ -574,19 +574,19 @@ function LeaderboardRow({ player, isTop }: { player: GameState["leaderboard"][0]
           : `${t.bgSurface}/60 border ${t.borderSurface}`
       }`}
     >
-      <span className={`font-black text-2xl w-8 ${isTop ? t.textPrimary : t.textMuted}`}>
+      <span className={`font-black text-2xl w-8 ${isTop ? "text-white" : t.textMuted}`}>
         #{player.rank}
       </span>
       <div className={`${resolveAvatarColor(player.nickname, player.emoji)} w-12 h-12 rounded-full flex items-center justify-center text-2xl`}>
         {resolveEmoji(player.nickname, player.emoji)}
       </div>
-      <span className={`font-bold text-xl flex-1 ${isTop ? t.textPrimary : "text-white"}`}>
+      <span className={`font-bold text-xl flex-1 text-white`}>
         {player.nickname}
       </span>
       {player.roundScore > 0 && (
         <span className={`${t.textTeal} font-bold text-lg`}>+{player.roundScore}</span>
       )}
-      <span className={`font-black text-2xl tabular-nums ${isTop ? t.textPrimary : "text-white"}`}>
+      <span className={`font-black text-2xl tabular-nums text-white`}>
         {animatedTotal}
       </span>
     </div>
