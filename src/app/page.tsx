@@ -60,7 +60,7 @@ export default function Home() {
           <h1 className="text-5xl sm:text-7xl font-black text-white tracking-tight">CONSENSUS</h1>
         </div>
         <p className={`${t.textTeal} mt-2 text-xl sm:text-2xl tracking-wide`}>Wisdom of the Crowds</p>
-        <p className={`${t.textMuted} mt-2 text-base sm:text-lg`}>Predict what your group thinks. Score points for getting close.</p>
+        <p className={`${t.textMuted} mt-2 text-base sm:text-lg`}>How well can you read the room?</p>
       </div>
 
       {/* Host + Join stacked */}
