@@ -184,18 +184,16 @@ function JumpWord({ word, color, delay = 0 }: { word: string; color: string; del
 }
 
 function CountdownScreen() {
-  const [step, setStep] = useState<"rules0" | "rules1" | "rules2" | "rules_out" | "tagline_in" | "tagline_out" | "3" | "2" | "1">("rules0");
+  const [step, setStep] = useState<"rules0" | "rules1" | "rules2" | "rules_out" | "tagline_in" | "tagline_out" | "ready">("rules0");
 
   useEffect(() => {
     const timers = [
-      setTimeout(() => setStep("rules1"),      5000),
-      setTimeout(() => setStep("rules2"),      10000),
-      setTimeout(() => setStep("rules_out"),   15000),
-      setTimeout(() => setStep("tagline_in"),  15400),
-      setTimeout(() => setStep("tagline_out"), 17200),
-      setTimeout(() => setStep("3"),           18000),
-      setTimeout(() => setStep("2"),           19000),
-      setTimeout(() => setStep("1"),           20000),
+      setTimeout(() => setStep("rules1"),      4000),
+      setTimeout(() => setStep("rules2"),      8000),
+      setTimeout(() => setStep("rules_out"),   12000),
+      setTimeout(() => setStep("tagline_in"),  12400),
+      setTimeout(() => setStep("tagline_out"), 14200),
+      setTimeout(() => setStep("ready"),       15000),
     ];
     return () => timers.forEach(clearTimeout);
   }, []);
@@ -203,7 +201,7 @@ function CountdownScreen() {
   const ruleIndex = step === "rules0" ? 0 : step === "rules1" ? 1 : step === "rules2" ? 2 : null;
   const isRules = ruleIndex !== null || step === "rules_out";
   const isTagline = step === "tagline_in" || step === "tagline_out";
-  const digit = step === "3" ? "3" : step === "2" ? "2" : step === "1" ? "1" : null;
+  const isReady = step === "ready";
   const rule = ruleIndex !== null ? RULES[ruleIndex] : null;
 
   return (
@@ -263,15 +261,10 @@ function CountdownScreen() {
         </div>
       )}
 
-      {/* Digit countdown */}
-      {digit && (
-        <div key={digit} style={{ animation: "cdPop 0.9s ease-out forwards" }}>
-          <span className="font-black leading-none" style={{
-            fontSize: "16rem",
-            color: digit === "3" ? "#7862FF" : digit === "2" ? "#4dd9d2" : "#f6dc53",
-          }}>
-            {digit}
-          </span>
+      {/* Ready placeholder */}
+      {isReady && (
+        <div className="flex flex-col items-center gap-4 animate-pulse">
+          <p className={`text-5xl font-black ${t.textYellow}`}>Starting Round 1...</p>
         </div>
       )}
     </div>

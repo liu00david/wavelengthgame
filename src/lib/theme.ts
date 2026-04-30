@@ -7,8 +7,9 @@
  *   yellow2   #eebf2d  – amber (hover states, secondary accents)
  *   teal      #25a59f  – teal (true/yes, success, confirmation)
  *   tealLight #4dd9d2  – lighter teal for text on dark bg
- *   rose      #9a3558  – crimson rose (false/no, danger)
+ *   rose      #9a3558  – crimson rose (danger, subtle)
  *   roseLight #c94f7a  – lighter rose for text on dark bg
+ *   red       #e03060  – bright red (NO button, strong negative)
  *   bg        #081c48  – page background (deep navy)
  *   surface   #0f2660  – card/panel background
  *   surface2  #1a3580  – slightly lighter surface for hover/nested
@@ -19,7 +20,7 @@ export const t = {
   // Backgrounds
   bgPage: "bg-[#081c48]",
   bgPhase1: "bg-[#0d1e54]",      // phase 1 answer screen tint
-  bgPhase2: "bg-[#062c36]",      // phase 2 predict screen tint
+  bgPhase2: "bg-[#022434]",      // phase 2 predict screen tint
   bgSurface: "bg-[#0f2660]",
   bgSurface2: "bg-[#1a3580]",
 
@@ -33,8 +34,9 @@ export const t = {
   textTeal: "text-[#4dd9d2]",       // lighter teal for readability on dark bg
   textCyan: "text-[#4dd9d2]",       // alias
   textRose: "text-[#c94f7a]",       // lighter rose for readability on dark bg
+  textRed: "text-[#e03060]",        // bright red (NO label)
   textMuted: "text-[#a8c0e8]",      // muted blue-slate
-  textFaint: "text-[#7a96c8]",      // faint blue-slate
+  textFaint: "text-[#aba9d0]",      // faint blue-slate
   textWhite: "text-white",
 
   // Button: primary (purple)
@@ -56,8 +58,11 @@ export const t = {
   // TRUE answer color (yes/teal)
   trueColor: { bg: "bg-[#25a59f]", text: "text-white", hover: "hover:bg-[#1d8c87]" },
 
-  // FALSE answer color (no/rose)
-  falseColor: { bg: "bg-[#9a3558]", text: "text-white", hover: "hover:bg-[#7e2b47]" },
+  // FALSE answer color (no/red)
+  falseColor: { bg: "bg-[#e03060]", text: "text-white", hover: "hover:bg-[#c42850]" },
+
+  // Button: NO (binary)
+  btnNo: "bg-[#e03060] text-white hover:bg-[#c42850] active:scale-95 transition-all font-black",
 
   // Answer choice buttons: bg + text pairs (bright, white-hued, all black text)
   answerChoiceColors: [

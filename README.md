@@ -7,37 +7,42 @@ A real-time party game about reading the room. Players answer questions, then pr
 **Setup**
 - One person hosts a game and shares a room code
 - Players join on their phones at the game URL
-- Optionally cast the TV screen to a display for everyone to watch
+- Cast `/tv/[roomCode]` to a display for everyone to watch (recommended)
+- Host configures rounds, timers, and question mode — then starts the game
 
 **Each Round Has 3 Phases**
 
-1. **Answer** — Everyone answers the same question (Yes/No, Multiple Choice, or Scale 1–10). Timer counts down, answers are hidden from other players.
+1. **Answer** — Everyone answers the same question (Yes/No, Multiple Choice, or Scale 1–10). Timer counts down, answers are hidden.
 
-2. **Predict** — Players see the question again and predict what the group said (e.g. how many said YES, which option was most popular, or what the average was). Optionally use your one-time **Double Down** to bet x2 points — but you score 0 if wrong.
+2. **Predict** — Players predict what the group said (how many said YES, which option was most popular, or the average). Optionally use your one-time **Double Down** to bet ×2 points — but score 0 if wrong.
 
-3. **Results** — The real answer is revealed on the TV screen with a breakdown. Points are awarded based on how close each player's prediction was.
-
-**Scoring**
-- Closer predictions = more points
-- Double Down: correct = 2× points, wrong = 0 points
-- Leaderboard updates after each round
+3. **Results** — The real answer is revealed on the TV with animated bar charts. Points awarded based on prediction accuracy.
 
 **End of Game**
-- Final podium shows top 3 players
-- Host can view a full round-by-round summary
+- "Who figured out the consensus?" animation plays
+- Final podium shows top 3 with confetti
+- Host can view a full game summary or start a new game
 
 ## Question Types
 
-- **Yes / No** — Binary questions. Predict how many people said YES.
-- **Multiple Choice** — 4 options. Predict which option got the most votes.
-- **Scale 1–10** — Numeric questions. Predict the group's average.
+| Type | Phase 1 | Phase 2 Prediction |
+|------|---------|--------------------|
+| Yes / No | Tap YES or NO | How many said YES? (slider) |
+| Multiple Choice | Pick one of 4 options | Which option was most popular? |
+| Scale 1–10 | Drag a slider | What was the average answer? |
+
+## Question Modes
+
+- **Game Questions** — drawn from the built-in bank of 116 shuffled questions
+- **Player Questions** — players submit their own questions before the game starts; host can delete submissions; game begins once enough are collected
 
 ## Tech Stack
 
 - **Next.js** (App Router) — frontend
 - **PartyKit** — real-time WebSocket server
 - **Tailwind CSS v4** — styling
-- **Vercel** — deployment
+- **Vercel** — frontend deployment
+- **partykit.dev** — server deployment
 
 ## Running Locally
 
@@ -46,13 +51,23 @@ npm install
 npm run dev
 ```
 
-This starts both the Next.js frontend and the PartyKit dev server. Open [http://localhost:3000](http://localhost:3000) to host or join a game.
+Starts both the Next.js frontend and PartyKit dev server. Open [http://localhost:3000](http://localhost:3000).
 
-## Roles
+## Deploying
+
+```bash
+# Frontend
+vercel
+
+# PartyKit server
+npx partykit deploy
+```
+
+## Routes
 
 | URL | Role |
 |-----|------|
 | `/` | Landing page — host or join |
 | `/host/[roomCode]` | Host lobby & game controls |
 | `/play/[roomCode]` | Player view (mobile) |
-| `/tv/[roomCode]` | TV/display screen |
+| `/tv/[roomCode]` | TV/display screen (lobby + game) |

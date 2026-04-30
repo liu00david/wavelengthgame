@@ -38,7 +38,7 @@ function BinaryInput({ onSubmit, disabled }: { onSubmit: (val: string) => void; 
       <button
         onClick={() => !disabled && onSubmit("no")}
         disabled={disabled}
-        className="flex-1 py-5 rounded-2xl bg-[#9a3558] hover:bg-[#7e2b47] active:scale-95 disabled:opacity-40 transition-all text-white text-3xl font-black shadow-xl"
+        className={`flex-1 py-5 rounded-2xl ${t.btnNo} text-3xl shadow-xl disabled:opacity-40`}
       >
         NO
       </button>
@@ -131,20 +131,18 @@ function BinaryPrediction({ N, onSubmit, disabled }: { N: number; onSubmit: (val
 
   return (
     <div className="flex flex-col items-center gap-5 w-full">
-      <p className={`${t.textMuted} text-lg font-semibold text-center`}>How many people said YES?</p>
-
       {/* YES / NO split display */}
       <div className="flex items-center justify-center gap-6 w-full">
         <div className="flex flex-col items-center gap-1 flex-1">
-          <span className="text-[#9a3558] font-black text-lg uppercase tracking-widest">NO</span>
+          <span className={`${t.textRed} font-black text-lg uppercase tracking-widest`}>NO</span>
           <span className="text-white font-black text-6xl leading-none">{noCount}</span>
-          <span className={`${t.textFaint} text-sm`}>/ {N}</span>
+          <span className={`${t.textMuted} text-xl font-bold`}>/ {N}</span>
         </div>
         <div className={`w-px h-16 bg-[#2a4a8a]`} />
         <div className="flex flex-col items-center gap-1 flex-1">
           <span className="text-[#25a59f] font-black text-lg uppercase tracking-widest">YES</span>
           <span className="text-white font-black text-6xl leading-none">{value}</span>
-          <span className={`${t.textFaint} text-sm`}>/ {N}</span>
+          <span className={`${t.textMuted} text-xl font-bold`}>/ {N}</span>
         </div>
       </div>
 
@@ -171,7 +169,6 @@ function BinaryPrediction({ N, onSubmit, disabled }: { N: number; onSubmit: (val
 function MultipleChoicePrediction({ options, onSubmit, disabled }: { options: string[]; onSubmit: (val: string) => void; disabled: boolean }) {
   return (
     <div className="flex flex-col gap-3 w-full">
-      <p className={`${t.textMuted} text-2xl font-bold text-center mb-1`}>Which option was most popular?</p>
       {options.map((opt, i) => {
         const c = t.answerChoiceColors[i % t.answerChoiceColors.length];
         return (
@@ -190,13 +187,13 @@ function MultipleChoicePrediction({ options, onSubmit, disabled }: { options: st
 function DoubleDownToggle({ active, onToggle, disabled }: { active: boolean; onToggle: () => void; disabled: boolean }) {
   return (
     <button onClick={onToggle} disabled={disabled}
-      className={`w-full py-4 rounded-2xl font-black text-xl transition-all active:scale-95 shadow ${
-        active ? "bg-[#f6dc53] text-[#081c48]" : `${t.btnGhost} text-[#7a96c8]`
+      className={`w-full py-4 rounded-2xl font-black text-xl transition-all active:scale-95 shadow border-2 ${
+        active ? "bg-transparent text-[#f6dc53] border-[#f6dc53]" : `${t.btnGhost} text-[#7a96c8] border-transparent`
       } ${disabled ? "opacity-40" : ""}`}>
       {active ? (
         <>
           Double Down On!
-          <p className="text-[#081c48]/70 text-sm font-semibold mt-0.5">Get x2 points if correct</p>
+          <p className="text-[#f6dc53]/70 text-sm font-semibold mt-0.5">Get x2 points if correct</p>
         </>
       ) : (
         <>
@@ -309,10 +306,14 @@ function Phase2View({ game, nickname, onSubmit, submitted }: {
     );
   }
 
+  const predictLabel =
+    prompt.type === "binary" ? "Predict how many said NO / YES" :
+    prompt.type === "multiple_choice" ? "Predict the popular answer" :
+    "Predict the average answer";
+
   return (
     <div className="flex flex-col gap-5 px-5 py-6">
       <div>
-        <p className={`${t.textYellow} text-base font-bold uppercase tracking-widest mb-2`}>What did the room say?</p>
         <p className="text-white text-2xl font-bold leading-snug">{prompt.text}</p>
       </div>
       <div>
@@ -321,20 +322,21 @@ function Phase2View({ game, nickname, onSubmit, submitted }: {
           {game.paused ? `⏸ ${displaySecs}s` : `${displaySecs}s`}
         </p>
       </div>
+      <p className={`${t.textYellow} text-lg font-bold uppercase tracking-widest text-center`}>{predictLabel}</p>
       {prompt.type === "binary" && (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 items-center">
           <BinaryPrediction N={game.phase1AnsweredCount || game.N} onSubmit={(v) => handleSubmit(v)} disabled={submitted} />
           {canDoubleDown && <DoubleDownToggle active={doubleDown} onToggle={() => setDoubleDown((d) => !d)} disabled={submitted} />}
         </div>
       )}
       {prompt.type === "multiple_choice" && (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 items-center">
           <MultipleChoicePrediction options={prompt.options!} onSubmit={(v) => handleSubmit(v)} disabled={submitted} />
           {canDoubleDown && <DoubleDownToggle active={doubleDown} onToggle={() => setDoubleDown((d) => !d)} disabled={submitted} />}
         </div>
       )}
       {prompt.type === "scale" && (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 items-center">
           <ScaleInput onSubmit={(v) => handleSubmit(v)} disabled={submitted} step={0.1} min={1} max={10}
             labelLow={prompt.labelLow} labelHigh={prompt.labelHigh} />
           {canDoubleDown && <DoubleDownToggle active={doubleDown} onToggle={() => setDoubleDown((d) => !d)} disabled={submitted} />}
@@ -381,7 +383,7 @@ function Phase3View({ game, nickname }: { game: GameState; nickname: string }) {
         <div className={`px-4 py-3 rounded-xl w-full ${myScore > 0 ? "bg-[#f6dc53]/20 border border-[#f6dc53]/30" : "bg-[#9a3558]/20 border border-[#9a3558]/30"}`}>
           {myScore > 0
             ? <p className={`${t.textYellow} font-bold text-lg`}>Double Down PAID OFF! 2× points</p>
-            : <p className="text-[#c94f7a] font-bold text-lg">Double Down FAILED — 0 points</p>}
+            : <p className={`${t.textRed} font-bold text-lg`}>Double Down FAILED — 0 points</p>}
         </div>
       )}
 
@@ -612,10 +614,10 @@ function PlayerCountdownScreen() {
 
   useEffect(() => {
     const timers = [
-      setTimeout(() => setStep("rules1"),    5000),
-      setTimeout(() => setStep("rules2"),    10000),
-      setTimeout(() => setStep("rules_out"), 15000),
-      setTimeout(() => setStep("tagline"),   15400),
+      setTimeout(() => setStep("rules1"),    4000),
+      setTimeout(() => setStep("rules2"),    8000),
+      setTimeout(() => setStep("rules_out"), 12000),
+      setTimeout(() => setStep("tagline"),   12400),
     ];
     return () => timers.forEach(clearTimeout);
   }, []);

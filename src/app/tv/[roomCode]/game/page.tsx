@@ -52,7 +52,7 @@ function PromptTypeIcon({ type }: { type: string }) {
   return <span className={`${t.textTeal} text-2xl font-bold uppercase tracking-widest`}>SCALE 1–10</span>;
 }
 
-function AnswerBar({ label, value, pct, color, isWinner }: { label: string; value: number | string; pct: number; color: string; isWinner?: boolean }) {
+function AnswerBar({ label, value, pct, color, isWinner, barHeight = "h-8", showIcon = true }: { label: string; value: number | string; pct: number; color: string; isWinner?: boolean; barHeight?: string; showIcon?: boolean }) {
   const safePct = Number.isFinite(pct) ? pct : 0;
   const [width, setWidth] = useState(0);
   useEffect(() => {
@@ -65,17 +65,17 @@ function AnswerBar({ label, value, pct, color, isWinner }: { label: string; valu
       <span className={`text-white font-bold text-xl text-right whitespace-nowrap self-center ${isWinner ? t.textTeal : ""}`}>
         {label}
       </span>
-      <div className="relative h-14 bg-[#2a4a8a] rounded-xl overflow-hidden">
+      <div className={`relative ${barHeight} bg-[#2a4a8a] rounded-xl overflow-hidden`}>
         <div
           className={`absolute left-0 top-0 h-full ${color} rounded-xl transition-all duration-1000 ease-out`}
           style={{ width: `${width}%` }}
         />
-        <span className="absolute right-3 top-1/2 -translate-y-1/2 font-black text-xl z-10 text-[#081c48]">
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 z-10 font-black text-xl text-white">
           {value}{safePct > 0 ? ` (${Math.round(safePct)}%)` : ""}
         </span>
       </div>
-      <span className="w-16 text-center text-5xl self-center">
-        {isWinner ? <span className={t.textTeal}>✓</span> : null}
+      <span className="w-12 text-center text-4xl self-center">
+        {showIcon ? (isWinner ? <span className={t.textTeal}>✔</span> : <span className="text-[#e03060] -ml-0.5" style={{marginLeft: "-2px"}}>✗</span>) : null}
       </span>
     </div>
   );
@@ -106,8 +106,8 @@ function GameOverIntro({ onDone }: { onDone: () => void }) {
         className="flex flex-col items-center gap-6 text-center transition-all duration-500"
         style={{ opacity: showGameOver ? 1 : 0, transform: showGameOver ? "translateY(0)" : "translateY(-20px)" }}
       >
-        <p className="text-8xl">🏆</p>
-        <p className={`font-black ${t.textYellow} text-center`} style={{ fontSize: "7rem", lineHeight: 1 }}>
+        <p className="text-6xl">🏆</p>
+        <p className={`font-black ${t.textYellow} text-center`} style={{ fontSize: "5rem", lineHeight: 1 }}>
           Game Over!
         </p>
       </div>
@@ -115,8 +115,8 @@ function GameOverIntro({ onDone }: { onDone: () => void }) {
         className="absolute flex flex-col items-center gap-6 text-center transition-all duration-500"
         style={{ opacity: showConsensus ? 1 : 0, transform: showConsensus ? "translateY(0)" : "translateY(24px)" }}
       >
-        <p className="text-8xl">🤔</p>
-        <p className={`font-black text-white text-center`} style={{ fontSize: "5rem", lineHeight: 1.1 }}>
+        <p className="text-6xl">🤔</p>
+        <p className={`font-black text-white text-center`} style={{ fontSize: "3.5rem", lineHeight: 1.1 }}>
           Who figured out<br />the consensus?
         </p>
       </div>
@@ -156,15 +156,15 @@ function CountdownOverlay({ onDone }: { onDone: () => void }) {
 
   useEffect(() => {
     const timers = [
-      setTimeout(() => setStep("rules1"),      5000),
-      setTimeout(() => setStep("rules2"),      10000),
-      setTimeout(() => setStep("rules_out"),   15000),
-      setTimeout(() => setStep("tagline_in"),  15400),
-      setTimeout(() => setStep("tagline_out"), 17200),
-      setTimeout(() => setStep("3"),           18000),
-      setTimeout(() => setStep("2"),           19000),
-      setTimeout(() => setStep("1"),           20000),
-      setTimeout(() => { setStep("done"); onDone(); }, 20800),
+      setTimeout(() => setStep("rules1"),      4000),
+      setTimeout(() => setStep("rules2"),      8000),
+      setTimeout(() => setStep("rules_out"),   12000),
+      setTimeout(() => setStep("tagline_in"),  12400),
+      setTimeout(() => setStep("tagline_out"), 14200),
+      setTimeout(() => setStep("3"),           15000),
+      setTimeout(() => setStep("2"),           16000),
+      setTimeout(() => setStep("1"),           17000),
+      setTimeout(() => { setStep("done"); onDone(); }, 17800),
     ];
     return () => timers.forEach(clearTimeout);
   }, [onDone]);
@@ -279,20 +279,20 @@ function Phase1View({ game }: { game: GameState }) {
   const frozenSecs = game.paused ? (game.pausedTimeRemaining ?? 0) / 1000 : countdown;
 
   return (
-    <div className="flex flex-col items-center justify-center flex-1 gap-8 px-8 text-center">
+    <div className="flex flex-col items-center justify-center flex-1 gap-4 px-8 text-center">
       <div className="flex flex-col items-center gap-2">
-        <p className={`${t.textMuted} text-xl font-bold uppercase tracking-widest`}>Phase One: Answer</p>
-        <h2 className="text-4xl font-semibold text-white leading-tight max-w-4xl mt-2">
+        <p className="text-[#a99dff] text-3xl font-bold uppercase tracking-widest">Phase One: Answer</p>
+        <h2 className="text-3xl font-semibold text-white leading-tight max-w-2xl mt-2">
           {game.prompt!.text}
         </h2>
       </div>
 
       {game.prompt!.type === "multiple_choice" && (
-        <div className="grid grid-cols-2 gap-4 w-full max-w-2xl mt-4">
+        <div className="flex flex-col gap-3 w-full max-w-lg mt-2">
           {game.prompt!.options!.map((opt, i) => {
             const c = t.answerChoiceColors[i % t.answerChoiceColors.length];
             return (
-              <div key={i} className={`${c.bg} rounded-2xl px-6 py-5 text-xl font-semibold flex items-center gap-3 min-h-[5rem]`}>
+              <div key={i} className={`${c.bg} rounded-2xl px-6 py-3 text-xl font-semibold flex items-center gap-3`}>
                 <span className={`${c.text} opacity-40 font-black text-2xl shrink-0`}>{String.fromCharCode(65 + i)}.</span>
                 <span className={c.text}>{opt}</span>
               </div>
@@ -302,16 +302,16 @@ function Phase1View({ game }: { game: GameState }) {
       )}
 
       {game.prompt!.type === "scale" && (
-        <div className="w-full max-w-2xl mt-2">
+        <div className="w-full max-w-2xl mt-6 mb-4">
           <div className="flex justify-between mb-2 px-1">
-            <span className={`${t.textMuted} text-3xl font-semibold`}>1 — {game.prompt!.labelLow ?? ""}</span>
-            <span className={`${t.textMuted} text-3xl font-semibold`}>{game.prompt!.labelHigh ?? ""} — 10</span>
+            <span className={`${t.textMuted} text-xl font-semibold`}>1 — {game.prompt!.labelLow ?? ""}</span>
+            <span className={`${t.textMuted} text-xl font-semibold`}>{game.prompt!.labelHigh ?? ""} — 10</span>
           </div>
           <div className="h-3 bg-[#2a4a8a] rounded-full" />
         </div>
       )}
 
-      <div className="flex flex-col items-center gap-3 mt-4">
+      <div className={`flex flex-col items-center gap-3 ${game.prompt!.type !== "multiple_choice" ? "mt-6" : ""}`}>
         <div className="relative">
           <CircleTimer secs={frozenSecs} total={total} />
           {game.paused && (
@@ -320,10 +320,6 @@ function Phase1View({ game }: { game: GameState }) {
             </div>
           )}
         </div>
-        <p className="text-[#7a96c8] text-xl">Players are answering...</p>
-        <p className={`${t.textMuted} text-lg`}>
-          <span className="text-white font-bold">{game.answeredCount}</span> / <span className="text-white font-bold">{game.N}</span> answered
-        </p>
       </div>
     </div>
   );
@@ -335,29 +331,25 @@ function Phase2View({ game }: { game: GameState }) {
   const frozenSecs = game.paused ? (game.pausedTimeRemaining ?? 0) / 1000 : countdown;
 
   return (
-    <div className="flex flex-col items-center justify-center flex-1 gap-8 px-8 text-center">
+    <div className="flex flex-col items-center justify-center flex-1 gap-4 px-8 text-center">
       <div className="flex flex-col items-center gap-2">
         <p className={`${t.textCyan} text-3xl font-bold uppercase tracking-widest`}>Phase Two: Predict</p>
-        <h2 className="text-4xl font-semibold text-white leading-tight max-w-4xl mt-2">
+        <h2 className="text-3xl font-semibold text-white leading-tight max-w-2xl mt-2">
           {game.prompt!.text}
         </h2>
       </div>
 
       {game.prompt!.type === "scale" && (
-        <div className="w-full max-w-2xl">
+        <div className="w-full max-w-2xl mt-6 mb-4">
           <div className="flex justify-between mb-2 px-1">
-            <span className={`${t.textMuted} text-3xl font-semibold`}>1 — {game.prompt!.labelLow ?? ""}</span>
-            <span className={`${t.textMuted} text-3xl font-semibold`}>{game.prompt!.labelHigh ?? ""} — 10</span>
+            <span className={`${t.textMuted} text-xl font-semibold`}>1 — {game.prompt!.labelLow ?? ""}</span>
+            <span className={`${t.textMuted} text-xl font-semibold`}>{game.prompt!.labelHigh ?? ""} — 10</span>
           </div>
           <div className="h-3 bg-[#2a4a8a] rounded-full" />
         </div>
       )}
 
-      <div className="flex flex-col items-center gap-2">
-        <p className="text-[#7a96c8] text-xl">Players are predicting...</p>
-      </div>
-
-      <div className="relative">
+      <div className="relative mt-6">
         <CircleTimer secs={frozenSecs} total={total} />
         {game.paused && (
           <div className="absolute inset-0 flex items-center justify-center">
@@ -378,7 +370,7 @@ function Phase3View({ game }: { game: GameState }) {
     return (
       <div className="flex flex-col flex-1 items-center justify-center gap-6 px-8 text-center">
         <span className="text-7xl">🦗</span>
-        <h2 className="text-4xl font-semibold text-white leading-tight max-w-2xl">
+        <h2 className="text-3xl font-semibold text-white leading-tight max-w-2xl">
           {prompt.text}
         </h2>
         <p className={`${t.textMuted} text-2xl`}>Nobody answered this round.</p>
@@ -393,22 +385,22 @@ function Phase3View({ game }: { game: GameState }) {
     const noPct = N > 0 ? (noCount / N) * 100 : 0;
 
     return (
-      <div className="flex flex-col flex-1 items-center px-8 py-8 gap-8">
+      <div className="flex flex-col flex-1 items-center px-8 py-8 gap-4">
         <div className="text-center">
           <p className={`${t.textYellow} text-3xl font-black uppercase tracking-widest mb-2`}>The Consensus Was...</p>
-          <h2 className="text-4xl font-semibold text-white leading-tight max-w-4xl mx-auto">
+          <h2 className="text-3xl font-semibold text-white leading-tight max-w-2xl mx-auto">
             {prompt.text}
           </h2>
         </div>
 
-        <p className="text-white text-3xl font-black text-center">
-          <span className={t.textTeal}>{yesCount}</span> out of <span className={t.textTeal}>{N}</span> said YES
-        </p>
-
-        <div className="grid gap-4 w-full max-w-2xl mx-auto mt-4" style={{ gridTemplateColumns: "auto 1fr auto" }}>
-          <AnswerBar label="YES" value={yesCount} pct={yesPct} color="bg-[#25a59f]" isWinner={yesCount >= noCount} />
-          <AnswerBar label="NO" value={noCount} pct={noPct} color="bg-[#9a3558]" isWinner={noCount > yesCount} />
+        <div className="grid gap-3 w-full max-w-xl mx-auto mt-1" style={{ gridTemplateColumns: "auto 1fr auto" }}>
+          <AnswerBar label="YES" value={yesCount} pct={yesPct} color="bg-[#25a59f]" isWinner={yesCount >= noCount} barHeight="h-12" showIcon={false} />
+          <AnswerBar label="NO" value={noCount} pct={noPct} color="bg-[#9a3558]" isWinner={noCount > yesCount} barHeight="h-12" showIcon={false} />
         </div>
+
+        <p className="text-white text-3xl text-center">
+          <span className={`${t.textYellow} font-black`}>{yesCount}</span> <span className="font-normal">out of</span> <span className={`${t.textYellow} font-black`}>{N}</span> <span className="font-normal">said YES</span>
+        </p>
 
         <ResultFooter result={result} />
       </div>
@@ -427,12 +419,12 @@ function Phase3View({ game }: { game: GameState }) {
       <div className="flex flex-col flex-1 items-center px-8 py-8 gap-8">
         <div className="text-center">
           <p className={`${t.textYellow} text-3xl font-black uppercase tracking-widest mb-2`}>The Consensus Was...</p>
-          <h2 className="text-4xl font-semibold text-white leading-tight max-w-4xl mx-auto">
+          <h2 className="text-3xl font-semibold text-white leading-tight max-w-2xl mx-auto">
             {prompt.text}
           </h2>
         </div>
 
-        <div className="grid gap-4 w-full max-w-2xl mx-auto mt-4" style={{ gridTemplateColumns: "auto 1fr auto" }}>
+        <div className="grid gap-4 w-full max-w-2xl mx-auto mt-1" style={{ gridTemplateColumns: "auto 1fr auto" }}>
           {prompt.options!.map((opt, i) => {
             const count = counts[opt] ?? 0;
             const pct = N > 0 ? (count / N) * 100 : 0;
@@ -444,6 +436,7 @@ function Phase3View({ game }: { game: GameState }) {
                 pct={pct}
                 color={t.answerBarColors[i % t.answerBarColors.length]}
                 isWinner={winners.has(opt)}
+                barHeight="h-10"
               />
             );
           })}
@@ -461,22 +454,22 @@ function Phase3View({ game }: { game: GameState }) {
     <div className="flex flex-col flex-1 items-center px-8 py-8 gap-8">
       <div className="text-center">
         <p className={`${t.textYellow} text-3xl font-black uppercase tracking-widest mb-2`}>The Consensus Was...</p>
-        <h2 className="text-4xl font-semibold text-white leading-tight max-w-4xl mx-auto">
+        <h2 className="text-3xl font-semibold text-white leading-tight max-w-2xl mx-auto">
           {prompt.text}
         </h2>
       </div>
 
-      <div className="max-w-2xl mx-auto w-full mt-4">
+      <div className="max-w-2xl mx-auto w-full mt-0">
         <div className="flex justify-between mb-2 px-1">
-          <span className={`${t.textMuted} text-3xl font-semibold`}>{prompt.labelLow ?? "1"}</span>
-          <span className={`${t.textMuted} text-3xl font-semibold`}>{prompt.labelHigh ?? "10"}</span>
+          <span className={`${t.textMuted} text-xl font-semibold`}>{prompt.labelLow ?? "1"}</span>
+          <span className={`${t.textMuted} text-xl font-semibold`}>{prompt.labelHigh ?? "10"}</span>
         </div>
-        <div className="relative h-14 bg-[#2a4a8a] rounded-2xl overflow-hidden">
+        <div className="relative h-12 bg-[#2a4a8a] rounded-2xl overflow-hidden">
           <ScaleBar avg={avg} />
         </div>
-        <div className="text-center mt-4">
+        <div className="text-center mt-8">
           <p className={`${t.textMuted} text-2xl uppercase tracking-widest mb-1`}>Average Answer:</p>
-          <span className={`${t.textCyan} text-6xl font-black`}>{avg.toFixed(1)}</span>
+          <span className={`${t.textYellow} text-6xl font-black`}>{avg.toFixed(1)}</span>
           <span className={`${t.textMuted} text-2xl`}> / 10</span>
         </div>
       </div>
@@ -493,11 +486,15 @@ function ScaleBar({ avg }: { avg: number }) {
     const timer = setTimeout(() => setWidth(pct), 200);
     return () => clearTimeout(timer);
   }, [pct]);
+  // Gradient always spans full 1–10 range; clip to actual avg position
+  // So at 5/10 (50%) the fill ends halfway through the purple→yellow gradient
   return (
     <div
-      className="absolute left-0 top-0 h-full bg-gradient-to-r from-[#7862FF] to-[#f6dc53] rounded-2xl transition-all duration-1500 ease-out"
+      className="absolute left-0 top-0 h-full rounded-2xl transition-all duration-1500 ease-out overflow-hidden"
       style={{ width: `${width}%` }}
-    />
+    >
+      <div className="absolute inset-y-0 left-0 rounded-2xl" style={{ width: `${10000 / Math.max(pct, 1)}%`, background: "linear-gradient(to right, #7862FF, #f6dc53)" }} />
+    </div>
   );
 }
 
@@ -679,6 +676,80 @@ function Confetti() {
   return null;
 }
 
+function Fireworks() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+
+    const COLORS = ["#f6dc53", "#7862FF", "#25a59f", "#e03060", "#ffffff", "#ff9f43"];
+    type Spark = { x: number; y: number; vx: number; vy: number; alpha: number; color: string; size: number };
+    const sparks: Spark[] = [];
+
+    function launchBurst(side: "left" | "right") {
+      const x = side === "left"
+        ? canvas!.width * (0.05 + Math.random() * 0.12)
+        : canvas!.width * (0.83 + Math.random() * 0.12);
+      const y = canvas!.height * (0.1 + Math.random() * 0.6);
+      const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+      const count = 18 + Math.floor(Math.random() * 14);
+      for (let i = 0; i < count; i++) {
+        const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.4;
+        const speed = 1.5 + Math.random() * 3;
+        sparks.push({
+          x, y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          alpha: 1,
+          color,
+          size: 2 + Math.random() * 2.5,
+        });
+      }
+    }
+
+    let animId: number;
+    const intervals = [
+      setInterval(() => launchBurst("left"),  600),
+      setInterval(() => launchBurst("right"), 700),
+    ];
+    // stagger initial burst
+    launchBurst("left");
+    setTimeout(() => launchBurst("right"), 300);
+
+    function draw() {
+      ctx!.clearRect(0, 0, canvas!.width, canvas!.height);
+      for (let i = sparks.length - 1; i >= 0; i--) {
+        const s = sparks[i];
+        s.x += s.vx;
+        s.y += s.vy;
+        s.vy += 0.06; // gravity
+        s.alpha -= 0.018;
+        if (s.alpha <= 0) { sparks.splice(i, 1); continue; }
+        ctx!.globalAlpha = s.alpha;
+        ctx!.fillStyle = s.color;
+        ctx!.beginPath();
+        ctx!.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+        ctx!.fill();
+      }
+      ctx!.globalAlpha = 1;
+      animId = requestAnimationFrame(draw);
+    }
+    draw();
+
+    return () => {
+      intervals.forEach(clearInterval);
+      cancelAnimationFrame(animId);
+    };
+  }, []);
+
+  return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />;
+}
+
 function EndedView({ game }: { game: GameState }) {
   const lb = game.leaderboard;
 
@@ -714,23 +785,26 @@ function EndedView({ game }: { game: GameState }) {
   }
 
   return (
-    <div className="flex flex-col flex-1 px-16 py-6 gap-6">
-      <Confetti />
+    <div className="flex flex-col flex-1 px-16 py-6 gap-6 relative">
+      <Fireworks />
       <div className="text-center">
         <p className={`${t.textTeal} text-2xl uppercase tracking-widest`}>Game Over</p>
       </div>
 
       {/* Podium */}
-      <div className="flex items-end justify-center gap-1 mt-2">
-        <div className="flex flex-col items-center w-40 min-w-0">
-          {leftSlot && <TVPodiumSlot p={leftSlot} />}
+      <div className="flex flex-col items-center mt-2">
+        <div className="flex items-end justify-center gap-1">
+          <div className="flex flex-col items-center w-40 min-w-0">
+            {leftSlot && <TVPodiumSlot p={leftSlot} />}
+          </div>
+          <div className="flex flex-col items-center w-40 min-w-0">
+            {centerSlot && <TVPodiumSlot p={centerSlot} />}
+          </div>
+          <div className="flex flex-col items-center w-40 min-w-0">
+            {rightSlot && <TVPodiumSlot p={rightSlot} />}
+          </div>
         </div>
-        <div className="flex flex-col items-center w-40 min-w-0">
-          {centerSlot && <TVPodiumSlot p={centerSlot} />}
-        </div>
-        <div className="flex flex-col items-center w-40 min-w-0">
-          {rightSlot && <TVPodiumSlot p={rightSlot} />}
-        </div>
+        <div className="w-[31rem] h-4 bg-[#2a4a8a] rounded-b-xl shadow-lg" />
       </div>
 
       {/* Below podium */}
@@ -875,6 +949,7 @@ export default function TVGamePage() {
             className="flex flex-col flex-1 transition-all duration-700"
             style={{ opacity: endedVisible ? 1 : 0, transform: endedVisible ? "translateY(0)" : "translateY(40px)" }}
           >
+            {endedVisible && <Confetti />}
             <EndedView game={gameState} />
           </div>
         )}
@@ -882,7 +957,7 @@ export default function TVGamePage() {
 
       {/* Answered count badge (phase1/phase2 only) */}
       {(phase === "phase1" || phase === "phase2") && gameState && (
-        <div className={`fixed bottom-6 left-6 ${t.bgSurface}/80 backdrop-blur text-white px-4 py-2 rounded-full text-sm font-semibold z-20 border ${t.borderSurface}`}>
+        <div className={`fixed bottom-6 left-6 ${t.bgSurface}/80 backdrop-blur text-white px-6 py-3 rounded-full text-xl font-bold z-20 border ${t.borderSurface}`}>
           {answeredCount} / {phase === "phase2" ? (gameState.phase1AnsweredCount || N) : N} answered
         </div>
       )}

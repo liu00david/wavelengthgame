@@ -253,10 +253,9 @@ function PlayContent({ roomCode }: { roomCode: string }) {
   return (
     <main className={`min-h-screen ${t.bgPage} flex flex-col`}>
       {/* Top bar with room code */}
-      <div className={`flex items-center justify-between px-4 py-3 border-b ${t.borderSurface} ${t.bgPage}`}>
+      <div className={`flex items-center justify-end px-4 py-3 border-b ${t.borderSurface} ${t.bgPage} gap-2`}>
         <span className={`${t.textMuted} text-sm font-medium`}>Room</span>
         <span className={`${t.textYellow} font-black text-xl font-mono tracking-widest`}>{roomCode}</span>
-        <div className="w-12" />
       </div>
 
       <div className="flex flex-col items-center px-4 py-6 w-full max-w-md mx-auto">

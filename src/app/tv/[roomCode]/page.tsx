@@ -99,16 +99,16 @@ export default function TVPage() {
       </div>
 
       {/* Center: player count + bubbles */}
-      <div className="flex-1 flex flex-col items-center justify-center z-10 gap-4 min-h-0">
+      <div className="flex-1 flex flex-col items-center justify-center z-10 gap-4 min-h-0 -mt-8">
         <div className="text-center">
           {players.length === 0 ? (
             <p className={`${t.textMuted} text-4xl font-semibold`}>Waiting for players...</p>
           ) : (
             <>
-              <div className="text-[7rem] font-black text-white leading-none drop-shadow-2xl">
+              <div className="text-[6rem] font-black text-white leading-none drop-shadow-2xl">
                 {players.length}
               </div>
-              <p className={`${t.textCyan} text-3xl font-bold -mt-2`}>
+              <p className={`${t.textCyan} text-2xl font-bold mt-2`}>
                 player{players.length === 1 ? "" : "s"} joined
               </p>
             </>
@@ -126,43 +126,35 @@ export default function TVPage() {
       </div>
 
       {/* Bottom: QR + URL */}
-      <div className="z-10 flex items-center justify-center mt-4 shrink-0">
-        <div className={`${t.bgSurface} border ${t.borderSurface} rounded-2xl p-4 flex flex-row items-center gap-8`}>
-          <div className="bg-white p-2 rounded-xl flex-shrink-0">
-            <QRCodeSVG
-              value={`${JOIN_BASE_URL}/play/${roomCode}`}
-              size={90}
-              bgColor="#ffffff"
-              fgColor="#081c48"
-              level="M"
-            />
+      <div className="z-10 w-full px-8 shrink-0 mt-4">
+        <div className={`${t.bgSurface} border ${t.borderSurface} rounded-2xl w-full max-w-3xl mx-auto px-8 py-5 flex flex-row items-center gap-8`}>
+          {/* QR side */}
+          <div className="flex flex-col items-center gap-2 shrink-0">
+            <p className={`${t.textYellow} text-lg font-black uppercase tracking-widest`}>Scan</p>
+            <div className="bg-white p-2 rounded-xl">
+              <QRCodeSVG
+                value={`${JOIN_BASE_URL}/play/${roomCode}`}
+                size={100}
+                bgColor="#ffffff"
+                fgColor="#081c48"
+                level="M"
+              />
+            </div>
           </div>
-          <div>
-            <p className={`${t.textMuted} text-xl uppercase tracking-widest mb-1`}>Join at</p>
-            <p className="text-white text-3xl font-black font-mono">
-              {JOIN_DISPLAY_URL}/play/<span className={t.textYellow}>{roomCode}</span>
+
+          {/* Divider */}
+          <div className="self-stretch w-px bg-[#2a4a8a] shrink-0" />
+
+          {/* URL side */}
+          <div className="flex flex-col gap-2 min-w-0">
+            <p className={`${t.textYellow} text-lg font-black uppercase tracking-widest`}>Or Join Via Browser</p>
+            <p className="font-black font-mono text-2xl leading-tight">
+              <span className="text-white">{JOIN_DISPLAY_URL}/</span><wbr /><span className={t.textYellow}>play/{roomCode}</span>
             </p>
-            <p className={`${t.textFaint} text-base mt-1`}>or scan the QR code</p>
           </div>
         </div>
       </div>
 
-      {/* Locked overlay */}
-      {locked && (
-        <div className={`absolute inset-0 ${t.bgPage}/90 flex flex-col items-center justify-center z-20 backdrop-blur-sm`}>
-          <div className="text-center">
-            <div className={`text-9xl font-black ${t.textTeal} animate-pulse mb-4`}>
-              🎮
-            </div>
-            <h2 className="text-6xl font-black text-white mb-4">
-              Game Starting!
-            </h2>
-            <p className={`${t.textCyan} text-2xl`}>
-              {players.length} players ready
-            </p>
-          </div>
-        </div>
-      )}
     </main>
   );
 }
