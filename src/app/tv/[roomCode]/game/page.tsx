@@ -127,7 +127,7 @@ function GameOverIntro({ onDone }: { onDone: () => void }) {
 const RULES = [
   { icon: "💬", color: "#7862FF", label: "Phase 1", title: "Answer", body: "Every round, answer the question honestly for yourself." },
   { icon: "🔮", color: "#4dd9d2", label: "Phase 2", title: "Predict", body: "Guess what the majority of the group answered." },
-  { icon: "⚡", color: "#f6dc53", label: "Score", title: "Double Down", body: "Risk your token to double your points — one use per game!" },
+  { icon: "⚡", color: "#f6dc53", label: "Bonus", title: "Double Down", body: "One chance to use Double Down - gives x2 points for correct predictions!" },
 ];
 
 function JumpWord({ word, color, delay = 0 }: { word: string; color: string; delay?: number }) {
@@ -208,11 +208,11 @@ function CountdownOverlay({ onDone }: { onDone: () => void }) {
             style={{ background: `${rule.color}18`, border: `2px solid ${rule.color}44` }}>
             <span style={{ fontSize: "4rem" }}>{rule.icon}</span>
             <div>
-              <p className="text-lg font-bold uppercase tracking-widest mb-2" style={{ color: rule.color }}>{rule.label}</p>
+              <p className="text-2xl font-bold uppercase tracking-widest mb-2" style={{ color: rule.color }}>{rule.label}</p>
               <p className="text-5xl mb-4" style={{ lineHeight: 1.1 }}>
                 <JumpWord key={`${ruleIndex}-title`} word={rule.title} color="white" delay={200} />
               </p>
-              <p className="text-xl text-[#a8c0e8] max-w-xl leading-snug">{rule.body}</p>
+              <p className="text-2xl text-white max-w-xl leading-snug">{rule.body}</p>
             </div>
           </div>
           {/* Step dots */}
@@ -258,10 +258,68 @@ function CountdownOverlay({ onDone }: { onDone: () => void }) {
   );
 }
 
+// Pre-computed pseudo-random values (avoids clustering from simple modulo math)
+const FLOAT_QS = [
+  // Left band: 1–20%
+  { id:  0, left: "2%",  size: "1.2rem", duration: "7.1s", delay: "-1.3s", opacity: 0.22 },
+  { id:  1, left: "8%",  size: "3.4rem", duration: "5.8s", delay: "-4.1s", opacity: 0.30 },
+  { id:  2, left: "14%", size: "2.0rem", duration: "8.3s", delay: "-2.7s", opacity: 0.20 },
+  { id:  3, left: "5%",  size: "4.2rem", duration: "6.4s", delay: "-5.9s", opacity: 0.15 },
+  { id:  4, left: "17%", size: "1.6rem", duration: "9.0s", delay: "-0.8s", opacity: 0.28 },
+  { id:  5, left: "11%", size: "2.8rem", duration: "6.9s", delay: "-3.5s", opacity: 0.35 },
+  { id:  6, left: "3%",  size: "0.9rem", duration: "7.6s", delay: "-6.2s", opacity: 0.18 },
+  { id:  7, left: "19%", size: "3.8rem", duration: "5.3s", delay: "-1.9s", opacity: 0.25 },
+  { id:  8, left: "7%",  size: "1.4rem", duration: "8.7s", delay: "-4.6s", opacity: 0.32 },
+  { id:  9, left: "15%", size: "2.5rem", duration: "6.1s", delay: "-7.0s", opacity: 0.19 },
+  { id: 10, left: "10%", size: "4.5rem", duration: "7.4s", delay: "-2.2s", opacity: 0.14 },
+  { id: 11, left: "4%",  size: "1.9rem", duration: "5.6s", delay: "-5.3s", opacity: 0.27 },
+  // Right band: 80–98%
+  { id:100, left: "98%", size: "2.1rem", duration: "6.8s", delay: "-3.1s", opacity: 0.23 },
+  { id:101, left: "83%", size: "3.7rem", duration: "8.1s", delay: "-0.5s", opacity: 0.31 },
+  { id:102, left: "91%", size: "1.1rem", duration: "7.3s", delay: "-5.7s", opacity: 0.20 },
+  { id:103, left: "86%", size: "4.0rem", duration: "5.9s", delay: "-2.4s", opacity: 0.16 },
+  { id:104, left: "96%", size: "2.6rem", duration: "9.2s", delay: "-6.8s", opacity: 0.29 },
+  { id:105, left: "81%", size: "1.7rem", duration: "6.5s", delay: "-1.1s", opacity: 0.36 },
+  { id:106, left: "94%", size: "3.2rem", duration: "7.8s", delay: "-4.4s", opacity: 0.17 },
+  { id:107, left: "88%", size: "0.9rem", duration: "5.4s", delay: "-7.2s", opacity: 0.24 },
+  { id:108, left: "80%", size: "2.9rem", duration: "8.6s", delay: "-3.8s", opacity: 0.33 },
+  { id:109, left: "93%", size: "1.5rem", duration: "6.2s", delay: "-0.3s", opacity: 0.21 },
+  { id:110, left: "85%", size: "4.3rem", duration: "7.0s", delay: "-5.1s", opacity: 0.13 },
+  { id:111, left: "97%", size: "2.3rem", duration: "5.7s", delay: "-2.9s", opacity: 0.26 },
+];
+
+function FloatingQuestionMarks() {
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
+      <style>{`
+        @keyframes floatQ {
+          0%   { transform: translateY(-10vh) rotate(-8deg); opacity: 0; }
+          10%  { opacity: 1; }
+          60%  { opacity: 1; }
+          100% { transform: translateY(-70vh) rotate(8deg); opacity: 0; }
+        }
+      `}</style>
+      {FLOAT_QS.map((q) => (
+        <span
+          key={q.id}
+          className="absolute bottom-0 font-black select-none"
+          style={{
+            left: q.left,
+            fontSize: q.size,
+            color: `rgba(120,98,255,${q.opacity})`,
+            animation: `floatQ ${q.duration} ${q.delay} ease-in-out infinite`,
+          }}
+        >?</span>
+      ))}
+    </div>
+  );
+}
+
 function QuestionSubmissionView({ game }: { game: GameState }) {
   return (
-    <div className="flex flex-col items-center justify-center flex-1 gap-6 text-center px-8">
-      <p className={`${t.textCyan} text-2xl font-bold uppercase tracking-widest`}>Players are submitting questions</p>
+    <div className="relative flex flex-col items-center justify-center flex-1 gap-6 text-center px-8">
+      <FloatingQuestionMarks />
+      <p className={`${t.textCyan} text-3xl font-bold uppercase tracking-widest`}>Submit your best questions!</p>
       <div className="flex items-baseline gap-3">
         <span className={`font-black ${t.textYellow}`} style={{ fontSize: "10rem", lineHeight: 1 }}>
           {game.submittedQuestionCount}
@@ -286,6 +344,14 @@ function Phase1View({ game }: { game: GameState }) {
           {game.prompt!.text}
         </h2>
       </div>
+
+      {game.prompt!.type === "binary" && (
+        <p className="text-4xl font-black tracking-widest mt-1">
+          <span className="text-[#e03060]">NO</span>
+          <span className="text-white mx-3">/</span>
+          <span className="text-[#25a59f]">YES</span>
+        </p>
+      )}
 
       {game.prompt!.type === "multiple_choice" && (
         <div className="flex flex-col gap-3 w-full max-w-lg mt-2">
@@ -393,7 +459,7 @@ function Phase3View({ game }: { game: GameState }) {
           </h2>
         </div>
 
-        <div className="grid gap-3 w-full max-w-xl mx-auto mt-1" style={{ gridTemplateColumns: "auto 1fr auto" }}>
+        <div className="grid gap-3 w-full max-w-xl mx-auto mt-6" style={{ gridTemplateColumns: "auto 1fr auto" }}>
           <AnswerBar label="YES" value={yesCount} pct={yesPct} color="bg-[#25a59f]" isWinner={yesCount >= noCount} barHeight="h-12" showIcon={false} />
           <AnswerBar label="NO" value={noCount} pct={noPct} color="bg-[#9a3558]" isWinner={noCount > yesCount} barHeight="h-12" showIcon={false} />
         </div>
@@ -424,7 +490,7 @@ function Phase3View({ game }: { game: GameState }) {
           </h2>
         </div>
 
-        <div className="grid gap-4 w-full max-w-2xl mx-auto mt-1" style={{ gridTemplateColumns: "auto 1fr auto" }}>
+        <div className="grid gap-4 w-full max-w-xl mx-auto mt-1" style={{ gridTemplateColumns: "auto 1fr auto" }}>
           {prompt.options!.map((opt, i) => {
             const count = counts[opt] ?? 0;
             const pct = N > 0 ? (count / N) * 100 : 0;
@@ -788,7 +854,7 @@ function EndedView({ game }: { game: GameState }) {
     <div className="flex flex-col flex-1 px-16 py-6 gap-6 relative">
       <Fireworks />
       <div className="text-center">
-        <p className={`${t.textTeal} text-2xl uppercase tracking-widest`}>Game Over</p>
+        <p className={`${t.textTeal} text-2xl uppercase tracking-widest`}>Our Consensus</p>
       </div>
 
       {/* Podium */}

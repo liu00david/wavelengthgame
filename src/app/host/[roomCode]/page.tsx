@@ -60,11 +60,11 @@ function SettingRow({ label, value, options, onChange }: {
 function HostContent({ roomCode }: { roomCode: string }) {
   const router = useRouter();
 
-  // Game settings
-  const [numQuestions, setNumQuestions] = useState(10);
-  const [phase1Time, setPhase1Time] = useState(20);
-  const [phase2Time, setPhase2Time] = useState(30);
-  const [gameMode, setGameMode] = useState<"game_questions" | "player_questions">("game_questions");
+  // Game settings — restore from last game if available
+  const [numQuestions, setNumQuestions] = useState(() => parseInt(typeof window !== "undefined" ? sessionStorage.getItem(`${roomCode}_numQ`) ?? "" : "") || 10);
+  const [phase1Time, setPhase1Time] = useState(() => parseInt(typeof window !== "undefined" ? sessionStorage.getItem(`${roomCode}_p1t`) ?? "" : "") || 20);
+  const [phase2Time, setPhase2Time] = useState(() => parseInt(typeof window !== "undefined" ? sessionStorage.getItem(`${roomCode}_p2t`) ?? "" : "") || 30);
+  const [gameMode, setGameMode] = useState<"game_questions" | "player_questions">(() => (typeof window !== "undefined" ? sessionStorage.getItem(`${roomCode}_mode`) : null) as "game_questions" | "player_questions" ?? "game_questions");
 
   // Menu state
   type MenuState = "closed" | "main" | "kick" | "disband_confirm";

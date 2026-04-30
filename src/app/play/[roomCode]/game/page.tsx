@@ -390,21 +390,30 @@ function Phase3View({ game, nickname }: { game: GameState; nickname: string }) {
       {/* Ranking message */}
       {myEntry && (
         <div className={`${t.bgSurface} rounded-2xl border ${t.borderSurface} px-5 py-4 w-full`}>
-          {myRank === 1 ? (
-            <p className={`${t.textYellow} font-bold text-xl`}>🏆 You're in 1st place!</p>
+          {game.round === game.totalRounds ? (
+            <p className={`${t.textMuted} text-base`}>
+              Total: <span className={`${t.textYellow} font-black text-xl`}>{myEntry.total}</span> pts
+            </p>
+          ) : myRank === 1 ? (
+            <>
+              <p className={`${t.textYellow} font-bold text-xl`}>🏆 You're in 1st place!</p>
+              <p className={`${t.textMuted} text-base mt-2`}>
+                Total: <span className={`${t.textYellow} font-black text-xl`}>{myEntry.total}</span> pts
+              </p>
+            </>
           ) : (
-            <div>
+            <>
               <p className="text-white font-bold text-xl">You're in {ordinal(myRank)} place</p>
               {personAhead && pointsBehind > 0 && (
                 <p className={`${t.textMuted} text-base mt-1`}>
                   {pointsBehind} pts behind <span className="text-white font-semibold">{personAhead.nickname}</span>
                 </p>
               )}
-            </div>
+              <p className={`${t.textMuted} text-base mt-2`}>
+                Total: <span className={`${t.textYellow} font-black text-xl`}>{myEntry.total}</span> pts
+              </p>
+            </>
           )}
-          <p className={`${t.textMuted} text-base mt-2`}>
-            Total: <span className={`${t.textYellow} font-black text-xl`}>{myEntry.total}</span> pts
-          </p>
         </div>
       )}
 
@@ -589,7 +598,7 @@ function EndedView({ game, nickname }: { game: GameState; nickname: string }) {
 const RULES = [
   { icon: "💬", color: "#7862FF", label: "Phase 1", title: "Answer", body: "Answer the question honestly for yourself." },
   { icon: "🔮", color: "#4dd9d2", label: "Phase 2", title: "Predict", body: "Guess what the majority of the group answered." },
-  { icon: "⚡", color: "#f6dc53", label: "Score", title: "Double Down", body: "Risk your token to double your points — one use per game!" },
+  { icon: "⚡", color: "#f6dc53", label: "Score", title: "Double Down", body: "One chance to use Double Down - gives x2 points for correct predictions!" },
 ];
 
 function JumpWord({ word, color, delay = 0 }: { word: string; color: string; delay?: number }) {
@@ -653,11 +662,11 @@ function PlayerCountdownScreen() {
           <div className="w-full rounded-2xl px-6 py-8 flex flex-col items-center gap-3"
             style={{ background: `${rule.color}18`, border: `2px solid ${rule.color}44` }}>
             <span className="text-5xl">{rule.icon}</span>
-            <p className="text-xs font-bold uppercase tracking-widest" style={{ color: rule.color }}>{rule.label}</p>
+            <p className="text-base font-bold uppercase tracking-widest" style={{ color: rule.color }}>{rule.label}</p>
             <p className="text-3xl" style={{ lineHeight: 1.1 }}>
               <JumpWord key={`${ruleIndex}-title`} word={rule.title} color="white" delay={200} />
             </p>
-            <p className="text-base text-[#a8c0e8] leading-snug">{rule.body}</p>
+            <p className="text-xl text-white leading-snug">{rule.body}</p>
           </div>
         </div>
       )}
@@ -678,7 +687,7 @@ function PlayerCountdownScreen() {
 function QuestionSubmissionView({ onSubmit, isFull }: { onSubmit: (q: { text: string; questionType: "binary" | "multiple_choice" | "scale"; options?: string[]; labelLow?: string; labelHigh?: string }) => void; isFull: boolean }) {
   const [qType, setQType] = useState<"binary" | "multiple_choice" | "scale">("binary");
   const [qText, setQText] = useState("");
-  const [qOptions, setQOptions] = useState<[string, string, string, string]>(["", "", "", ""]);
+  const [qOptions, setQOptions] = useState<string[]>(["", ""]);
   const [qLabelLow, setQLabelLow] = useState("");
   const [qLabelHigh, setQLabelHigh] = useState("");
   const [submittedCount, setSubmittedCount] = useState(0);
@@ -692,7 +701,7 @@ function QuestionSubmissionView({ onSubmit, isFull }: { onSubmit: (q: { text: st
 
   const trimmedOptions = qOptions.map((o) => o.trim());
   const hasDuplicateMC = qType === "multiple_choice" && trimmedOptions.some((o, i) => o.length > 0 && trimmedOptions.indexOf(o) !== i);
-  const isValid = qText.trim().length > 0 && (qType !== "multiple_choice" || (qOptions.every((o) => o.trim().length > 0) && !hasDuplicateMC));
+  const isValid = qText.trim().length > 0 && (qType !== "multiple_choice" || (qOptions.length >= 2 && qOptions.every((o) => o.trim().length > 0) && !hasDuplicateMC));
 
   function handleSubmit() {
     if (!isValid) return;
@@ -706,7 +715,7 @@ function QuestionSubmissionView({ onSubmit, isFull }: { onSubmit: (q: { text: st
     setSubmittedCount((c) => c + 1);
     setFlashSuccess(true);
     setQText("");
-    setQOptions(["", "", "", ""]);
+    setQOptions(["", ""]);
     setQLabelLow("");
     setQLabelHigh("");
     setTimeout(() => setFlashSuccess(false), 2000);
@@ -790,17 +799,29 @@ function QuestionSubmissionView({ onSubmit, isFull }: { onSubmit: (q: { text: st
                   type="text"
                   value={opt}
                   onChange={(e) => {
-                    const next = [...qOptions] as [string, string, string, string];
+                    const next = [...qOptions];
                     next[i] = e.target.value;
                     setQOptions(next);
                   }}
                   placeholder={mcPlaceholders[i]}
-                  maxLength={15}
+                  maxLength={25}
                   className={`flex-1 min-w-0 px-3 py-2 rounded-xl bg-[#0f2660] border text-white text-sm placeholder:italic placeholder:text-[#3a5a9a] outline-none focus:border-[#7862FF] ${isDupe ? "border-[#c94f7a]" : "border-[#2a4a8a]"}`}
                 />
               </div>
             );
           })}
+          <div className="flex items-center justify-between mt-1">
+            {qOptions.length < 4 ? (
+              <button onClick={() => setQOptions([...qOptions, ""])} className={`${t.textMuted} hover:text-white text-base font-bold text-left`}>
+                + Add choice {String.fromCharCode(65 + qOptions.length)}
+              </button>
+            ) : <span />}
+            {qOptions.length > 2 && (
+              <button onClick={() => setQOptions(qOptions.slice(0, -1))} className={`${t.textMuted} hover:text-[#e03060] text-base font-bold`}>
+                − Remove {String.fromCharCode(65 + qOptions.length - 1)}
+              </button>
+            )}
+          </div>
         </div>
       )}
 

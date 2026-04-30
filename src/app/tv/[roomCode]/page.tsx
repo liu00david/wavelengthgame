@@ -130,7 +130,7 @@ export default function TVPage() {
         <div className={`${t.bgSurface} border ${t.borderSurface} rounded-2xl w-full max-w-3xl mx-auto px-8 py-5 flex flex-row items-center gap-8`}>
           {/* QR side */}
           <div className="flex flex-col items-center gap-2 shrink-0">
-            <p className={`${t.textYellow} text-lg font-black uppercase tracking-widest`}>Scan</p>
+            <p className={`${t.textYellow} text-2xl font-black tracking-normal`}>Scan</p>
             <div className="bg-white p-2 rounded-xl">
               <QRCodeSVG
                 value={`${JOIN_BASE_URL}/play/${roomCode}`}
@@ -147,9 +147,9 @@ export default function TVPage() {
 
           {/* URL side */}
           <div className="flex flex-col gap-2 min-w-0">
-            <p className={`${t.textYellow} text-lg font-black uppercase tracking-widest`}>Or Join Via Browser</p>
+            <p className={`${t.textYellow} text-2xl font-black tracking-normal`}>Or join via browser:</p>
             <p className="font-black font-mono text-2xl leading-tight">
-              <span className="text-white">{JOIN_DISPLAY_URL}/</span><wbr /><span className={t.textYellow}>play/{roomCode}</span>
+              <span className="text-white font-normal">{JOIN_DISPLAY_URL}/</span><wbr /><span className={t.textYellow}>play/{roomCode}</span>
             </p>
           </div>
         </div>

@@ -89,16 +89,16 @@ const PROMPTS: Prompt[] = [
   { id: "b8",  text: "Have you ever kissed the opposite sex?", type: "binary" },
   { id: "b9",  text: "Have you stolen from a retail store?", type: "binary" },
   { id: "b10", text: "Can you swim?", type: "binary" },
-  { id: "b11", text: "Can someone in a relationship have a best friend of the opposite sex?", type: "binary" },
+  { id: "b11", text: "Can you have an opposite-sex best friend in a relationship?", type: "binary" },
   { id: "b12", text: "Have you ever slept over on the first date?", type: "binary" },
   { id: "b13", text: "Can you ride a bike?", type: "binary" },
   { id: "b14", text: "Did you learn piano as a kid?", type: "binary" },
   { id: "b15", text: "Can you separate the art from the artist?", type: "binary" },
   { id: "b16", text: "Have you ever permed or dyed your hair?", type: "binary" },
-  { id: "b17", text: "Do you think you are better at driving than most people in this room?", type: "binary" },
+  { id: "b17", text: "Are you the best driver in this room?", type: "binary" },
   { id: "b18", text: "Do you think men should always pay for the first date?", type: "binary" },
   { id: "b19", text: "Do you think you can date someone vegetarian?", type: "binary" },
-  { id: "b20", text: "Do you think you are better at singing than most people in this room?", type: "binary" },
+  { id: "b20", text: "Are you the best singer in this room?", type: "binary" },
   { id: "b21", text: "Have you ever ghosted someone you were dating?", type: "binary" },
   { id: "b22", text: "Do you wash your legs in the shower?", type: "binary" },
   { id: "b23", text: "Have you ever been in a physical fight?", type: "binary" },
@@ -130,7 +130,7 @@ const PROMPTS: Prompt[] = [
   { id: "mc7",  text: "Which would you rather give up forever?", type: "multiple_choice", options: ["Social media", "Music", "Takeout food", "Streaming services"] },
   { id: "mc8",  text: "How do you handle conflict?", type: "multiple_choice", options: ["Address it head-on", "Avoid it entirely", "Passive-aggressive hints", "Vent to a friend first"] },
   { id: "mc9",  text: "What's your texting style?", type: "multiple_choice", options: ["Reply ASAP", "Check once in a while", "Respond to everyone at once", "I'm always Do Not Disturb"] },
-  { id: "mc10", text: "If you had to eat only one cuisine for a year, which would you pick?", type: "multiple_choice", options: ["Indian", "Mexican", "Italian", "Greek"] },
+  { id: "mc10", text: "Which cuisine would you eat exclusively for a year?", type: "multiple_choice", options: ["Indian", "Mexican", "Italian", "Greek"] },
   { id: "mc11", text: "What's the minimum you'd take to be vegetarian for a year?", type: "multiple_choice", options: ["$1,000", "$10,000", "$100,000", "$1,000,000"] },
   { id: "mc12", text: "How many kids do you want?", type: "multiple_choice", options: ["0", "1", "2", "3+"] },
   { id: "mc13", text: "What kind of drunk are you?", type: "multiple_choice", options: ["Party", "Affectionate", "Gossiping", "Chilled out"] },
@@ -138,9 +138,9 @@ const PROMPTS: Prompt[] = [
   { id: "mc15", text: "What career would you choose if they paid the same?", type: "multiple_choice", options: ["Doctor", "Pilot", "Bar bouncer", "TSA Agent"] },
   { id: "mc16", text: "Which would you prefer to take on in a fight?", type: "multiple_choice", options: ["1 kangaroo", "3 wolves", "10 monkeys", "100 geese"] },
   { id: "mc17", text: "Which finger would you choose if you had to lose one?", type: "multiple_choice", options: ["Ring", "Middle", "Index", "Thumb"] },
-  { id: "mc18", text: "What part of the face would you find the most physically attractive?", type: "multiple_choice", options: ["Hair", "Nose", "Eyes", "Mouth"] },
+  { id: "mc18", text: "Most physically attractive facial feature?", type: "multiple_choice", options: ["Hair", "Nose", "Eyes", "Mouth"] },
   { id: "mc19", text: "What's your ideal vacation vibe?", type: "multiple_choice", options: ["Nature and hiking", "Historic towns", "Urban city", "Beachy resort"] },
-  { id: "mc20", text: "If you had to listen to 1 song on repeat for a day, which would it be?", type: "multiple_choice", options: ["Baby", "All I Want For Christmas", "Thunder", "Despacito"] },
+  { id: "mc20", text: "Stuck listening to 1 song on repeat all day. Pick one.", type: "multiple_choice", options: ["Baby", "All I Want For Christmas", "Thunder", "Despacito"] },
   { id: "mc21", text: "What's your go-to drunk food?", type: "multiple_choice", options: ["Pizza", "Fries", "Ramen", "Kebab"] },
   { id: "mc22", text: "Which would be the hardest to give up for a month?", type: "multiple_choice", options: ["Coffee", "Alcohol", "Junk food", "Your phone"] },
   { id: "mc23", text: "What type of movie do you most relate to your life?", type: "multiple_choice", options: ["Rom-com", "Horror", "Action", "Documentary"] },
@@ -152,7 +152,7 @@ const PROMPTS: Prompt[] = [
   { id: "mc29", text: "Which is the worst way to be woken up?", type: "multiple_choice", options: ["Loud alarm", "Someone shaking you", "Bright lights", "A phone call"] },
   { id: "mc30", text: "What's your love language?", type: "multiple_choice", options: ["Words of affirmation", "Acts of service", "Gift giving", "Physical touch"] },
   { id: "mc31", text: "Which pet would you own if you had to?", type: "multiple_choice", options: ["Dog", "Cat", "Bird", "Reptile"] },
-  { id: "mc32", text: "What's your biggest social media red flag in a potential partner?", type: "multiple_choice", options: ["No photos", "Only selfies", "Following too many models", "Cryptic captions"] },
+  { id: "mc32", text: "Biggest social media red flag in a potential partner?", type: "multiple_choice", options: ["No photos", "Only selfies", "Following too many models", "Cryptic captions"] },
   { id: "mc33", text: "Which skill would you most want to master overnight?", type: "multiple_choice", options: ["A new language", "An instrument", "Cooking", "A sport"] },
   { id: "mc34", text: "How do you usually end a relationship?", type: "multiple_choice", options: ["Honest conversation", "Slow fade", "Ghosting", "Never have"] },
   { id: "mc35", text: "What's your go-to karaoke song type?", type: "multiple_choice", options: ["90s banger", "Emotional ballad", "Rap", "Whatever gets the crowd going"] },
@@ -161,6 +161,23 @@ const PROMPTS: Prompt[] = [
   { id: "mc38", text: "What kind of traveler are you?", type: "multiple_choice", options: ["Over-planner", "Wing it", "Only luxury", "Budget backpacker"] },
   { id: "mc39", text: "How do you feel about pineapple on pizza?", type: "multiple_choice", options: ["Love it", "Hate it", "Don't care", "Depends on the pizza"] },
   { id: "mc40", text: "What would you do in the zombie apocalypse?", type: "multiple_choice", options: ["Form a group and lead", "Hide alone", "Find the cure", "Accept my fate"] },
+
+  // Would You Rather (2 options)
+  { id: "wyr1",  text: "Would you rather only eat sweet or savory food?", type: "multiple_choice", options: ["Sweet only", "Savory only"] },
+  { id: "wyr2",  text: "Would you rather be always cold or always hot?", type: "multiple_choice", options: ["Always cold", "Always hot"] },
+  { id: "wyr3",  text: "Would you rather live in the city or countryside?", type: "multiple_choice", options: ["City", "Countryside"] },
+  { id: "wyr4",  text: "Would you rather be famous or be extremely rich?", type: "multiple_choice", options: ["Famous", "Extremely rich"] },
+  { id: "wyr5",  text: "Would you rather fly or be invisible?", type: "multiple_choice", options: ["Fly", "Be invisible"] },
+  { id: "wyr6",  text: "Would you rather never sleep or never eat?", type: "multiple_choice", options: ["Never sleep", "Never eat"] },
+  { id: "wyr7",  text: "Would you rather know when you'll die or how?", type: "multiple_choice", options: ["When", "How"] },
+  { id: "wyr8",  text: "Would you rather lose your memories or your sight?", type: "multiple_choice", options: ["Lose memories", "Lose sight"] },
+  { id: "wyr9",  text: "Would you rather speak every language or every instrument?", type: "multiple_choice", options: ["Speak every language", "Play every instrument"] },
+  { id: "wyr10", text: "Always 10 mins late or always 2 hours early?", type: "multiple_choice", options: ["Always 10 mins late", "Always 2 hours early"] },
+  { id: "wyr11", text: "Would you rather have no phone or no car for a year?", type: "multiple_choice", options: ["No phone", "No car"] },
+  { id: "wyr12", text: "Would you rather be loved or respected?", type: "multiple_choice", options: ["Loved", "Respected"] },
+  { id: "wyr13", text: "Would you rather always win or always get your way?", type: "multiple_choice", options: ["Always win arguments", "Always get your way"] },
+  { id: "wyr14", text: "Would you rather live 200 years ago or in the future?", type: "multiple_choice", options: ["200 years ago", "200 years in the future"] },
+  { id: "wyr15", text: "Would you rather be the funniest or smartest in the room?", type: "multiple_choice", options: ["Funniest", "Smartest"] },
 
   // Scale
   { id: "s1",  text: "How messy is your room right now?", type: "scale", labelLow: "Spotless", labelHigh: "Disaster Zone" },
@@ -172,7 +189,7 @@ const PROMPTS: Prompt[] = [
   { id: "s7",  text: "How adventurous are you with food?", type: "scale", labelLow: "Chicken Tenders Only", labelHigh: "Eat Anything" },
   { id: "s8",  text: "How financially responsible are you right now?", type: "scale", labelLow: "Chaos", labelHigh: "On Lock" },
   { id: "s9",  text: "How petty can you be when someone wrongs you?", type: "scale", labelLow: "Saint", labelHigh: "Grudging" },
-  { id: "s10", text: "How often do you actually follow through on your New Year's resolutions?", type: "scale", labelLow: "Never", labelHigh: "Always" },
+  { id: "s10", text: "How often do you follow through on New Year's resolutions?", type: "scale", labelLow: "Never", labelHigh: "Always" },
   { id: "s11", text: "Can you cook well?", type: "scale", labelLow: "Barely Edible", labelHigh: "Cheffing" },
   { id: "s12", text: "Do you enjoy your job?", type: "scale", labelLow: "I Wanna Quit", labelHigh: "Amazing" },
   { id: "s13", text: "Do you get sick often?", type: "scale", labelLow: "Never", labelHigh: "Too Often" },
@@ -779,7 +796,7 @@ export default class GameServer implements Party.Server {
       this.broadcastGame();
 
       this.clearTimer();
-      this.phaseTimer = setTimeout(() => this.startPhase1(), 21000);
+      this.phaseTimer = setTimeout(() => this.startPhase1(), 18000);
       return;
     }
 
@@ -792,11 +809,11 @@ export default class GameServer implements Party.Server {
 
       // Validate
       const text = msg.text?.trim() ?? "";
-      if (!text || text.length > 300) return;
+      if (!text || text.length > 60) return;
       const validTypes = ["binary", "multiple_choice", "scale"] as const;
       if (!validTypes.includes(msg.questionType)) return;
       if (msg.questionType === "multiple_choice") {
-        if (!Array.isArray(msg.options) || msg.options.length !== 4) return;
+        if (!Array.isArray(msg.options) || msg.options.length < 2 || msg.options.length > 4) return;
         if (msg.options.some((o) => !o || !String(o).trim())) return;
       }
 
@@ -865,7 +882,7 @@ export default class GameServer implements Party.Server {
       this.broadcastGame();
 
       this.clearTimer();
-      this.phaseTimer = setTimeout(() => this.startPhase1(), 21000);
+      this.phaseTimer = setTimeout(() => this.startPhase1(), 18000);
       return;
     }
 

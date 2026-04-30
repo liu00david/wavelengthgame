@@ -27,14 +27,14 @@ type QuestionPayload = {
 function HostQuestionForm({ onSubmit }: { onSubmit: (q: QuestionPayload) => void }) {
   const [qType, setQType] = useState<"binary" | "multiple_choice" | "scale">("binary");
   const [text, setText] = useState("");
-  const [options, setOptions] = useState<[string, string, string, string]>(["", "", "", ""]);
+  const [options, setOptions] = useState<string[]>(["", ""]);
   const [labelLow, setLabelLow] = useState("");
   const [labelHigh, setLabelHigh] = useState("");
 
   function handleSubmit() {
     const trimmed = text.trim();
     if (!trimmed) return;
-    if (qType === "multiple_choice" && options.some((o) => !o.trim())) return;
+    if (qType === "multiple_choice" && (options.length < 2 || options.some((o) => !o.trim()))) return;
 
     const payload: QuestionPayload = { text: trimmed, questionType: qType };
     if (qType === "multiple_choice") payload.options = options.map((o) => o.trim());
@@ -44,7 +44,7 @@ function HostQuestionForm({ onSubmit }: { onSubmit: (q: QuestionPayload) => void
     }
     onSubmit(payload);
     setText("");
-    setOptions(["", "", "", ""]);
+    setOptions(["", ""]);
     setLabelLow("");
     setLabelHigh("");
   }
@@ -57,7 +57,7 @@ function HostQuestionForm({ onSubmit }: { onSubmit: (q: QuestionPayload) => void
 
   const trimmedOptions = options.map((o) => o.trim());
   const hasDuplicateMC = qType === "multiple_choice" && trimmedOptions.some((o, i) => o.length > 0 && trimmedOptions.indexOf(o) !== i);
-  const isValid = text.trim().length > 0 && (qType !== "multiple_choice" || (options.every((o) => o.trim().length > 0) && !hasDuplicateMC));
+  const isValid = text.trim().length > 0 && (qType !== "multiple_choice" || (options.length >= 2 && options.every((o) => o.trim().length > 0) && !hasDuplicateMC));
 
   return (
     <div className={`${t.bgPage} rounded-xl p-4 mb-2`}>
@@ -123,17 +123,29 @@ function HostQuestionForm({ onSubmit }: { onSubmit: (q: QuestionPayload) => void
                   type="text"
                   value={opt}
                   onChange={(e) => {
-                    const next = [...options] as [string, string, string, string];
+                    const next = [...options];
                     next[i] = e.target.value;
                     setOptions(next);
                   }}
                   placeholder={mcPlaceholders[i]}
-                  maxLength={15}
+                  maxLength={25}
                   className={`flex-1 min-w-0 px-3 py-2 rounded-lg bg-[#0f2660] border text-white text-sm placeholder:italic placeholder:${t.textFaint} outline-none focus:border-[#7862FF] ${isDupe ? "border-[#c94f7a]" : "border-[#2a4a8a]"}`}
                 />
               </div>
             );
           })}
+          <div className="flex items-center justify-between mt-0.5">
+            {options.length < 4 ? (
+              <button onClick={() => setOptions([...options, ""])} className={`${t.textMuted} hover:text-white text-sm font-bold text-left`}>
+                + Add choice {String.fromCharCode(65 + options.length)}
+              </button>
+            ) : <span />}
+            {options.length > 2 && (
+              <button onClick={() => setOptions(options.slice(0, -1))} className={`${t.textMuted} hover:${t.textRed} text-sm font-bold`}>
+                − Remove {String.fromCharCode(65 + options.length - 1)}
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -608,7 +620,7 @@ export default function HostGamePage() {
             onClick={() => sendMsg({ type: "next_round" })}
             className={`w-full py-3 rounded-xl ${t.btnYellow} text-base shadow-xl`}
           >
-            Go to Round Results →
+            {gameState?.round === gameState?.totalRounds ? "Go to game summary! 🏆" : "Go to Round Results →"}
           </button>
         )}
 
