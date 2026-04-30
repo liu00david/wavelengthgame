@@ -35,7 +35,7 @@ export const t = {
   textCyan: "text-[#4dd9d2]",       // alias
   textRose: "text-[#c94f7a]",       // lighter rose for readability on dark bg
   textRed: "text-[#e03060]",        // bright red (NO label)
-  textMuted: "text-[#a8c0e8]",      // muted blue-slate
+  textMuted: "text-[#b8c0e8]",      // muted blue-slate
   textFaint: "text-[#aba9d0]",      // faint blue-slate
   textWhite: "text-white",
 
