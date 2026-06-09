@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useParty } from "@/lib/useParty";
-import { t, avatarColor, resolveAvatarColor, resolveEmoji } from "@/lib/theme";
+import { t, resolveAvatarColor, resolveEmoji } from "@/lib/theme";
 import type { Player } from "@/lib/types";
 
 function PlayerAvatar({ player, disconnected }: { player: Player; disconnected: boolean }) {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { t, avatarColor, resolveAvatarColor, resolveEmoji } from "@/lib/theme";
+import { t, resolveAvatarColor, resolveEmoji } from "@/lib/theme";
 import type { RoundResult, PlayerScore } from "@/lib/types";
 
 type SummaryData = {
@@ -23,7 +23,10 @@ function typeColor(type: string) {
 }
 
 function formatAnswer(answer: string | number, type: string): string {
-  if (type === "binary") return Number(answer) === 1 ? "YES" : "NO";
+  if (type === "binary") {
+    const v = String(answer).toLowerCase();
+    return (v === "yes" || v === "1" || answer === 1) ? "YES" : "NO";
+  }
   return String(answer);
 }
 

@@ -22,22 +22,17 @@ export const t = {
   bgPhase1: "bg-[#0d1e54]",      // phase 1 answer screen tint
   bgPhase2: "bg-[#022434]",      // phase 2 predict screen tint
   bgSurface: "bg-[#0f2660]",
-  bgSurface2: "bg-[#1a3580]",
-
   // Borders
   borderSurface: "border-[#2a4a8a]",
 
   // Text colors
   textPrimary: "text-[#7862FF]",
   textYellow: "text-[#f6dc53]",
-  textYellow2: "text-[#eebf2d]",
-  textTeal: "text-[#4dd9d2]",       // lighter teal for readability on dark bg
-  textCyan: "text-[#4dd9d2]",       // alias
-  textRose: "text-[#c94f7a]",       // lighter rose for readability on dark bg
+  textTeal: "text-[#4dd9d2]",
+  textCyan: "text-[#4dd9d2]",       // alias for textTeal
   textRed: "text-[#e03060]",        // bright red (NO label)
-  textMuted: "text-[#b8c0e8]",      // muted blue-slate
-  textFaint: "text-[#aba9d0]",      // faint blue-slate
-  textWhite: "text-white",
+  textMuted: "text-[#b8c0e8]",
+  textFaint: "text-[#aba9d0]",
 
   // Button: primary (purple)
   btnPrimary: "bg-[#7862FF] text-white hover:bg-[#6A55E8] active:scale-95 transition-all",
@@ -46,20 +41,11 @@ export const t = {
   // Button: yellow CTA — dark text on yellow
   btnYellow: "bg-[#f6dc53] text-[#081c48] hover:bg-[#eebf2d] active:scale-95 transition-all font-black",
 
-  // Button: teal CTA — dark text on teal
-  btnTeal: "bg-[#25a59f] text-white hover:bg-[#1d8c87] active:scale-95 transition-all font-bold",
-
   // Button: ghost/secondary
   btnGhost: "bg-[#0f2660] border border-[#2a4a8a] text-white hover:bg-[#1a3580] active:scale-95 transition-all",
 
   // Button: danger/leave
   btnDanger: "bg-[#9a3558] border border-[#7e2b47] text-white hover:bg-[#7e2b47] active:scale-95 transition-all",
-
-  // TRUE answer color (yes/teal)
-  trueColor: { bg: "bg-[#25a59f]", text: "text-white", hover: "hover:bg-[#1d8c87]" },
-
-  // FALSE answer color (no/red)
-  falseColor: { bg: "bg-[#e03060]", text: "text-white", hover: "hover:bg-[#c42850]" },
 
   // Button: NO (binary)
   btnNo: "bg-[#e03060] text-white hover:bg-[#c42850] active:scale-95 transition-all font-black",
@@ -143,11 +129,11 @@ function nicknameHash(nickname: string): number {
   return Math.abs(hash);
 }
 
-export function avatarColor(nickname: string): string {
+function avatarColor(nickname: string): string {
   return t.avatarColors[nicknameHash(nickname) % t.avatarColors.length];
 }
 
-export function avatarTextColor(nickname: string): string {
+function avatarTextColor(nickname: string): string {
   return t.avatarTextColors[nicknameHash(nickname) % t.avatarColors.length];
 }
 
@@ -167,8 +153,7 @@ export function resolveAvatarColor(nickname: string, customEmoji?: string): stri
   return t.emojiColors[emoji]?.bg ?? avatarColor(nickname);
 }
 
-/** Returns avatar text color class matching resolveAvatarColor. */
-export function resolveAvatarTextColor(nickname: string, customEmoji?: string): string {
+function resolveAvatarTextColor(nickname: string, customEmoji?: string): string {
   const emoji = resolveEmoji(nickname, customEmoji);
   return t.emojiColors[emoji]?.text ?? avatarTextColor(nickname);
 }

@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import { useParty } from "@/lib/useParty";
-import { t, avatarColor, resolveAvatarColor, resolveEmoji } from "@/lib/theme";
+import { t, resolveAvatarColor, resolveEmoji } from "@/lib/theme";
 import type { Player } from "@/lib/types";
 
 const JOIN_BASE_URL = "https://consensusgame.vercel.app";

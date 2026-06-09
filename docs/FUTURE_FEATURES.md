@@ -1,6 +1,6 @@
 # Future Features
 
-Features planned but not yet implemented, roughly in priority order.
+Planned features not yet implemented, roughly in priority order.
 
 ---
 
@@ -20,7 +20,7 @@ Requires a leaderboard snapshot at the start of round N, server-side validation 
 - **Hot Take Bonus** — awarded to players whose Phase 1 answer was chosen by fewer than 10% of the room
 - **Oracle Bonus** — awarded to players who predicted the exact count of a Hot Take answer
 
-Requires cross-referencing Phase 1 and Phase 2 data per player. Would add a new section to the Phase 3 reveal animation.
+Requires cross-referencing Phase 1 and Phase 2 data per player. Would add a new section to the Phase 3 reveal animation on the TV.
 
 ---
 
@@ -34,7 +34,7 @@ Points scale up in later rounds to create comeback opportunities:
 | 5–8 | 1.5× |
 | 9+ | 3× |
 
-Deferred — scoring math is clean without it and it adds complexity to communicate to players.
+Deferred — scoring math is clean without it and adds complexity to communicate to players.
 
 ---
 
@@ -46,4 +46,4 @@ Vibrate the player's phone at key moments (Phase 3 reveal, Double Down result). 
 
 ## Music / Audio
 
-Background music and sound effects to enhance atmosphere. Options explored: royalty-free tracks from Free Music Archive, ccMixter, or Pixabay. Would require an audio context + autoplay policy handling per browser.
+Background music and sound effects to enhance atmosphere. Options: royalty-free tracks from Free Music Archive, ccMixter, or Pixabay. Requires audio context + autoplay policy handling per browser.

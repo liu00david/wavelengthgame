@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useParty } from "@/lib/useParty";
-import { t, avatarColor, resolveAvatarColor, resolveEmoji } from "@/lib/theme";
+import { t, resolveAvatarColor, resolveEmoji } from "@/lib/theme";
 import type { GameState } from "@/lib/types";
 
 function useCountdown(phaseEndsAt: number | null): number {
@@ -577,7 +577,7 @@ function ResultFooter({ result }: { result: NonNullable<GameState["roundResult"]
           <div className="flex gap-4 flex-wrap">
             {topScorers.map(([name, pts]) => (
               <div key={name} className="flex items-center gap-2">
-                <div className={`${avatarColor(name)} w-8 h-8 rounded-full flex items-center justify-center text-lg`}>
+                <div className={`${resolveAvatarColor(name)} w-8 h-8 rounded-full flex items-center justify-center text-lg`}>
                   {resolveEmoji(name)}
                 </div>
                 <span className="text-white font-semibold text-lg">{name}</span>
@@ -591,7 +591,7 @@ function ResultFooter({ result }: { result: NonNullable<GameState["roundResult"]
   );
 }
 
-function useCountUp(target: number, from: number, duration = 2000): number {
+function useCountUp(target: number, from: number, duration = 2000, delay = 1400): number {
   const [value, setValue] = useState(from);
   const startRef = useRef<number | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -613,45 +613,78 @@ function useCountUp(target: number, from: number, duration = 2000): number {
 
     delayTimerRef.current = setTimeout(() => {
       rafRef.current = requestAnimationFrame(step);
-    }, 2000);
+    }, delay);
 
     return () => {
       if (delayTimerRef.current !== null) clearTimeout(delayTimerRef.current);
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [target, from, duration]);
+  }, [target, from, duration, delay]);
 
   return value;
 }
 
-function LeaderboardRow({ player, isTop }: { player: GameState["leaderboard"][0]; isTop: boolean }) {
+const ROW_H = 80; // px — must match the rendered row height
+const ROW_GAP = 12; // px — gap-3 = 12px
+
+function LeaderboardRow({
+  player,
+  newRankIndex,
+  prevRankIndex,
+  sorted,
+  countUpDelay,
+}: {
+  player: GameState["leaderboard"][0];
+  newRankIndex: number;
+  prevRankIndex: number;
+  sorted: boolean;
+  countUpDelay: number;
+}) {
   const prevTotal = player.total - player.roundScore;
-  const animatedTotal = useCountUp(player.total, prevTotal, 2000);
+  const animatedTotal = useCountUp(player.total, prevTotal, 1800, countUpDelay);
+  const isTop = newRankIndex === 0;
+
+  const prevY = prevRankIndex * (ROW_H + ROW_GAP);
+  const newY = newRankIndex * (ROW_H + ROW_GAP);
+  const moved = prevRankIndex !== newRankIndex;
 
   return (
     <div
-      className={`flex items-center gap-4 rounded-2xl px-6 py-4 transition-all ${
-        isTop
-          ? "bg-[#7862FF]/20 border-2 border-[#7862FF]/60"
-          : `${t.bgSurface}/60 border ${t.borderSurface}`
-      }`}
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        height: ROW_H,
+        transform: `translateY(${sorted ? newY : prevY}px)`,
+        transition: sorted && moved ? "transform 0.7s cubic-bezier(0.4,0,0.2,1)" : "none",
+        zIndex: sorted && moved ? 2 : 1,
+      }}
     >
-      <span className={`font-black text-2xl w-8 ${isTop ? "text-white" : t.textMuted}`}>
-        #{player.rank}
-      </span>
-      <div className={`${resolveAvatarColor(player.nickname, player.emoji)} w-12 h-12 rounded-full flex items-center justify-center text-2xl`}>
-        {resolveEmoji(player.nickname, player.emoji)}
+      <div
+        className={`flex items-center gap-4 rounded-2xl px-6 h-full ${
+          isTop
+            ? "bg-[#7862FF]/20 border-2 border-[#7862FF]/60"
+            : `${t.bgSurface}/60 border ${t.borderSurface}`
+        }`}
+      >
+        <span className={`font-black text-2xl w-8 ${isTop ? "text-white" : t.textMuted}`}>
+          #{player.rank}
+        </span>
+        <div className={`${resolveAvatarColor(player.nickname, player.emoji)} w-12 h-12 rounded-full flex items-center justify-center text-2xl`}>
+          {resolveEmoji(player.nickname, player.emoji)}
+        </div>
+        <span className={`font-bold text-xl flex-1 text-white`}>
+          {player.nickname}
+        </span>
+        {player.roundScore > 0 && (
+          <span className={`${t.textTeal} font-bold text-lg`}>+{player.roundScore}</span>
+        )}
+        <span className={`font-black text-2xl tabular-nums text-white`}>
+          {animatedTotal}
+        </span>
       </div>
-      <span className={`font-bold text-xl flex-1 text-white`}>
-        {player.nickname}
-      </span>
-      {player.roundScore > 0 && (
-        <span className={`${t.textTeal} font-bold text-lg`}>+{player.roundScore}</span>
-      )}
-      <span className={`font-black text-2xl tabular-nums text-white`}>
-        {animatedTotal}
-      </span>
     </div>
   );
 }
@@ -659,14 +692,50 @@ function LeaderboardRow({ player, isTop }: { player: GameState["leaderboard"][0]
 function LeaderboardView({ game, title }: { game: GameState; title: string }) {
   const board = game.leaderboard;
 
+  // prevOrder: sorted by total BEFORE this round (total - roundScore)
+  const prevOrderRef = useRef<string[]>([]);
+  const [sorted, setSorted] = useState(false);
+  const boardKey = board.map((p) => p.nickname + p.total).join(",");
+  const boardKeyRef = useRef("");
+
+  if (boardKeyRef.current !== boardKey) {
+    boardKeyRef.current = boardKey;
+    // compute prev-round order on first render for this board snapshot
+    const prevSorted = [...board].sort(
+      (a, b) => (b.total - b.roundScore) - (a.total - a.roundScore)
+    );
+    prevOrderRef.current = prevSorted.map((p) => p.nickname);
+  }
+
+  useEffect(() => {
+    setSorted(false);
+    const id = setTimeout(() => setSorted(true), 2000);
+    return () => clearTimeout(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [boardKey]);
+
+  const prevOrder = prevOrderRef.current;
+  const totalH = board.length * ROW_H + Math.max(0, board.length - 1) * ROW_GAP;
+
   return (
     <div className="flex flex-col flex-1 px-16 py-8 gap-6">
       <h2 className={`text-4xl font-black ${t.textCyan} text-center`}>{title}</h2>
 
-      <div className="flex flex-col gap-3 max-w-2xl mx-auto w-full">
-        {board.map((player, i) => (
-          <LeaderboardRow key={player.nickname} player={player} isTop={i === 0} />
-        ))}
+      <div className="max-w-2xl mx-auto w-full" style={{ position: "relative", height: totalH }}>
+        {board.map((player) => {
+          const prevRankIndex = prevOrder.indexOf(player.nickname);
+          const newRankIndex = board.indexOf(player);
+          return (
+            <LeaderboardRow
+              key={player.nickname}
+              player={player}
+              newRankIndex={newRankIndex}
+              prevRankIndex={prevRankIndex === -1 ? newRankIndex : prevRankIndex}
+              sorted={sorted}
+              countUpDelay={2100}
+            />
+          );
+        })}
       </div>
 
       {game.phase === "leaderboard" && (

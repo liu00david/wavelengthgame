@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useParty } from "@/lib/useParty";
-import { t, avatarColor, resolveAvatarColor, resolveEmoji } from "@/lib/theme";
+import { t, resolveAvatarColor, resolveEmoji } from "@/lib/theme";
 
 const PLAYER_SESSION_KEY = "consensus_player_session";
 

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, Suspense } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useParty } from "@/lib/useParty";
-import { t, avatarColor, resolveAvatarColor, resolveEmoji } from "@/lib/theme";
+import { t, resolveAvatarColor, resolveEmoji } from "@/lib/theme";
 import type { GameState } from "@/lib/types";
 
 function useCountdown(phaseEndsAt: number | null): number {
