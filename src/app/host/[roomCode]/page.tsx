@@ -144,7 +144,7 @@ function HostContent({ roomCode }: { roomCode: string }) {
           <div className="flex gap-2 mt-2">
             <a href={`/tv/${roomCode}`} target="_blank" rel="noopener noreferrer"
               className={`px-4 py-2 rounded-xl ${t.btnPrimary} font-semibold shadow`}>
-              TV Screen ↗
+              Open Shared TV Screen ↗
             </a>
             <button
               onClick={() => setMenuState("main")}

@@ -196,89 +196,24 @@ function JumpWord({ word, color, delay = 0 }: { word: string; color: string; del
 }
 
 function CountdownScreen() {
-  const [step, setStep] = useState<"rules0" | "rules1" | "rules2" | "rules_out" | "tagline_in" | "tagline_out" | "ready">("rules0");
-
-  useEffect(() => {
-    const timers = [
-      setTimeout(() => setStep("rules1"),      4000),
-      setTimeout(() => setStep("rules2"),      8000),
-      setTimeout(() => setStep("rules_out"),   12000),
-      setTimeout(() => setStep("tagline_in"),  12400),
-      setTimeout(() => setStep("tagline_out"), 14200),
-      setTimeout(() => setStep("ready"),       15000),
-    ];
-    return () => timers.forEach(clearTimeout);
-  }, []);
-
-  const ruleIndex = step === "rules0" ? 0 : step === "rules1" ? 1 : step === "rules2" ? 2 : null;
-  const isRules = ruleIndex !== null || step === "rules_out";
-  const isTagline = step === "tagline_in" || step === "tagline_out";
-  const isReady = step === "ready";
-  const rule = ruleIndex !== null ? RULES[ruleIndex] : null;
-
   return (
     <div className={`fixed inset-0 z-50 flex flex-col items-center justify-center ${t.bgPage} overflow-hidden`}>
       <style>{`
-        @keyframes cdPop {
-          0%   { transform: scale(1.5); opacity: 0; }
-          20%  { transform: scale(1.0); opacity: 1; }
-          70%  { transform: scale(1.0); opacity: 1; }
-          100% { transform: scale(0.7); opacity: 0; }
-        }
         @keyframes ruleSlideIn {
           0%   { transform: translateY(30px) scale(0.96); opacity: 0; }
           100% { transform: translateY(0) scale(1); opacity: 1; }
         }
-        @keyframes wordJump {
-          0%   { transform: translateY(20px) scale(0.8); opacity: 0; }
-          60%  { transform: translateY(-6px) scale(1.15); opacity: 1; }
-          80%  { transform: translateY(2px) scale(0.97); opacity: 1; }
-          100% { transform: translateY(0) scale(1); opacity: 1; }
-        }
       `}</style>
-
-      {/* Rules cards */}
-      {isRules && rule && (
-        <div key={ruleIndex} className="flex flex-col items-center gap-5 text-center px-8"
-          style={{ animation: "ruleSlideIn 0.4s ease-out forwards" }}>
-          <div className="flex gap-2">
-            {RULES.map((_, i) => (
-              <div key={i} className="w-2.5 h-2.5 rounded-full transition-all duration-300"
-                style={{ background: i === ruleIndex ? rule.color : "#2a4a8a" }} />
-            ))}
-          </div>
-          <div className="rounded-2xl px-8 py-8 flex flex-col items-center gap-4"
-            style={{ background: `${rule.color}18`, border: `2px solid ${rule.color}44` }}>
-            <span className="text-6xl">{rule.icon}</span>
-            <p className="text-sm font-bold uppercase tracking-widest" style={{ color: rule.color }}>{rule.label}</p>
-            <p className="text-4xl" style={{ lineHeight: 1.1 }}>
-              <JumpWord key={`${ruleIndex}-title`} word={rule.title} color="white" delay={200} />
-            </p>
-            <p className="text-lg text-[#a8c0e8] max-w-xs leading-snug">{rule.body}</p>
-          </div>
+      <div className="flex flex-col items-center gap-5 px-8 text-center"
+        style={{ animation: "ruleSlideIn 0.35s ease-out forwards" }}>
+        <p className={`text-5xl font-black ${t.textYellow} animate-pulse`}>Round 1 starting…</p>
+        <div className="rounded-2xl px-8 py-5 flex flex-col gap-2 max-w-sm"
+          style={{ background: "#7862FF18", border: "2px solid #7862FF44" }}>
+          <p className="text-sm font-bold uppercase tracking-widest text-[#a99dff]">📺 TV Screen</p>
+          <p className="text-white text-base leading-snug">Showing intro &amp; 3…2…1 countdown to players</p>
         </div>
-      )}
-
-      {/* Tagline */}
-      {isTagline && (
-        <div className="flex flex-col items-center gap-4 transition-all duration-500"
-          style={{
-            opacity: step === "tagline_in" ? 1 : 0,
-            transform: step === "tagline_in" ? "scale(1) translateY(0)" : "scale(0.9) translateY(-20px)",
-          }}>
-          <span className="text-7xl">🎯</span>
-          <p className="text-4xl font-black text-white text-center leading-tight">
-            Ready to read<br />the room?
-          </p>
-        </div>
-      )}
-
-      {/* Ready placeholder */}
-      {isReady && (
-        <div className="flex flex-col items-center gap-4 animate-pulse">
-          <p className={`text-5xl font-black ${t.textYellow}`}>Starting Round 1...</p>
-        </div>
-      )}
+        <p className="text-[#4a6a9a] text-sm">Phase 1 will begin automatically</p>
+      </div>
     </div>
   );
 }
@@ -381,8 +316,9 @@ export default function HostGamePage() {
   }
 
   function handleEndGame() {
-    sendMsg({ type: "end_game" });
-    closeMenu();
+    sessionStorage.removeItem(`${roomCode}_started`);
+    sendMsg({ type: "reset_to_lobby" });
+    router.push(`/host/${roomCode}`);
   }
 
   function handleDisbandRoom() {
@@ -434,7 +370,7 @@ export default function HostGamePage() {
               rel="noopener noreferrer"
               className={`px-4 py-2 rounded-xl ${t.btnPrimary} font-semibold`}
             >
-              TV Screen ↗
+              Open Shared TV Screen ↗
             </a>
             <button
               onClick={() => setMenuState("main")}
@@ -763,10 +699,10 @@ export default function HostGamePage() {
             </button>
             <div className="bg-[#f6dc53]/10 border border-[#f6dc53]/30 rounded-xl p-4">
               <p className={`${t.textYellow} font-bold text-lg mb-1`}>End the game?</p>
-              <p className={`${t.textMuted} text-sm`}>This will immediately end the game for all players.</p>
+              <p className={`${t.textMuted} text-sm`}>Returns everyone to the lobby immediately.</p>
             </div>
             <button onClick={handleEndGame} className={`w-full py-4 rounded-xl ${t.btnYellow} text-base`}>
-              Yes, End Game
+              Yes, Return to Lobby
             </button>
             <button onClick={() => setMenuState("main")} className={`w-full py-3 rounded-xl ${t.btnGhost} font-semibold`}>
               Cancel

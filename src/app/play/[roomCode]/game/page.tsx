@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState, Suspense } from "react";
+import { useCallback, useEffect, useRef, useState, Suspense } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useParty } from "@/lib/useParty";
 import { t, resolveAvatarColor, resolveEmoji } from "@/lib/theme";
+import { useAudio } from "@/lib/useAudio";
 import type { GameState } from "@/lib/types";
 
 function useCountdown(phaseEndsAt: number | null): number {
@@ -231,15 +232,26 @@ function tierColor(score: number): string {
 }
 
 // ---- Phase 1 view ----
-function Phase1View({ game, onSubmit, submitted }: {
+function Phase1View({ game, onSubmit, submitted, onTick }: {
   game: GameState; nickname: string;
   onSubmit: (val: string | number) => void; submitted: boolean;
+  onTick?: (secs: number) => void;
 }) {
   const countdown = useCountdown(game.phaseEndsAt);
   const prompt = game.prompt!;
   const totalTime = game.phase1Duration;
   const frozenSecs = game.paused ? (game.pausedTimeRemaining ?? 0) / 1000 : countdown;
   const displaySecs = Math.ceil(frozenSecs);
+  const prevTickRef = useRef(-1);
+  useEffect(() => {
+    if (!submitted && !game.paused && countdown > 0 && countdown <= 5) {
+      const tick = Math.ceil(countdown);
+      if (tick !== prevTickRef.current) {
+        prevTickRef.current = tick;
+        onTick?.(countdown);
+      }
+    }
+  }, [countdown, submitted, game.paused, onTick]);
 
   if (submitted) {
     return (
@@ -277,9 +289,10 @@ function Phase1View({ game, onSubmit, submitted }: {
 }
 
 // ---- Phase 2 view ----
-function Phase2View({ game, nickname, onSubmit, submitted }: {
+function Phase2View({ game, nickname, onSubmit, submitted, onTick }: {
   game: GameState; nickname: string;
   onSubmit: (val: string | number, doubleDown: boolean) => void; submitted: boolean;
+  onTick?: (secs: number) => void;
 }) {
   const countdown = useCountdown(game.phaseEndsAt);
   const [doubleDown, setDoubleDown] = useState(false);
@@ -287,6 +300,16 @@ function Phase2View({ game, nickname, onSubmit, submitted }: {
   const totalTime = game.phase2Duration;
   const frozenSecs = game.paused ? (game.pausedTimeRemaining ?? 0) / 1000 : countdown;
   const displaySecs = Math.ceil(frozenSecs);
+  const prevTickRef = useRef(-1);
+  useEffect(() => {
+    if (!submitted && !game.paused && countdown > 0 && countdown <= 5) {
+      const tick = Math.ceil(countdown);
+      if (tick !== prevTickRef.current) {
+        prevTickRef.current = tick;
+        onTick?.(countdown);
+      }
+    }
+  }, [countdown, submitted, game.paused, onTick]);
   const canDoubleDown = !(game.doubleDownUsed ?? []).includes(nickname);
 
   function handleSubmit(val: string | number) { onSubmit(val, doubleDown); }
@@ -595,91 +618,19 @@ function EndedView({ game, nickname }: { game: GameState; nickname: string }) {
 }
 
 // ---- Question Submission View ----
-const RULES = [
-  { icon: "💬", color: "#7862FF", label: "Phase 1", title: "Answer", body: "Answer the question honestly for yourself." },
-  { icon: "🔮", color: "#4dd9d2", label: "Phase 2", title: "Predict", body: "Guess what the majority of the group answered." },
-  { icon: "⚡", color: "#f6dc53", label: "Score", title: "Double Down", body: "One chance to use Double Down - gives x2 points for correct predictions!" },
-];
-
-function JumpWord({ word, color, delay = 0 }: { word: string; color: string; delay?: number }) {
-  return (
-    <span className="inline-flex gap-[0.05em]" aria-label={word}>
-      {word.split("").map((ch, i) => (
-        <span key={i} className="inline-block font-black" style={{
-          color,
-          animation: "wordJump 0.5s ease-out forwards",
-          animationDelay: `${delay + i * 60}ms`,
-          opacity: 0,
-        }}>
-          {ch === " " ? "\u00A0" : ch}
-        </span>
-      ))}
-    </span>
-  );
-}
-
 function PlayerCountdownScreen() {
-  const [step, setStep] = useState<"rules0" | "rules1" | "rules2" | "rules_out" | "tagline">("rules0");
-
-  useEffect(() => {
-    const timers = [
-      setTimeout(() => setStep("rules1"),    4000),
-      setTimeout(() => setStep("rules2"),    8000),
-      setTimeout(() => setStep("rules_out"), 12000),
-      setTimeout(() => setStep("tagline"),   12400),
-    ];
-    return () => timers.forEach(clearTimeout);
-  }, []);
-
-  const ruleIndex = step === "rules0" ? 0 : step === "rules1" ? 1 : step === "rules2" ? 2 : null;
-  const rule = ruleIndex !== null ? RULES[ruleIndex] : null;
-  const isRules = ruleIndex !== null || step === "rules_out";
-
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center px-6 gap-6 min-h-[70vh]">
       <style>{`
-        @keyframes ruleSlideIn {
-          0%   { transform: translateY(24px) scale(0.96); opacity: 0; }
-          100% { transform: translateY(0) scale(1); opacity: 1; }
-        }
-        @keyframes wordJump {
-          0%   { transform: translateY(20px) scale(0.8); opacity: 0; }
-          60%  { transform: translateY(-6px) scale(1.15); opacity: 1; }
-          80%  { transform: translateY(2px) scale(0.97); opacity: 1; }
-          100% { transform: translateY(0) scale(1); opacity: 1; }
+        @keyframes gentleBounce {
+          0%, 100% { transform: translateY(0); }
+          45%       { transform: translateY(-14px); }
+          65%       { transform: translateY(-6px); }
         }
       `}</style>
-
-      {isRules && rule && (
-        <div key={ruleIndex} className="flex flex-col items-center gap-4 w-full"
-          style={{ animation: "ruleSlideIn 0.4s ease-out forwards" }}>
-          <div className="flex gap-2 mb-1">
-            {RULES.map((_, i) => (
-              <div key={i} className="w-2 h-2 rounded-full transition-all duration-300"
-                style={{ background: i === ruleIndex ? rule.color : "#2a4a8a" }} />
-            ))}
-          </div>
-          <div className="w-full rounded-2xl px-6 py-8 flex flex-col items-center gap-3"
-            style={{ background: `${rule.color}18`, border: `2px solid ${rule.color}44` }}>
-            <span className="text-5xl">{rule.icon}</span>
-            <p className="text-base font-bold uppercase tracking-widest" style={{ color: rule.color }}>{rule.label}</p>
-            <p className="text-3xl" style={{ lineHeight: 1.1 }}>
-              <JumpWord key={`${ruleIndex}-title`} word={rule.title} color="white" delay={200} />
-            </p>
-            <p className="text-xl text-white leading-snug">{rule.body}</p>
-          </div>
-        </div>
-      )}
-
-      {step === "tagline" && (
-        <div className="flex flex-col items-center gap-4" style={{ animation: "ruleSlideIn 0.4s ease-out forwards" }}>
-          <span className="text-6xl">🎯</span>
-          <p className="text-3xl font-black text-white text-center leading-tight">
-            Ready to read<br />the room?
-          </p>
-          <p className={`${t.textMuted} text-lg animate-pulse`}>Game starting now!</p>
-        </div>
-      )}
+      <span className="text-7xl" style={{ animation: "gentleBounce 1.6s ease-in-out infinite" }}>🎯</span>
+      <p className="text-4xl font-black text-white leading-tight">Game starting<br />soon!</p>
+      <p className={`${t.textMuted} text-lg animate-pulse`}>Watch the TV screen</p>
     </div>
   );
 }
@@ -942,6 +893,11 @@ function PlayGameContent() {
     return "";
   })();
 
+  const { play } = useAudio();
+  const onTick = useCallback((secs: number) => {
+    play("timer_tick", { urgency: Math.max(0, 1 - secs / 5) });
+  }, [play]);
+
   const [phase1Submitted, setPhase1Submitted] = useState(false);
   const [phase2Submitted, setPhase2Submitted] = useState(false);
   const lastRoundRef = useRef<number | null>(null);
@@ -1140,11 +1096,11 @@ function PlayGameContent() {
           />
         )}
         {phase === "phase1" && (
-          <Phase1View game={gameState} nickname={nickname} onSubmit={handleAnswerSubmit} submitted={phase1Submitted} />
+          <Phase1View game={gameState} nickname={nickname} onSubmit={handleAnswerSubmit} submitted={phase1Submitted} onTick={onTick} />
         )}
         {phase === "phase2" && (
           phase1Submitted
-            ? <Phase2View game={gameState} nickname={nickname} onSubmit={handlePredictionSubmit} submitted={phase2Submitted} />
+            ? <Phase2View game={gameState} nickname={nickname} onSubmit={handlePredictionSubmit} submitted={phase2Submitted} onTick={onTick} />
             : (
               <div className="flex flex-col items-center justify-center flex-1 gap-4 text-center px-6 py-16">
                 <div className="w-20 h-20 bg-[#9a3558]/30 rounded-full flex items-center justify-center text-4xl">⏱</div>

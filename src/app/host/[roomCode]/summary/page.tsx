@@ -19,7 +19,7 @@ function typeLabel(type: string) {
 function typeColor(type: string) {
   if (type === "binary") return t.textCyan;
   if (type === "multiple_choice") return t.textPrimary;
-  return t.textTeal;
+  return t.textYellow; // scale — distinct from binary's cyan
 }
 
 function formatAnswer(answer: string | number, type: string): string {

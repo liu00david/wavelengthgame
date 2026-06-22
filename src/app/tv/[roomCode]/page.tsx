@@ -2,11 +2,12 @@
 
 export const dynamic = "force-dynamic";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import { useParty } from "@/lib/useParty";
 import { t, resolveAvatarColor, resolveEmoji } from "@/lib/theme";
+import { useAudio } from "@/lib/useAudio";
 import type { Player } from "@/lib/types";
 
 const JOIN_BASE_URL = "https://consensusgame.vercel.app";
@@ -36,11 +37,28 @@ export default function TVPage() {
 
   const [roomNotFound, setRoomNotFound] = useState(false);
 
+  const { play, muted, toggleMute, audioStarted, startAudio } = useAudio();
+  const prevPlayerCountRef = useRef(0);
+
   const { lobbyState, gameState } = useParty(roomCode, undefined, (msg) => {
     if (msg.type === "room_not_found" || msg.type === "disbanded") {
       setRoomNotFound(true);
     }
   });
+
+  useEffect(() => {
+    if (audioStarted) play("lobby_music");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audioStarted]);
+
+  // Bloop each time a new player joins
+  const playerCount = (lobbyState?.players ?? []).filter((p) => !p.isHost).length;
+  useEffect(() => {
+    if (playerCount > prevPlayerCountRef.current && prevPlayerCountRef.current > 0) {
+      play("player_join");
+    }
+    prevPlayerCountRef.current = playerCount;
+  }, [playerCount, play]);
 
   // Check room existence on mount
   useEffect(() => {
@@ -78,6 +96,26 @@ export default function TVPage() {
 
   return (
     <main className={`h-screen ${t.bgPage} flex flex-col px-10 py-6 relative overflow-hidden`}>
+      {/* Click-to-start overlay */}
+      {!audioStarted && (
+        <div
+          onClick={startAudio}
+          className="absolute inset-0 z-50 flex flex-col items-center justify-center cursor-pointer"
+          style={{ background: "rgba(8,28,72,0.82)", backdropFilter: "blur(6px)" }}
+        >
+          <div className="flex flex-col items-center gap-4 select-none">
+            <p className="text-4xl font-black text-white tracking-tight">Click to Start</p>
+          </div>
+        </div>
+      )}
+      {/* Mute button */}
+      <button
+        onClick={toggleMute}
+        className="absolute bottom-5 right-5 z-40 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/60 hover:text-white transition-colors"
+        title={muted ? "Unmute" : "Mute"}
+      >
+        {muted ? "🔇" : "🔊"}
+      </button>
       {/* Background decoration */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#7862FF]/5 rounded-full blur-3xl" />

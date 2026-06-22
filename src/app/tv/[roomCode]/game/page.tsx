@@ -2,10 +2,11 @@
 
 export const dynamic = "force-dynamic";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { useParty } from "@/lib/useParty";
 import { t, resolveAvatarColor, resolveEmoji } from "@/lib/theme";
+import { useAudio } from "@/lib/useAudio";
 import type { GameState } from "@/lib/types";
 
 function useCountdown(phaseEndsAt: number | null): number {
@@ -151,23 +152,24 @@ function JumpWord({ word, color, delay = 0 }: { word: string; color: string; del
   );
 }
 
-function CountdownOverlay({ onDone }: { onDone: () => void }) {
+function CountdownOverlay({ onDone, onDigit, onSlide }: { onDone: () => void; onDigit?: (d: 1 | 2 | 3) => void; onSlide?: () => void }) {
   const [step, setStep] = useState<"rules0" | "rules1" | "rules2" | "rules_out" | "tagline_in" | "tagline_out" | "3" | "2" | "1" | "done">("rules0");
 
   useEffect(() => {
+    onSlide?.(); // slide 0 on mount
     const timers = [
-      setTimeout(() => setStep("rules1"),      4000),
-      setTimeout(() => setStep("rules2"),      8000),
-      setTimeout(() => setStep("rules_out"),   12000),
-      setTimeout(() => setStep("tagline_in"),  12400),
-      setTimeout(() => setStep("tagline_out"), 14200),
-      setTimeout(() => setStep("3"),           15000),
-      setTimeout(() => setStep("2"),           16000),
-      setTimeout(() => setStep("1"),           17000),
-      setTimeout(() => { setStep("done"); onDone(); }, 17800),
+      setTimeout(() => { setStep("rules1");     onSlide?.(); },        3000),
+      setTimeout(() => { setStep("rules2");     onSlide?.(); },        6000),
+      setTimeout(() => setStep("rules_out"),                           9000),
+      setTimeout(() => { setStep("tagline_in"); onSlide?.(); },        9200),
+      setTimeout(() => setStep("tagline_out"),                        10800),
+      setTimeout(() => { setStep("3"); onDigit?.(3); },               11000),
+      setTimeout(() => { setStep("2"); onDigit?.(2); },               12000),
+      setTimeout(() => { setStep("1"); onDigit?.(1); },               13000),
+      setTimeout(() => { setStep("done"); onDone(); },                14000),
     ];
     return () => timers.forEach(clearTimeout);
-  }, [onDone]);
+  }, [onDone, onDigit, onSlide]);
 
   const ruleIndex = step === "rules0" ? 0 : step === "rules1" ? 1 : step === "rules2" ? 2 : null;
   const isRules = ruleIndex !== null || step === "rules_out";
@@ -634,15 +636,24 @@ function LeaderboardRow({
   prevRankIndex,
   sorted,
   countUpDelay,
+  onScoreTick,
 }: {
   player: GameState["leaderboard"][0];
   newRankIndex: number;
   prevRankIndex: number;
   sorted: boolean;
   countUpDelay: number;
+  onScoreTick?: () => void;
 }) {
   const prevTotal = player.total - player.roundScore;
   const animatedTotal = useCountUp(player.total, prevTotal, 1800, countUpDelay);
+  const prevAnimatedRef = useRef(prevTotal);
+  useEffect(() => {
+    if (animatedTotal !== prevAnimatedRef.current) {
+      prevAnimatedRef.current = animatedTotal;
+      onScoreTick?.();
+    }
+  }, [animatedTotal, onScoreTick]);
   const isTop = newRankIndex === 0;
 
   const prevY = prevRankIndex * (ROW_H + ROW_GAP);
@@ -689,7 +700,7 @@ function LeaderboardRow({
   );
 }
 
-function LeaderboardView({ game, title }: { game: GameState; title: string }) {
+function LeaderboardView({ game, title, onScoreTick }: { game: GameState; title: string; onScoreTick?: () => void }) {
   const board = game.leaderboard;
 
   // prevOrder: sorted by total BEFORE this round (total - roundScore)
@@ -733,6 +744,7 @@ function LeaderboardView({ game, title }: { game: GameState; title: string }) {
               prevRankIndex={prevRankIndex === -1 ? newRankIndex : prevRankIndex}
               sorted={sorted}
               countUpDelay={2100}
+              onScoreTick={onScoreTick}
             />
           );
         })}
@@ -748,9 +760,9 @@ function LeaderboardView({ game, title }: { game: GameState; title: string }) {
 }
 
 const TV_RANK_STYLE: Record<number, { color: string; label: string; emoji: string; height: string; bg: string }> = {
-  1: { color: t.textYellow,       label: "1st", emoji: "🏆", height: "h-48", bg: "bg-[#f6dc53]/20 border border-[#f6dc53]/40" },
-  2: { color: "text-[#7a96c8]",   label: "2nd", emoji: "🥈", height: "h-32", bg: "bg-[#7a96c8]/10 border border-[#7a96c8]/20" },
-  3: { color: "text-[#cd853f]",   label: "3rd", emoji: "🥉", height: "h-24", bg: "bg-[#cd853f]/10 border border-[#cd853f]/20" },
+  1: { color: t.textYellow,       label: "1st", emoji: "🏆", height: "h-36", bg: "bg-[#f6dc53]/20 border border-[#f6dc53]/40" },
+  2: { color: "text-[#7a96c8]",   label: "2nd", emoji: "🥈", height: "h-24", bg: "bg-[#7a96c8]/10 border border-[#7a96c8]/20" },
+  3: { color: "text-[#cd853f]",   label: "3rd", emoji: "🥉", height: "h-16", bg: "bg-[#cd853f]/10 border border-[#cd853f]/20" },
 };
 
 function Confetti() {
@@ -889,7 +901,7 @@ function EndedView({ game }: { game: GameState }) {
   const lb = game.leaderboard;
 
   const podiumPlayers = lb.filter((p) => (p.rank ?? 99) <= 3);
-  const restPlayers = lb.filter((p) => (p.rank ?? 99) > 3).slice(0, 7);
+  const restPlayers = lb.filter((p) => (p.rank ?? 99) > 3).slice(0, 2);
 
   const rank1 = podiumPlayers.filter((p) => p.rank === 1);
   const rank2 = podiumPlayers.filter((p) => p.rank === 2);
@@ -913,21 +925,21 @@ function EndedView({ game }: { game: GameState }) {
         <p className={`${style.color} text-lg`}>{p.total} pts</p>
         <div className={`w-full ${style.height} rounded-t-2xl flex flex-col items-center justify-start pt-3 gap-1 ${style.bg}`}>
           <span className="text-3xl">{style.emoji}</span>
-          <span className={`${style.color} text-lg`}>{style.label}</span>
+          <span className={`${style.color} text-lg font-black`}>{style.label}</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col flex-1 px-16 py-6 gap-6 relative">
+    <div className="flex flex-col flex-1 px-16 py-4 gap-4 relative overflow-y-auto">
       <Fireworks />
       <div className="text-center">
         <p className={`${t.textTeal} text-2xl uppercase tracking-widest`}>Our Consensus</p>
       </div>
 
       {/* Podium */}
-      <div className="flex flex-col items-center mt-2">
+      <div className="flex flex-col items-center">
         <div className="flex items-end justify-center gap-1">
           <div className="flex flex-col items-center w-40 min-w-0">
             {leftSlot && <TVPodiumSlot p={leftSlot} />}
@@ -942,17 +954,17 @@ function EndedView({ game }: { game: GameState }) {
         <div className="w-[31rem] h-4 bg-[#2a4a8a] rounded-b-xl shadow-lg" />
       </div>
 
-      {/* Below podium */}
+      {/* 4th & 5th place */}
       {restPlayers.length > 0 && (
-        <div className="flex flex-col gap-2 max-w-2xl mx-auto w-full">
+        <div className="flex gap-4 justify-center max-w-2xl mx-auto w-full">
           {restPlayers.map((p) => (
-            <div key={p.nickname} className={`flex items-center gap-4 ${t.bgSurface}/60 rounded-xl px-5 py-3`}>
-              <span className={`${t.textMuted} text-xl w-8`}>#{p.rank}</span>
-              <div className={`${resolveAvatarColor(p.nickname, p.emoji)} w-10 h-10 rounded-full flex items-center justify-center text-xl`}>
+            <div key={p.nickname} className={`flex items-center gap-3 ${t.bgSurface}/60 rounded-xl px-5 py-3 flex-1`}>
+              <span className={`${t.textMuted} text-xl font-black w-10 shrink-0`}>{p.rank === 4 ? "4th" : "5th"}</span>
+              <div className={`${resolveAvatarColor(p.nickname, p.emoji)} w-11 h-11 rounded-full flex items-center justify-center text-2xl shrink-0`}>
                 {resolveEmoji(p.nickname, p.emoji)}
               </div>
-              <span className="text-white text-xl flex-1">{p.nickname}</span>
-              <span className="text-white text-xl">{p.total}</span>
+              <span className="text-white text-xl font-semibold flex-1 truncate">{p.nickname}</span>
+              <span className={`${t.textMuted} text-lg font-bold shrink-0`}>{p.total} pts</span>
             </div>
           ))}
         </div>
@@ -965,10 +977,24 @@ export default function TVGamePage() {
   const params = useParams();
   const roomCode = (params.roomCode as string).toUpperCase();
 
+  const { play, syncPhase, muted, toggleMute, audioStarted, startAudio } = useAudio();
   const [roomNotFound, setRoomNotFound] = useState(false);
   const [showGameOver, setShowGameOver] = useState(false);
   const [endedVisible, setEndedVisible] = useState(false);
   const prevPhaseRef = useRef<string | null>(null);
+  const prevAnsweredRef = useRef<number>(-1);
+  const onDigit = useCallback((d: 1 | 2 | 3) => play(`countdown_${d}` as "countdown_1" | "countdown_2" | "countdown_3"), [play]);
+  const onSlide = useCallback(() => play("slide_in"), [play]);
+  // Throttle score ticks: multiple rows count up simultaneously, only play one tick per frame
+  const scoreTickFrameRef = useRef<number | null>(null);
+  useEffect(() => () => { if (scoreTickFrameRef.current !== null) cancelAnimationFrame(scoreTickFrameRef.current); }, []);
+  const onScoreTick = useCallback(() => {
+    if (scoreTickFrameRef.current !== null) return;
+    scoreTickFrameRef.current = requestAnimationFrame(() => {
+      scoreTickFrameRef.current = null;
+      play("score_tick");
+    });
+  }, [play]);
 
   const { gameState } = useParty(roomCode, undefined, (msg) => {
     if (msg.type === "room_not_found" || msg.type === "disbanded") {
@@ -1008,6 +1034,46 @@ export default function TVGamePage() {
     prevPhaseRef.current = curr;
   }, [gameState?.phase]);
 
+  useEffect(() => {
+    if (audioStarted) syncPhase(gameState?.phase ?? null);
+  }, [gameState?.phase, syncPhase, audioStarted]);
+
+  // Pop sound each time a new answer arrives (phase1 or phase2);
+  // chime when the last answer comes in
+  useEffect(() => {
+    const count = gameState?.answeredCount ?? 0;
+    const phase = gameState?.phase;
+    if ((phase === "phase1" || phase === "phase2") && count > prevAnsweredRef.current && prevAnsweredRef.current !== -1) {
+      play("answer_in");
+    }
+    prevAnsweredRef.current = count;
+  }, [gameState?.answeredCount, gameState?.phase, gameState?.N, gameState?.phase1AnsweredCount, play]);
+
+  // Timer ticks for TV (fires for both phase1 and phase2)
+  const tvTickRef = useRef(-1);
+  // Reset the seen-tick tracker only when phase changes, not on every phaseEndsAt update
+  // (pause/resume changes phaseEndsAt but should not re-fire already-heard ticks)
+  const tvPhaseRef = useRef<string | null>(null);
+  useEffect(() => {
+    const phase = gameState?.phase;
+    if ((phase !== "phase1" && phase !== "phase2") || !gameState?.phaseEndsAt || gameState.paused) return;
+    if (phase !== tvPhaseRef.current) {
+      tvPhaseRef.current = phase;
+      tvTickRef.current = -1;
+    }
+    const phaseEndsAt = gameState.phaseEndsAt;
+    const id = setInterval(() => {
+      const secs = Math.max(0, (phaseEndsAt - Date.now()) / 1000);
+      if (secs > 5) return;
+      const tick = Math.ceil(secs);
+      if (tick > 0 && tick !== tvTickRef.current) {
+        tvTickRef.current = tick;
+        play("timer_tick", { urgency: Math.max(0, 1 - secs / 5) });
+      }
+    }, 100);
+    return () => clearInterval(id);
+  }, [gameState?.phase, gameState?.phaseEndsAt, gameState?.paused, play]);
+
   if (roomNotFound) {
     return (
       <main className={`min-h-screen ${t.bgPage} flex flex-col items-center justify-center`}>
@@ -1030,11 +1096,31 @@ export default function TVGamePage() {
   return (
     <main className={`min-h-screen flex flex-col relative overflow-hidden transition-colors duration-500 ${phase === "phase1" ? t.bgPhase1 : phase === "phase2" ? t.bgPhase2 : t.bgPage}`}>
       {phase === "countdown" && (
-        <CountdownOverlay onDone={() => {}} />
+        <CountdownOverlay onDone={() => {}} onDigit={onDigit} onSlide={onSlide} />
       )}
       {showGameOver && (
         <GameOverIntro onDone={() => { setShowGameOver(false); setEndedVisible(true); }} />
       )}
+      {/* Click-to-start overlay */}
+      {!audioStarted && (
+        <div
+          onClick={startAudio}
+          className="absolute inset-0 z-50 flex flex-col items-center justify-center cursor-pointer"
+          style={{ background: "rgba(8,28,72,0.82)", backdropFilter: "blur(6px)" }}
+        >
+          <div className="flex flex-col items-center gap-4 select-none">
+            <p className="text-4xl font-black text-white tracking-tight">Click to Start</p>
+          </div>
+        </div>
+      )}
+      {/* Mute button */}
+      <button
+        onClick={toggleMute}
+        className="absolute bottom-5 right-5 z-40 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/60 hover:text-white transition-colors"
+        title={muted ? "Unmute" : "Mute"}
+      >
+        {muted ? "🔇" : "🔊"}
+      </button>
       {/* Background decoration */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#7862FF]/5 rounded-full blur-3xl" />
@@ -1078,7 +1164,7 @@ export default function TVGamePage() {
         ) : phase === "phase3" ? (
           <Phase3View game={gameState} />
         ) : phase === "leaderboard" ? (
-          <LeaderboardView game={gameState} title={`Round ${gameState.round} Results`} />
+          <LeaderboardView game={gameState} title={`Round ${gameState.round} Results`} onScoreTick={onScoreTick} />
         ) : (
           <div
             className="flex flex-col flex-1 transition-all duration-700"
