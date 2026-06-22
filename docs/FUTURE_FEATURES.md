@@ -47,3 +47,8 @@ Vibrate the player's phone at key moments (Phase 3 reveal, Double Down result). 
 ## Music / Audio
 
 Background music and sound effects to enhance atmosphere. Options: royalty-free tracks from Free Music Archive, ccMixter, or Pixabay. Requires audio context + autoplay policy handling per browser.
+
+## Backend login
+
+Add log in for users to access the game for limited release.
+Add contact email to be added to waitlist or access list.

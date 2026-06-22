@@ -108,12 +108,20 @@ export default function Home() {
       </div>
 
       {/* How to play link */}
-      <a
-        href="/how-to-play"
-        className={`${t.textMuted} text-base hover:text-white transition-colors underline underline-offset-4`}
-      >
-        How to Play →
-      </a>
+      <div className="flex flex-col items-center gap-2">
+        <a
+          href="/how-to-play"
+          className={`${t.textMuted} text-base hover:text-white transition-colors underline underline-offset-4`}
+        >
+          How to Play →
+        </a>
+        <a
+          href="/credits"
+          className={`${t.textMuted} text-base hover:text-white transition-colors underline underline-offset-4`}
+        >
+          About →
+        </a>
+      </div>
     </main>
   );
 }

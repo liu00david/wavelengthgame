@@ -28,6 +28,26 @@ export default function HowToPlayPage() {
           </p>
         </div>
 
+        {/* Setup — shared screen */}
+        <h2 className={`${t.textMuted} text-sm uppercase tracking-widest mb-3`}>Setup</h2>
+        <div className={`${t.bgSurface} border border-[#4dd9d2]/30 rounded-2xl p-5 mb-8`}>
+          <p className={`${t.textTeal} font-bold text-base uppercase tracking-wide mb-3`}>📺 Like Kahoot — one big screen, everyone's phone</p>
+          <ol className="flex flex-col gap-3">
+            <li className="flex gap-3 text-white text-base">
+              <span className={`${t.textTeal} font-black shrink-0`}>1.</span>
+              <span>The <span className="font-semibold text-white">host</span> creates a room on their device and opens the <span className={`${t.textYellow} font-semibold`}>Shared TV Screen</span> — this goes on a laptop, TV, or any display the whole room can see. It shows questions, live answers coming in, and results.</span>
+            </li>
+            <li className="flex gap-3 text-white text-base">
+              <span className={`${t.textTeal} font-black shrink-0`}>2.</span>
+              <span><span className="font-semibold text-white">Players</span> join on their own phones by scanning the QR code or entering the room code at <span className={`${t.textYellow} font-semibold font-mono`}>consensusgame.vercel.app</span>. No app download needed.</span>
+            </li>
+            <li className="flex gap-3 text-white text-base">
+              <span className={`${t.textTeal} font-black shrink-0`}>3.</span>
+              <span>Everyone answers on their phone privately — answers appear on the shared screen as they come in, keeping the whole room engaged.</span>
+            </li>
+          </ol>
+        </div>
+
         {/* Question Types */}
         <h2 className={`${t.textMuted} text-sm uppercase tracking-widest mb-3`}>Question Types</h2>
         <div className="flex flex-col gap-3 mb-8">
@@ -60,12 +80,11 @@ export default function HowToPlayPage() {
         {/* Host */}
         <h2 className={`${t.textMuted} text-sm uppercase tracking-widest mb-3`}>The Host</h2>
         <div className={`${t.bgSurface} border ${t.borderSurface} rounded-2xl p-5 mb-4`}>
-          <p className="text-[#4dd9d2] font-bold text-base uppercase tracking-wide mb-2">📺 TV / Shared Screen</p>
+          <p className="text-[#4dd9d2] font-bold text-base uppercase tracking-wide mb-2">🎛️ Host Controls</p>
           <ul className="flex flex-col gap-1.5">
-            <li className="flex gap-2 text-white text-base"><span className="text-[#4dd9d2] shrink-0">•</span>The host opens the game on their device and controls the pace</li>
-            <li className="flex gap-2 text-white text-base"><span className="text-[#4dd9d2] shrink-0">•</span>For the best experience, cast or mirror the <span className={`${t.textYellow} font-semibold`}>/tv</span> screen to a shared display — it shows questions, answers, and results for the whole room</li>
-            <li className="flex gap-2 text-white text-base"><span className="text-[#4dd9d2] shrink-0">•</span>The TV screen is optional — the game works fine with just phones</li>
-            <li className="flex gap-2 text-white text-base"><span className="text-[#4dd9d2] shrink-0">•</span>The host can pause timers, skip questions, or end the game at any time</li>
+            <li className="flex gap-2 text-white text-base"><span className="text-[#4dd9d2] shrink-0">•</span>Controls the pace — manually advances each round after the reveal</li>
+            <li className="flex gap-2 text-white text-base"><span className="text-[#4dd9d2] shrink-0">•</span>Can pause timers, skip questions, kick players, or end the game at any time</li>
+            <li className="flex gap-2 text-white text-base"><span className="text-[#4dd9d2] shrink-0">•</span>Opens the <span className={`${t.textYellow} font-semibold`}>Shared TV Screen</span> separately — cast or mirror it to any display the room can see</li>
           </ul>
         </div>
 
