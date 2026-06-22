@@ -70,6 +70,10 @@ function HostContent({ roomCode }: { roomCode: string }) {
   type MenuState = "closed" | "main" | "kick" | "disband_confirm";
   const [menuState, setMenuState] = useState<MenuState>("closed");
 
+  const hostName = typeof window !== "undefined"
+    ? (localStorage.getItem("consensus_host_name") ?? "Host")
+    : "Host";
+
   const { sendMsg, lobbyState, gameState } = useParty(
     roomCode,
     () => {
@@ -79,19 +83,19 @@ function HostContent({ roomCode }: { roomCode: string }) {
         if (saved) {
           const session = JSON.parse(saved) as { roomCode: string };
           if (session.roomCode === roomCode) {
-            sendMsg({ type: "rejoin", nickname: "Host" });
+            sendMsg({ type: "rejoin", nickname: hostName });
             return;
           }
         }
       } catch { /* ignore */ }
       localStorage.setItem(HOST_SESSION_KEY, JSON.stringify({ roomCode }));
-      sendMsg({ type: "join", nickname: "Host", isHost: true });
+      sendMsg({ type: "join", nickname: hostName, isHost: true });
     },
     (msg) => {
       if (msg.type === "room_not_found") {
         localStorage.removeItem(HOST_SESSION_KEY);
         localStorage.setItem(HOST_SESSION_KEY, JSON.stringify({ roomCode }));
-        sendMsg({ type: "join", nickname: "Host", isHost: true });
+        sendMsg({ type: "join", nickname: hostName, isHost: true });
       }
     },
   );

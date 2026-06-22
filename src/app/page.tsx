@@ -4,27 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { t } from "@/lib/theme";
 
-function generateRoomCode(): string {
-  const chars = "BCDFGHJKLMNPQRSTVWXYZ";
-  let code = "";
-  for (let i = 0; i < 4; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return code;
-}
-
 export default function Home() {
   const router = useRouter();
   const [joinCode, setJoinCode] = useState("");
   const [joinError, setJoinError] = useState("");
   const [checking, setChecking] = useState(false);
-  const [creating, setCreating] = useState(false);
 
   function handleCreateRoom() {
-    if (creating) return;
-    setCreating(true);
-    const code = generateRoomCode();
-    router.push(`/host/${code}`);
+    router.push("/register");
   }
 
   async function handleJoinRoom() {
@@ -76,10 +63,9 @@ export default function Home() {
           </p>
           <button
             onClick={handleCreateRoom}
-            disabled={creating}
-            className={`w-full py-3 rounded-xl ${t.btnPrimary} text-lg font-bold transition-opacity ${creating ? "opacity-60 cursor-not-allowed" : ""}`}
+            className={`w-full py-3 rounded-xl ${t.btnPrimary} text-lg font-bold transition-opacity`}
           >
-            {creating ? "Creating…" : "Create Room"}
+            Create Room
           </button>
         </div>
 
