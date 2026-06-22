@@ -166,7 +166,7 @@ function CountdownOverlay({ onDone, onDigit, onSlide }: { onDone: () => void; on
       setTimeout(() => { setStep("3"); onDigit?.(3); },               11000),
       setTimeout(() => { setStep("2"); onDigit?.(2); },               12000),
       setTimeout(() => { setStep("1"); onDigit?.(1); },               13000),
-      setTimeout(() => { setStep("done"); onDone(); },                14000),
+      setTimeout(() => { setStep("done"); onDone(); },                13800),
     ];
     return () => timers.forEach(clearTimeout);
   }, [onDone, onDigit, onSlide]);
@@ -938,8 +938,8 @@ function EndedView({ game }: { game: GameState }) {
         <p className={`${t.textTeal} text-2xl uppercase tracking-widest`}>Our Consensus</p>
       </div>
 
-      {/* Podium */}
-      <div className="flex flex-col items-center">
+      {/* Podium — shift down when no 4th/5th rows to fill the space */}
+      <div className={`flex flex-col items-center${restPlayers.length === 0 ? " mt-12" : ""}`}>
         <div className="flex items-end justify-center gap-1">
           <div className="flex flex-col items-center w-40 min-w-0">
             {leftSlot && <TVPodiumSlot p={leftSlot} />}
