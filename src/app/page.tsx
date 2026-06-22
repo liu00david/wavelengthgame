@@ -18,8 +18,11 @@ export default function Home() {
   const [joinCode, setJoinCode] = useState("");
   const [joinError, setJoinError] = useState("");
   const [checking, setChecking] = useState(false);
+  const [creating, setCreating] = useState(false);
 
   function handleCreateRoom() {
+    if (creating) return;
+    setCreating(true);
     const code = generateRoomCode();
     router.push(`/host/${code}`);
   }
@@ -73,9 +76,10 @@ export default function Home() {
           </p>
           <button
             onClick={handleCreateRoom}
-            className={`w-full py-3 rounded-xl ${t.btnPrimary} text-lg font-bold`}
+            disabled={creating}
+            className={`w-full py-3 rounded-xl ${t.btnPrimary} text-lg font-bold transition-opacity ${creating ? "opacity-60 cursor-not-allowed" : ""}`}
           >
-            Create Room
+            {creating ? "Creating…" : "Create Room"}
           </button>
         </div>
 
