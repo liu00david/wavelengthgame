@@ -1,4 +1,5 @@
 import type * as Party from "partykit/server";
+import { createClient } from "@supabase/supabase-js";
 import { PROMPTS, getPromptsForGame } from "../src/lib/prompts";
 import type { Prompt, PromptType } from "../src/lib/prompts";
 
@@ -9,6 +10,7 @@ type GamePhase = "lobby" | "question_submission" | "countdown" | "phase1" | "pha
 
 type PlayerScore = {
   nickname: string;
+  emoji?: string;
   total: number;
   roundScore: number;
   rank?: number;
@@ -214,13 +216,16 @@ export default class GameServer implements Party.Server {
     submittedQuestionCount: 0,
     mode: "game_questions",
   };
-  private submittedQuestions: Prompt[] = [];
+  private submittedQuestions: (Prompt & { submittedBy: string })[] = [];
   private prompts: Prompt[] = [];
   private phase1Answers: Map<string, string | number> = new Map();
   private phase2Predictions: Map<string, string | number> = new Map();
   private phase2Wagers: Map<string, boolean> = new Map();
   private phaseTimer: ReturnType<typeof setTimeout> | null = null;
   private totalScores: Map<string, number> = new Map();
+  private roundResults: RoundResult[] = [];
+  private gameStartedAt: number = 0;
+  private hostName: string = "Host";
 
   constructor(readonly room: Party.Room) {}
 
@@ -367,6 +372,8 @@ export default class GameServer implements Party.Server {
       chaosBonusAwarded: false,
     };
 
+    this.roundResults.push(roundResult);
+
     const leaderboard = this.buildLeaderboard(scores);
 
     this.game = {
@@ -405,6 +412,84 @@ export default class GameServer implements Party.Server {
     const leaderboard = this.buildLeaderboard();
     this.game = { ...this.game, phase: "ended", phaseEndsAt: null, leaderboard };
     this.broadcastGame();
+    this.saveGameToSupabase(leaderboard).catch((e) =>
+      console.error("[supabase] save failed:", e)
+    );
+  }
+
+  private async saveGameToSupabase(leaderboard: PlayerScore[]) {
+    const url = this.room.env.SUPABASE_URL as string;
+    const key = this.room.env.SUPABASE_SERVICE_ROLE_KEY as string;
+    if (!url || !key) return;
+
+    const supabase = createClient(url, key);
+    const endedAt = new Date();
+    const startedAt = new Date(this.gameStartedAt);
+    const durationSeconds = Math.round((endedAt.getTime() - startedAt.getTime()) / 1000);
+
+    const finalScores = leaderboard.map((p) => ({
+      nickname: p.nickname,
+      emoji: p.emoji,
+      total: p.total,
+      rank: p.rank,
+    }));
+
+    const { data: gameRow, error: gameError } = await supabase
+      .from("games")
+      .insert({
+        room_code: this.room.id,
+        host_name: this.hostName,
+        started_at: startedAt.toISOString(),
+        ended_at: endedAt.toISOString(),
+        duration_seconds: durationSeconds,
+        player_count: this.lobby.players.filter((p) => !p.isHost).length,
+        total_rounds: this.game.totalRounds,
+        mode: this.game.mode,
+        final_scores: finalScores,
+      })
+      .select("id")
+      .single();
+
+    if (gameError || !gameRow) {
+      console.error("[supabase] games insert error:", gameError);
+      return;
+    }
+
+    const gameId = gameRow.id;
+
+    if (this.roundResults.length > 0) {
+      const roundRows = this.roundResults.map((r, i) => ({
+        game_id: gameId,
+        round_number: i + 1,
+        question_text: r.prompt.text,
+        question_type: r.prompt.type,
+        question_options: r.prompt.options ?? null,
+        actual_result: String(r.actualResult),
+        phase1_answers: r.phase1Answers,
+        phase2_predictions: r.phase2Predictions,
+        phase2_wagers: r.phase2Wagers,
+        scores: r.scores,
+      }));
+
+      const { error: roundsError } = await supabase.from("game_rounds").insert(roundRows);
+      if (roundsError) console.error("[supabase] game_rounds insert error:", roundsError);
+    }
+
+    if (this.game.mode === "player_questions" && this.submittedQuestions.length > 0) {
+      const questionRows = this.submittedQuestions.map((q) => ({
+        game_id: gameId,
+        submitted_by: q.submittedBy,
+        text: q.text,
+        question_type: q.type,
+        options: q.options ?? null,
+        label_low: q.labelLow ?? null,
+        label_high: q.labelHigh ?? null,
+        created_at: new Date().toISOString(),
+      }));
+
+      const { error: questionsError } = await supabase.from("custom_questions").insert(questionRows);
+      if (questionsError) console.error("[supabase] custom_questions insert error:", questionsError);
+    }
   }
 
   private checkAllAnswered(phase: "phase1" | "phase2") {
@@ -487,7 +572,10 @@ export default class GameServer implements Party.Server {
         nickname: msg.nickname.trim(),
         isHost: playerIsHost,
       });
-      if (playerIsHost) this.hasHost = true;
+      if (playerIsHost) {
+        this.hasHost = true;
+        this.hostName = msg.nickname.trim();
+      }
       this.lobby.N = this.lobby.players.length;
       this.broadcastLobby();
 
@@ -581,6 +669,8 @@ export default class GameServer implements Party.Server {
       if (mode === "player_questions") {
         this.submittedQuestions = [];
         this.totalScores.clear();
+        this.roundResults = [];
+        this.gameStartedAt = Date.now();
         this.lobby.locked = true;
         this.game = {
           phase: "question_submission",
@@ -609,6 +699,8 @@ export default class GameServer implements Party.Server {
 
       this.prompts = getPromptsForGame(totalRounds);
       this.totalScores.clear();
+      this.roundResults = [];
+      this.gameStartedAt = Date.now();
 
       this.lobby.players
         .filter((p) => !p.isHost)
@@ -669,7 +761,7 @@ export default class GameServer implements Party.Server {
         ...(msg.questionType === "scale" && msg.labelHigh ? { labelHigh: msg.labelHigh } : {}),
       };
 
-      this.submittedQuestions.push(prompt);
+      this.submittedQuestions.push({ ...prompt, submittedBy: nickname });
       this.game = { ...this.game, submittedQuestionCount: this.submittedQuestions.length };
       this.broadcastGame();
 
@@ -835,6 +927,8 @@ export default class GameServer implements Party.Server {
       const phase2Duration = Math.max(10, Math.min(60, msg.phase2Time));
       this.prompts = getPromptsForGame(totalRounds);
       this.totalScores.clear();
+      this.roundResults = [];
+      this.gameStartedAt = Date.now();
       this.lobby.players
         .filter((p) => !p.isHost)
         .forEach((p) => this.totalScores.set(p.nickname, 0));
@@ -982,7 +1076,7 @@ export default class GameServer implements Party.Server {
       const playerNicknames = this.lobby.players.filter((p) => !p.isHost).map((p) => p.nickname);
       return new Response(JSON.stringify({
         exists: this.hasHost,
-        hostActive: this.hasHost && !this.rejoinTimers.has("Host"),
+        hostActive: this.hasHost && !this.rejoinTimers.has(this.hostName),
         inProgress,
         playerNicknames,
       }), {

@@ -22,6 +22,19 @@ export default function CreditsPage() {
 
         <div className="flex flex-col gap-6">
 
+          {/* Feedback */}
+          <div className={`${t.bgSurface} border ${t.borderSurface} rounded-2xl p-6`}>
+            <p className={`${t.textMuted} text-sm leading-relaxed`}>
+              Thanks for playing! If you have any feedback, feature requests, or found a bug, I'd really appreciate hearing from you —{" "}
+              <a
+                href="mailto:contactdavidliu@gmail.com"
+                className={`${t.textCyan} hover:text-white transition-colors underline underline-offset-4`}
+              >
+                contactdavidliu@gmail.com
+              </a>
+            </p>
+          </div>
+
           {/* Creator */}
           <div className={`${t.bgSurface} border ${t.borderSurface} rounded-2xl p-6`}>
             <p className={`${t.textMuted} text-xs font-bold uppercase tracking-widest mb-3`}>Game Design & Development</p>

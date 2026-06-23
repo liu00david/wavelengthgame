@@ -257,8 +257,9 @@ export default function HostGamePage() {
   const { sendMsg, lobbyState, gameState } = useParty(
     roomCode,
     () => {
+      const hostName = localStorage.getItem("consensus_host_name") ?? "Host";
       // Always rejoin first — server will restore our connection and send current game state
-      sendMsg({ type: "rejoin", nickname: "Host" });
+      sendMsg({ type: "rejoin", nickname: hostName });
       // Only start the game if this session hasn't started it yet (not a page refresh)
       const startedKey = `${roomCode}_started`;
       const alreadyStarted = sessionStorage.getItem(startedKey) === "1";

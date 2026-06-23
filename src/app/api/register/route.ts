@@ -11,19 +11,19 @@ function generateRoomCode(): string {
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json() as { firstName: string; lastName: string; token: string };
+  const body = await req.json() as { firstName: string; lastName: string; token?: string };
   const { firstName, lastName, token } = body;
 
-  if (!firstName?.trim() || !lastName?.trim() || !token?.trim()) {
-    return NextResponse.json({ error: "All fields required." }, { status: 400 });
+  if (!firstName?.trim() || !lastName?.trim()) {
+    return NextResponse.json({ error: "First and last name are required." }, { status: 400 });
   }
 
-  // For now, any non-empty token is accepted
   const roomCode = generateRoomCode();
 
   const { error } = await supabase.from("hosts").insert({
     first_name: firstName.trim(),
     last_name: lastName.trim(),
+    token: token?.trim() || null,
     room_code: roomCode,
     created_at: new Date().toISOString(),
   });

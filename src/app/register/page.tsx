@@ -16,8 +16,8 @@ export default function RegisterPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!firstName.trim() || !lastName.trim() || !token.trim()) {
-      setError("All fields are required.");
+    if (!firstName.trim() || !lastName.trim()) {
+      setError("First and last name are required.");
       return;
     }
     setError("");
@@ -81,9 +81,9 @@ export default function RegisterPage() {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <label className={`${t.textMuted} text-sm font-medium`}>Access Token</label>
+            <label className={`${t.textMuted} text-sm font-medium`}>Access Token (optional)</label>
             <input
-              type="password"
+              type="text"
               placeholder="Enter your token"
               value={token}
               onChange={(e) => { setToken(e.target.value); setError(""); }}
