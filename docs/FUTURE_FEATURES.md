@@ -39,3 +39,10 @@ Add a mute/volume slider button in the game UI (especially the TV/host pages). T
 1. **Short-term:** Grab 5–6 free SFX from freesound.org (submit ding, countdown pops, reveal stinger) — these make the biggest perceptual difference for the least effort.
 2. **Medium-term:** Use Suno/Udio to generate 3 background loops (lobby, phase1, phase2) as mp3s. Drop-in replacements for the synthesized loops.
 3. **Long-term:** Add Howler.js, consolidate all sounds into a sprite sheet, add a volume control to the TV lobby.
+
+## Upload custom questions
+
+## Log in game hosts, persist game question banks
+
+## Catgories of questions, themes e.g. food, dating
+

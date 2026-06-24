@@ -73,6 +73,7 @@ export type ServerMessage =
   | { type: "game"; game: GameState }
   | { type: "connected"; roomId: string; isHost: boolean }
   | { type: "room_not_found" }
+  | { type: "unauthorized" }
   | { type: "kicked" }
   | { type: "disbanded" }
   | { type: "duplicate_tab" }
@@ -80,8 +81,8 @@ export type ServerMessage =
   | { type: "question_received"; question: { id: string; text: string; type: "binary" | "multiple_choice" | "scale"; options?: string[]; labelLow?: string; labelHigh?: string; submittedBy: string } };
 
 export type ClientMessage =
-  | { type: "join"; nickname: string; isHost?: boolean }
-  | { type: "rejoin"; nickname: string }
+  | { type: "join"; nickname: string; isHost?: boolean; hostToken?: string }
+  | { type: "rejoin"; nickname: string; hostToken?: string }
   | { type: "lock" }
   | { type: "start_game"; numQuestions: number; phase1Time: number; phase2Time: number; mode: "game_questions" | "player_questions" }
   | { type: "submit_answer"; answer: string | number }

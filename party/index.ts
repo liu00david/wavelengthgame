@@ -49,8 +49,8 @@ type GameState = {
 };
 
 type ClientMessage =
-  | { type: "join"; nickname: string; isHost?: boolean }
-  | { type: "rejoin"; nickname: string }
+  | { type: "join"; nickname: string; isHost?: boolean; hostToken?: string }
+  | { type: "rejoin"; nickname: string; hostToken?: string }
   | { type: "lock" }
   | { type: "start_game"; numQuestions: number; phase1Time: number; phase2Time: number; mode: "game_questions" | "player_questions" }
   | { type: "submit_answer"; answer: string | number }
@@ -226,6 +226,7 @@ export default class GameServer implements Party.Server {
   private roundResults: RoundResult[] = [];
   private gameStartedAt: number = 0;
   private hostName: string = "Host";
+  private validatedHostToken: string | null = null;
 
   constructor(readonly room: Party.Room) {}
 
@@ -492,6 +493,37 @@ export default class GameServer implements Party.Server {
     }
   }
 
+  private async deactivateRoom() {
+    const url = this.room.env.SUPABASE_URL as string;
+    const key = this.room.env.SUPABASE_SERVICE_ROLE_KEY as string;
+    if (!url || !key) return;
+    const supabase = createClient(url, key);
+    await supabase.from("hosts").update({ active: false }).eq("room_code", this.room.id).eq("active", true);
+  }
+
+  private async validateHostToken(token: string | undefined): Promise<boolean> {
+    if (!token) return false;
+    // Use cached value if already validated this session
+    if (this.validatedHostToken !== null) return token === this.validatedHostToken;
+
+    const url = this.room.env.SUPABASE_URL as string;
+    const key = this.room.env.SUPABASE_SERVICE_ROLE_KEY as string;
+    if (!url || !key) return false;
+
+    const supabase = createClient(url, key);
+    const { data } = await supabase
+      .from("hosts")
+      .select("host_token")
+      .eq("room_code", this.room.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (!data?.host_token) return false;
+    this.validatedHostToken = data.host_token;
+    return token === this.validatedHostToken;
+  }
+
   private checkAllAnswered(phase: "phase1" | "phase2") {
     if (phase === "phase1") {
       const players = this.lobby.players.filter((p) => !p.isHost);
@@ -519,7 +551,7 @@ export default class GameServer implements Party.Server {
     }
   }
 
-  onMessage(message: string, sender: Party.Connection) {
+  async onMessage(message: string, sender: Party.Connection) {
     if (message.length > 2048) return;
     let msg: ClientMessage;
     try {
@@ -565,6 +597,15 @@ export default class GameServer implements Party.Server {
         return;
       }
 
+      // Validate host token before granting host privileges
+      if (joiningAsHost) {
+        const tokenValid = await this.validateHostToken(msg.hostToken);
+        if (!tokenValid) {
+          sender.send(JSON.stringify({ type: "unauthorized" }));
+          return;
+        }
+      }
+
       const isFirst = this.lobby.players.length === 0;
       const playerIsHost = joiningAsHost || isFirst;
       this.lobby.players.push({
@@ -596,6 +637,14 @@ export default class GameServer implements Party.Server {
       console.log("[server] rejoin from", sender.id, "nickname:", msg.nickname, "players:", this.lobby.players.map(p => p.nickname));
       const player = this.lobby.players.find((p) => p.nickname === msg.nickname);
       if (player) {
+        // Validate token when the host rejoins
+        if (player.isHost) {
+          const tokenValid = await this.validateHostToken(msg.hostToken);
+          if (!tokenValid) {
+            sender.send(JSON.stringify({ type: "unauthorized" }));
+            return;
+          }
+        }
         // If the previous connection is still open, this is a duplicate tab
         if (player.id !== sender.id) {
           const existingConn = this.room.getConnection(player.id);
@@ -1096,7 +1145,7 @@ export default class GameServer implements Party.Server {
     const timer = setTimeout(() => {
       this.rejoinTimers.delete(nickname);
       if (player.isHost) {
-        // Host timed out — disband the room
+        // Host timed out — disband the room and free the room code in Supabase
         this.hasHost = false;
         this.clearTimer();
         this.submittedQuestions = [];
@@ -1108,12 +1157,13 @@ export default class GameServer implements Party.Server {
           submittedQuestionCount: 0, mode: "game_questions",
         };
         this.room.broadcast(JSON.stringify({ type: "disbanded" }));
+        this.deactivateRoom().catch((e) => console.error("[supabase] deactivate failed:", e));
       } else {
         this.lobby.players = this.lobby.players.filter((p) => p.nickname !== nickname);
         this.lobby.N = this.lobby.players.filter((p) => !p.isHost).length;
         this.broadcastLobby();
       }
-    }, 5 * 60 * 1000);
+    }, 10 * 60 * 1000);
 
     // Cancel any existing timer for this nickname
     const existing = this.rejoinTimers.get(nickname);

@@ -10,6 +10,15 @@ function generateRoomCode(): string {
   return code;
 }
 
+function generateHostToken(): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  let token = "";
+  for (let i = 0; i < 32; i++) {
+    token += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return token;
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.json() as { firstName: string; lastName: string; token?: string };
   const { firstName, lastName, token } = body;
@@ -18,13 +27,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "First and last name are required." }, { status: 400 });
   }
 
-  const roomCode = generateRoomCode();
+  // Generate a room code that isn't already active
+  let roomCode = generateRoomCode();
+  for (let i = 0; i < 10; i++) {
+    const { data } = await supabase
+      .from("hosts")
+      .select("id")
+      .eq("room_code", roomCode)
+      .eq("active", true)
+      .limit(1)
+      .single();
+    if (!data) break;
+    roomCode = generateRoomCode();
+  }
+
+  const hostToken = generateHostToken();
 
   const { error } = await supabase.from("hosts").insert({
     first_name: firstName.trim(),
     last_name: lastName.trim(),
     token: token?.trim() || null,
+    host_token: hostToken,
     room_code: roomCode,
+    active: true,
     created_at: new Date().toISOString(),
   });
 
@@ -33,5 +58,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Failed to save host record." }, { status: 500 });
   }
 
-  return NextResponse.json({ roomCode });
+  return NextResponse.json({ roomCode, hostToken });
 }

@@ -28,12 +28,13 @@ export default function RegisterPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ firstName, lastName, token }),
       });
-      const data = await res.json() as { roomCode?: string; error?: string };
+      const data = await res.json() as { roomCode?: string; hostToken?: string; error?: string };
       if (!res.ok) {
         setError(data.error ?? "Something went wrong.");
         return;
       }
       localStorage.setItem("consensus_host_name", `${firstName.trim()} ${lastName.trim()}`);
+      localStorage.setItem("consensus_host_token", data.hostToken ?? "");
       router.push(`/host/${data.roomCode}`);
     } catch {
       setError("Could not reach server. Try again.");

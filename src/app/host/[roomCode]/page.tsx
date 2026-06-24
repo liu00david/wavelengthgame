@@ -73,6 +73,9 @@ function HostContent({ roomCode }: { roomCode: string }) {
   const hostName = typeof window !== "undefined"
     ? (localStorage.getItem("consensus_host_name") ?? "Host")
     : "Host";
+  const hostToken = typeof window !== "undefined"
+    ? (localStorage.getItem("consensus_host_token") ?? "")
+    : "";
 
   const { sendMsg, lobbyState, gameState } = useParty(
     roomCode,
@@ -83,19 +86,27 @@ function HostContent({ roomCode }: { roomCode: string }) {
         if (saved) {
           const session = JSON.parse(saved) as { roomCode: string };
           if (session.roomCode === roomCode) {
-            sendMsg({ type: "rejoin", nickname: hostName });
+            sendMsg({ type: "rejoin", nickname: hostName, hostToken });
             return;
           }
         }
       } catch { /* ignore */ }
       localStorage.setItem(HOST_SESSION_KEY, JSON.stringify({ roomCode }));
-      sendMsg({ type: "join", nickname: hostName, isHost: true });
+      sendMsg({ type: "join", nickname: hostName, isHost: true, hostToken });
     },
     (msg) => {
+      if (msg.type === "unauthorized") {
+        router.replace("/register");
+        return;
+      }
       if (msg.type === "room_not_found") {
+        if (!hostToken) {
+          router.replace("/register");
+          return;
+        }
         localStorage.removeItem(HOST_SESSION_KEY);
         localStorage.setItem(HOST_SESSION_KEY, JSON.stringify({ roomCode }));
-        sendMsg({ type: "join", nickname: hostName, isHost: true });
+        sendMsg({ type: "join", nickname: hostName, isHost: true, hostToken });
       }
     },
   );
@@ -128,9 +139,10 @@ function HostContent({ roomCode }: { roomCode: string }) {
     setMenuState("closed");
   }
 
-  function handleDisband() {
+  async function handleDisband() {
     sendMsg({ type: "disband_room" });
     localStorage.removeItem(HOST_SESSION_KEY);
+    await fetch(`/api/room/${roomCode}/deactivate`, { method: "POST" }).catch(() => {});
     router.push("/");
   }
 
@@ -336,25 +348,91 @@ function HostGuard() {
   const roomCode = (params.roomCode as string).toUpperCase();
   const router = useRouter();
 
-  const [status, setStatus] = useState<"checking" | "ok" | "conflict">("checking");
+  const [status, setStatus] = useState<"checking" | "ok" | "conflict" | "unauthorized" | "not_found">("checking");
 
   useEffect(() => {
+    // Check localStorage first — no token means this isn't a registered host session
+    const token = localStorage.getItem("consensus_host_token") ?? "";
+    const savedRoom = (() => {
+      try {
+        const s = localStorage.getItem(HOST_SESSION_KEY);
+        return s ? (JSON.parse(s) as { roomCode: string }).roomCode : null;
+      } catch { return null; }
+    })();
+
+    // Token must exist and either belong to this room (saved session) or be a fresh registration
+    // A fresh registration always comes from /register which sets HOST_SESSION_KEY immediately after
+    if (!token) {
+      setStatus("unauthorized");
+      return;
+    }
+
+    // Check both Supabase (active flag) and PartyKit (in-memory host presence)
     fetch(`/api/room/${roomCode}`)
       .then((r) => r.json())
-      .then((data: { exists: boolean; hostActive: boolean }) => {
+      .then((data: { exists: boolean; hostActive: boolean; active: boolean }) => {
+        // Room was registered but someone else already has it active (different session)
         if (data.exists && data.hostActive) {
-          setStatus("conflict");
-        } else {
-          setStatus("ok");
+          // Allow through if this is our own saved session for this room
+          if (savedRoom === roomCode) {
+            setStatus("ok");
+          } else {
+            setStatus("conflict");
+          }
+          return;
         }
+        // Room code has never been registered in Supabase
+        if (data.active === false) {
+          setStatus("not_found");
+          return;
+        }
+        setStatus("ok");
       })
-      .catch(() => setStatus("ok")); // on error, let the join attempt proceed
+      .catch(() => setStatus("ok"));
   }, [roomCode]);
 
   if (status === "checking") {
     return (
       <main className={`min-h-screen ${t.bgPage} flex items-center justify-center`}>
         <div className={`${t.textMuted} text-lg animate-pulse`}>Loading...</div>
+      </main>
+    );
+  }
+
+  if (status === "unauthorized") {
+    return (
+      <main className={`min-h-screen ${t.bgPage} flex flex-col items-center justify-center px-4`}>
+        <div className={`w-full max-w-sm ${t.bgSurface} rounded-2xl border border-[#9a3558]/40 shadow-xl p-8 text-center`}>
+          <p className="text-5xl mb-4">🔒</p>
+          <h2 className="text-2xl font-black text-[#c94f7a] mb-2">Sign In Required</h2>
+          <p className={`${t.textMuted} mb-6`}>You need to register before hosting a game.</p>
+          <button
+            onClick={() => router.push("/register")}
+            className={`block w-full py-3 rounded-xl ${t.btnYellow} text-lg text-center`}
+          >
+            Go to Register
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  if (status === "not_found") {
+    return (
+      <main className={`min-h-screen ${t.bgPage} flex flex-col items-center justify-center px-4`}>
+        <div className={`w-full max-w-sm ${t.bgSurface} rounded-2xl border border-[#9a3558]/40 shadow-xl p-8 text-center`}>
+          <p className="text-5xl mb-4">🚫</p>
+          <h2 className="text-2xl font-black text-[#c94f7a] mb-2">Room Not Found</h2>
+          <p className={`${t.textMuted} mb-6`}>
+            Room <span className="text-white font-mono font-bold">{roomCode}</span> doesn&apos;t exist or has ended.
+          </p>
+          <button
+            onClick={() => router.push("/register")}
+            className={`block w-full py-3 rounded-xl ${t.btnYellow} text-lg text-center`}
+          >
+            Create a New Room
+          </button>
+        </div>
       </main>
     );
   }

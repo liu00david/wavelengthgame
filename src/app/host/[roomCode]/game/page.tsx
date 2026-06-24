@@ -258,8 +258,9 @@ export default function HostGamePage() {
     roomCode,
     () => {
       const hostName = localStorage.getItem("consensus_host_name") ?? "Host";
+      const hostToken = localStorage.getItem("consensus_host_token") ?? "";
       // Always rejoin first — server will restore our connection and send current game state
-      sendMsg({ type: "rejoin", nickname: hostName });
+      sendMsg({ type: "rejoin", nickname: hostName, hostToken });
       // Only start the game if this session hasn't started it yet (not a page refresh)
       const startedKey = `${roomCode}_started`;
       const alreadyStarted = sessionStorage.getItem(startedKey) === "1";
@@ -270,6 +271,10 @@ export default function HostGamePage() {
       }
     },
     (msg) => {
+      if (msg.type === "unauthorized") {
+        router.replace("/register");
+        return;
+      }
       if (msg.type === "question_received") {
         collectedQuestionsRef.current = [...collectedQuestionsRef.current, msg.question];
         setCollectedCount((c) => c + 1);
@@ -322,10 +327,11 @@ export default function HostGamePage() {
     router.push(`/host/${roomCode}`);
   }
 
-  function handleDisbandRoom() {
+  async function handleDisbandRoom() {
     sessionStorage.removeItem(`${roomCode}_started`);
     sendMsg({ type: "disband_room" });
     localStorage.removeItem(HOST_SESSION_KEY);
+    await fetch(`/api/room/${roomCode}/deactivate`, { method: "POST" }).catch(() => {});
     router.push("/");
   }
 
