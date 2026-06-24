@@ -116,6 +116,11 @@ function PlayContent({ roomCode }: { roomCode: string }) {
     }
   }, [gameState, roomCode, nickname, router]);
 
+  // Receiving lobby state means the host is alive — clear any stale "disconnected" indicator
+  useEffect(() => {
+    if (lobbyState) setHostActive(true);
+  }, [lobbyState]);
+
   // Sync chosenEmoji from server when lobby state arrives (preserves emoji across games)
   useEffect(() => {
     if (!lobbyState || !nickname || chosenEmoji !== undefined) return;

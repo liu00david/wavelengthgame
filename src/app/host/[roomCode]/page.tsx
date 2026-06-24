@@ -66,6 +66,8 @@ function HostContent({ roomCode }: { roomCode: string }) {
   const [phase2Time, setPhase2Time] = useState(() => parseInt(typeof window !== "undefined" ? sessionStorage.getItem(`${roomCode}_p2t`) ?? "" : "") || 30);
   const [gameMode, setGameMode] = useState<"game_questions" | "player_questions">(() => (typeof window !== "undefined" ? sessionStorage.getItem(`${roomCode}_mode`) : null) as "game_questions" | "player_questions" ?? "game_questions");
 
+  const [isDuplicateTab, setIsDuplicateTab] = useState(false);
+
   // Menu state
   type MenuState = "closed" | "main" | "kick" | "disband_confirm";
   const [menuState, setMenuState] = useState<MenuState>("closed");
@@ -95,6 +97,10 @@ function HostContent({ roomCode }: { roomCode: string }) {
       sendMsg({ type: "join", nickname: hostName, isHost: true, hostToken });
     },
     (msg) => {
+      if (msg.type === "duplicate_tab") {
+        setIsDuplicateTab(true);
+        return;
+      }
       if (msg.type === "unauthorized") {
         router.replace("/register");
         return;
@@ -122,6 +128,19 @@ function HostContent({ roomCode }: { roomCode: string }) {
       router.push(`/host/${roomCode}/game`);
     }
   }, [gameState, roomCode, router]);
+
+  if (isDuplicateTab) {
+    return (
+      <main className={`min-h-screen ${t.bgPage} flex flex-col items-center justify-center px-4`}>
+        <div className={`w-full max-w-sm ${t.bgSurface} rounded-2xl border border-[#9a3558]/40 shadow-xl p-8 text-center`}>
+          <p className="text-5xl mb-4">🪟</p>
+          <h2 className="text-2xl font-black text-[#c94f7a] mb-2">Already Open</h2>
+          <p className={`${t.textMuted} mb-4`}>This room is already open in another tab.</p>
+          <p className={`${t.textFaint} text-sm`}>Close this tab and continue in the other one.</p>
+        </div>
+      </main>
+    );
+  }
 
   function handleLock() {
     sessionStorage.setItem(`${roomCode}_numQ`, String(numQuestions));

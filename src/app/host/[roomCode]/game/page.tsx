@@ -277,6 +277,7 @@ function HostGameContent() {
   const seenRoundsRef = useRef<Set<number>>(new Set());
   const collectedQuestionsRef = useRef<CollectedQuestion[]>([]);
   const [collectedCount, setCollectedCount] = useState(0);
+  const [isDuplicateTab, setIsDuplicateTab] = useState(false);
 
   const { sendMsg, lobbyState, gameState } = useParty(
     roomCode,
@@ -295,6 +296,10 @@ function HostGameContent() {
       }
     },
     (msg) => {
+      if (msg.type === "duplicate_tab") {
+        setIsDuplicateTab(true);
+        return;
+      }
       if (msg.type === "unauthorized") {
         router.replace("/register");
         return;
@@ -343,6 +348,19 @@ function HostGameContent() {
   function handleKickPlayer(nickname: string) {
     sendMsg({ type: "kick_player", nickname });
     closeMenu();
+  }
+
+  if (isDuplicateTab) {
+    return (
+      <main className={`min-h-screen ${t.bgPage} flex flex-col items-center justify-center px-4`}>
+        <div className={`w-full max-w-sm ${t.bgSurface} rounded-2xl border border-[#9a3558]/40 shadow-xl p-8 text-center`}>
+          <p className="text-5xl mb-4">🪟</p>
+          <h2 className="text-2xl font-black text-[#c94f7a] mb-2">Already Open</h2>
+          <p className={`${t.textMuted} mb-4`}>This game is already open in another tab.</p>
+          <p className={`${t.textFaint} text-sm`}>Close this tab and continue in the other one.</p>
+        </div>
+      </main>
+    );
   }
 
   function handleEndGame() {
