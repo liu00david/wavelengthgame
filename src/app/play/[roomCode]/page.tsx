@@ -41,16 +41,6 @@ function PlayContent({ roomCode }: { roomCode: string }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Check if host is active
-  useEffect(() => {
-    fetch(`/api/room/${roomCode}`)
-      .then((r) => r.json())
-      .then((data: { exists: boolean; hostActive: boolean }) => {
-        setHostActive(data.hostActive ?? true);
-      })
-      .catch(() => {});
-  }, [roomCode]);
-
   const { sendMsg, lobbyState, gameState } = useParty(
     roomCode,
     () => {
@@ -60,6 +50,12 @@ function PlayContent({ roomCode }: { roomCode: string }) {
       sendMsg({ type: "rejoin", nickname: name });
     },
     (msg) => {
+      if (msg.type === "host_disconnected") {
+        setHostActive(false);
+      }
+      if (msg.type === "host_reconnected") {
+        setHostActive(true);
+      }
       if (msg.type === "room_not_found") {
         // Room truly gone (server restarted) — clear session and show error
         localStorage.removeItem(PLAYER_SESSION_KEY);
@@ -115,11 +111,6 @@ function PlayContent({ roomCode }: { roomCode: string }) {
       router.push(`/play/${roomCode}/game`);
     }
   }, [gameState, roomCode, nickname, router]);
-
-  // Receiving lobby state means the host is alive — clear any stale "disconnected" indicator
-  useEffect(() => {
-    if (lobbyState) setHostActive(true);
-  }, [lobbyState]);
 
   // Sync chosenEmoji from server when lobby state arrives (preserves emoji across games)
   useEffect(() => {

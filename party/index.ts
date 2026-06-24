@@ -655,6 +655,7 @@ export default class GameServer implements Party.Server {
           }
         }
         player.id = sender.id;
+        const wasInGrace = this.rejoinTimers.has(msg.nickname);
         if (player.isHost) this.hasHost = true;
         // Cancel any pending kick timer for this player
         const timer = this.rejoinTimers.get(msg.nickname);
@@ -669,6 +670,10 @@ export default class GameServer implements Party.Server {
             isHost: player.isHost,
           })
         );
+        if (player.isHost && wasInGrace) {
+          console.log("[server] host reconnected:", msg.nickname);
+          this.room.broadcast(JSON.stringify({ type: "host_reconnected" }));
+        }
         this.broadcastLobby();
         if (this.game.phase !== "lobby") {
           sender.send(JSON.stringify({ type: "game", game: this.game }));
@@ -1171,7 +1176,10 @@ export default class GameServer implements Party.Server {
     if (existing !== undefined) clearTimeout(existing);
     this.rejoinTimers.set(nickname, timer);
 
-    // Broadcast immediately so host sees the grey dot right away
+    if (player.isHost) {
+      this.room.broadcast(JSON.stringify({ type: "host_disconnected" }));
+      console.log("[server] host disconnected, grace period started:", nickname);
+    }
     this.broadcastLobby();
   }
 }

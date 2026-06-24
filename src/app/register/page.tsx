@@ -61,7 +61,7 @@ export default function RegisterPage() {
             <label className={`${t.textMuted} text-sm font-medium`}>First Name</label>
             <input
               type="text"
-              placeholder="Jane"
+              placeholder="David"
               value={firstName}
               onChange={(e) => { setFirstName(e.target.value); setError(""); }}
               className={inputClass}
@@ -73,7 +73,7 @@ export default function RegisterPage() {
             <label className={`${t.textMuted} text-sm font-medium`}>Last Name</label>
             <input
               type="text"
-              placeholder="Smith"
+              placeholder="Liu"
               value={lastName}
               onChange={(e) => { setLastName(e.target.value); setError(""); }}
               className={inputClass}

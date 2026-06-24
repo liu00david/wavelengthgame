@@ -76,6 +76,8 @@ export type ServerMessage =
   | { type: "unauthorized" }
   | { type: "kicked" }
   | { type: "disbanded" }
+  | { type: "host_disconnected" }
+  | { type: "host_reconnected" }
   | { type: "duplicate_tab" }
   | { type: "nickname_taken" }
   | { type: "question_received"; question: { id: string; text: string; type: "binary" | "multiple_choice" | "scale"; options?: string[]; labelLow?: string; labelHigh?: string; submittedBy: string } };
