@@ -46,3 +46,18 @@ Add a mute/volume slider button in the game UI (especially the TV/host pages). T
 
 ## Catgories of questions, themes e.g. food, dating
 
+## Work Needed
+
+### Security: Use cryptographically secure token generation (`src/app/api/register/route.ts`)
+`generateHostToken` uses `Math.random()`, which is not cryptographically secure. Replace with Node's `crypto.randomBytes`:
+```ts
+import { randomBytes } from "crypto";
+const hostToken = randomBytes(24).toString("base64url");
+```
+
+### Security: Authenticate the deactivate endpoint (`src/app/api/room/[code]/deactivate/route.ts`)
+The `/api/room/[code]/deactivate` POST endpoint has no auth — anyone who knows a room code can deactivate it and boot the host mid-game. Require the host token in the request body and verify it against Supabase before updating.
+
+### Bug: `validateHostToken` doesn't filter by `active = true` (`party/index.ts`)
+The Supabase query fetches the most recently created `hosts` row for the room code but does not filter by `active`. After a room is disbanded and the code reused, a stale inactive row could be matched. Add `.eq("active", true)` to the query before `.single()`.
+
