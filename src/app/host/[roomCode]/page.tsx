@@ -104,7 +104,7 @@ function HostContent({ roomCode }: { roomCode: string }) {
           router.replace("/register");
           return;
         }
-        localStorage.removeItem(HOST_SESSION_KEY);
+        // Server restarted and lost state — re-join as host
         localStorage.setItem(HOST_SESSION_KEY, JSON.stringify({ roomCode }));
         sendMsg({ type: "join", nickname: hostName, isHost: true, hostToken });
       }
@@ -424,7 +424,7 @@ function HostGuard() {
           <p className="text-5xl mb-4">🚫</p>
           <h2 className="text-2xl font-black text-[#c94f7a] mb-2">Room Not Found</h2>
           <p className={`${t.textMuted} mb-6`}>
-            Room <span className="text-white font-mono font-bold">{roomCode}</span> doesn&apos;t exist or has ended.
+            Room <span className="text-white font-mono font-bold">{roomCode}</span>{" "}doesn&apos;t exist or has ended.
           </p>
           <button
             onClick={() => router.push("/register")}

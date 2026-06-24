@@ -499,6 +499,8 @@ export default class GameServer implements Party.Server {
     if (!url || !key) return;
     const supabase = createClient(url, key);
     await supabase.from("hosts").update({ active: false }).eq("room_code", this.room.id).eq("active", true);
+    // Clear cached token so a new registration for this code validates fresh
+    this.validatedHostToken = null;
   }
 
   private async validateHostToken(token: string | undefined): Promise<boolean> {
@@ -606,8 +608,7 @@ export default class GameServer implements Party.Server {
         }
       }
 
-      const isFirst = this.lobby.players.length === 0;
-      const playerIsHost = joiningAsHost || isFirst;
+      const playerIsHost = joiningAsHost;
       this.lobby.players.push({
         id: sender.id,
         nickname: msg.nickname.trim(),

@@ -225,7 +225,31 @@ const DEFAULT_NUM_QUESTIONS = 10;
 const DEFAULT_PHASE1_TIME = 20;
 const DEFAULT_PHASE2_TIME = 30;
 
-export default function HostGamePage() {
+function HostGameGuard({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem("consensus_host_token") ?? "";
+    if (!token) {
+      router.replace("/register");
+    } else {
+      setReady(true);
+    }
+  }, [router]);
+
+  if (!ready) {
+    return (
+      <main className={`min-h-screen ${t.bgPage} flex items-center justify-center`}>
+        <div className={`${t.textMuted} text-lg animate-pulse`}>Loading...</div>
+      </main>
+    );
+  }
+
+  return <>{children}</>;
+}
+
+function HostGameContent() {
   const params = useParams();
   const roomCode = (params.roomCode as string).toUpperCase();
   const router = useRouter();
@@ -736,5 +760,13 @@ export default function HostGamePage() {
         )}
       </div>
     </main>
+  );
+}
+
+export default function HostGamePage() {
+  return (
+    <HostGameGuard>
+      <HostGameContent />
+    </HostGameGuard>
   );
 }

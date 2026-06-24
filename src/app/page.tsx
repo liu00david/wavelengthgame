@@ -1,14 +1,40 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { t } from "@/lib/theme";
+
+const HOST_SESSION_KEY = "consensus_host_session";
 
 export default function Home() {
   const router = useRouter();
   const [joinCode, setJoinCode] = useState("");
   const [joinError, setJoinError] = useState("");
   const [checking, setChecking] = useState(false);
+  const [savedRoomCode, setSavedRoomCode] = useState<string | null>(null);
+
+  useEffect(() => {
+    const token = localStorage.getItem("consensus_host_token") ?? "";
+    if (!token) return;
+    let saved: string | null = null;
+    try {
+      const s = localStorage.getItem(HOST_SESSION_KEY);
+      saved = s ? (JSON.parse(s) as { roomCode: string }).roomCode : null;
+    } catch { /* ignore */ }
+    if (!saved) return;
+
+    // Verify the room is still active before showing rejoin
+    fetch(`/api/room/${saved}`)
+      .then((r) => r.json())
+      .then((data: { active: boolean }) => {
+        if (data.active) {
+          setSavedRoomCode(saved);
+        } else {
+          localStorage.removeItem(HOST_SESSION_KEY);
+        }
+      })
+      .catch(() => setSavedRoomCode(saved)); // on error, show it anyway
+  }, []);
 
   function handleCreateRoom() {
     router.push("/register");
@@ -61,11 +87,19 @@ export default function Home() {
           <p className={`${t.textMuted} text-base`}>
             Create a room and control the game from your device.
           </p>
+          {savedRoomCode && (
+            <button
+              onClick={() => router.push(`/host/${savedRoomCode}`)}
+              className={`w-full py-3 rounded-xl ${t.btnYellow} text-lg`}
+            >
+              Rejoin Room <span className="font-mono">{savedRoomCode}</span>
+            </button>
+          )}
           <button
             onClick={handleCreateRoom}
-            className={`w-full py-3 rounded-xl ${t.btnPrimary} text-lg font-bold transition-opacity`}
+            className={`w-full py-3 rounded-xl ${savedRoomCode ? t.btnGhost : t.btnPrimary} text-lg font-bold transition-opacity`}
           >
-            Create Room
+            {savedRoomCode ? "Create New Room" : "Create Room"}
           </button>
         </div>
 
