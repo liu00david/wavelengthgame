@@ -27,6 +27,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "First and last name are required." }, { status: 400 });
   }
 
+  // Sweep rooms that have been active for more than 2 hours — these are abandoned sessions
+  // where the host never disconnected cleanly (no explicit disband, no PartyKit timeout)
+  const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+  await supabase
+    .from("hosts")
+    .update({ active: false })
+    .eq("active", true)
+    .lt("created_at", twoHoursAgo);
+
   // Generate a room code that isn't already active
   let roomCode = generateRoomCode();
   for (let i = 0; i < 10; i++) {
