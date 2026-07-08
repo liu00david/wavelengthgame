@@ -487,6 +487,9 @@ function HostGameContent() {
                     <span className={`${t.textMuted} text-xs uppercase tracking-widest`}>{q.type.replace("_", " ")} · {q.submittedBy}</span>
                     <p className="text-white text-sm mt-0.5 leading-snug">{q.text}</p>
                     {q.options && <p className={`${t.textFaint} text-xs mt-0.5`}>{q.options.join(" / ")}</p>}
+                    {q.type === "scale" && (q.labelLow || q.labelHigh) && (
+                      <p className={`${t.textFaint} text-xs mt-0.5`}>{q.labelLow ?? "1"} → {q.labelHigh ?? "10"}</p>
+                    )}
                   </div>
                   <button
                     onClick={() => {

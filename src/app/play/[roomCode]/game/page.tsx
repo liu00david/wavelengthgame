@@ -721,7 +721,7 @@ function QuestionSubmissionView({ onSubmit, isFull }: { onSubmit: (q: { text: st
               value={qLabelLow}
               onChange={(e) => setQLabelLow(e.target.value)}
               placeholder="Not at all"
-              maxLength={10}
+              maxLength={15}
               className={`w-full px-3 py-2 rounded-xl bg-[#0f2660] border border-[#2a4a8a] text-white text-sm placeholder:italic placeholder:text-[#3a5a9a] outline-none focus:border-[#7862FF]`}
             />
             <input
@@ -729,7 +729,7 @@ function QuestionSubmissionView({ onSubmit, isFull }: { onSubmit: (q: { text: st
               value={qLabelHigh}
               onChange={(e) => setQLabelHigh(e.target.value)}
               placeholder="My favorite"
-              maxLength={10}
+              maxLength={15}
               className={`w-full px-3 py-2 rounded-xl bg-[#0f2660] border border-[#2a4a8a] text-white text-sm placeholder:italic placeholder:text-[#3a5a9a] outline-none focus:border-[#7862FF]`}
             />
           </div>
