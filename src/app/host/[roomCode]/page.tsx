@@ -72,8 +72,10 @@ type ParsedRow = { ok: true; prompt: Prompt } | { ok: false; line: number; error
 
 function parseCSV(raw: string): ParsedRow[] {
   const lines = raw.split("\n").map((l) => l.trim()).filter(Boolean);
+  const nonce = Math.random().toString(36).slice(2, 8);
   return lines.map((line, idx) => {
     const lineNum = idx + 1;
+    const id = `hq_${nonce}_${lineNum}`;
     // Split on comma but not within quoted fields
     const cols = line.split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
     const type = cols[0]?.toLowerCase();
@@ -82,7 +84,7 @@ function parseCSV(raw: string): ParsedRow[] {
       const text = cols[1];
       if (!text || text.length === 0) return { ok: false as const, line: lineNum, error: `Row ${lineNum}: missing question text` };
       if (text.length > 60) return { ok: false as const, line: lineNum, error: `Row ${lineNum}: question too long (max 60 chars)` };
-      return { ok: true as const, prompt: { id: `hq_${Date.now()}_${lineNum}`, text, type: "binary" } };
+      return { ok: true as const, prompt: { id, text, type: "binary" } };
     }
 
     if (type === "scale") {
@@ -91,7 +93,7 @@ function parseCSV(raw: string): ParsedRow[] {
       if (text.length > 60) return { ok: false as const, line: lineNum, error: `Row ${lineNum}: question too long (max 60 chars)` };
       const labelLow = cols[6]?.trim() || undefined;
       const labelHigh = cols[7]?.trim() || undefined;
-      return { ok: true as const, prompt: { id: `hq_${Date.now()}_${lineNum}`, text, type: "scale", ...(labelLow ? { labelLow } : {}), ...(labelHigh ? { labelHigh } : {}) } };
+      return { ok: true as const, prompt: { id, text, type: "scale", ...(labelLow ? { labelLow } : {}), ...(labelHigh ? { labelHigh } : {}) } };
     }
 
     if (type === "mc" || type === "multiple_choice") {
@@ -102,7 +104,7 @@ function parseCSV(raw: string): ParsedRow[] {
       if (options.length < 2) return { ok: false as const, line: lineNum, error: `Row ${lineNum}: multiple choice needs at least 2 options (cols 3–6)` };
       const dupes = options.filter((o, i) => options.indexOf(o) !== i);
       if (dupes.length > 0) return { ok: false as const, line: lineNum, error: `Row ${lineNum}: duplicate options "${dupes[0]}"` };
-      return { ok: true as const, prompt: { id: `hq_${Date.now()}_${lineNum}`, text, type: "multiple_choice", options } };
+      return { ok: true as const, prompt: { id, text, type: "multiple_choice", options } };
     }
 
     return { ok: false as const, line: lineNum, error: `Row ${lineNum}: unknown type "${cols[0]}" — use binary, scale, or mc` };
@@ -157,7 +159,7 @@ function SingleQuestionForm({ onAdd }: { onAdd: (p: Prompt) => void }) {
 
       <input type="text" value={text} onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => e.key === "Enter" && isValid && handleAdd()}
-        placeholder={qType === "binary" ? "e.g. Can you swim?" : qType === "scale" ? "e.g. How much do you like EDM?" : "e.g. Best pizza topping?"}
+        placeholder={qType === "binary" ? "e.g. Have you owned a pet?" : qType === "scale" ? "e.g. How much do you like coffee?" : "e.g. What's your favorite season?"}
         maxLength={60}
         className={inputCls + (text.trim().length > 60 ? " border-[#c94f7a]" : "")}
       />
@@ -294,15 +296,10 @@ mc,Best pizza topping?,Pepperoni,Mushrooms,Pineapple,Plain`;
           className={`flex-1 py-2 rounded-lg ${t.btnGhost} text-sm font-bold disabled:opacity-40`}>
           Validate
         </button>
-        <div className="flex-1 flex flex-col gap-1">
-          <button onClick={handleImport} disabled={importDisabled}
-            className={`w-full py-2 rounded-lg ${t.btnPrimary} text-sm font-bold disabled:opacity-40`}>
-            {importLabel}
-          </button>
-          {importDisabled && raw.trim() && preview.length === 0 && (
-            <p className={`${t.textYellow} text-xs text-center`}>Validate first</p>
-          )}
-        </div>
+        <button onClick={handleImport} disabled={importDisabled}
+          className={`flex-1 py-2 rounded-lg ${t.btnPrimary} text-sm font-bold disabled:opacity-40`}>
+          {importLabel}
+        </button>
       </div>
     </div>
   );

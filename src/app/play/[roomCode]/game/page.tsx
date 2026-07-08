@@ -705,7 +705,7 @@ function QuestionSubmissionView({ onSubmit, isFull }: { onSubmit: (q: { text: st
           type="text"
           value={qText}
           onChange={(e) => setQText(e.target.value)}
-          placeholder={qType === "binary" ? "Have you ever owned a pet?" : qType === "scale" ? "How much do you like coffee" : "What's your favorite season?"}
+          placeholder={qType === "binary" ? "Have you ever owned a pet?" : qType === "scale" ? "How much do you like coffee?" : "What's your favorite season?"}
           maxLength={60}
           className={`w-full px-4 py-3 rounded-xl bg-[#0f2660] border border-[#2a4a8a] text-white text-base placeholder:italic placeholder:text-[#3a5a9a] outline-none focus:border-[#7862FF]`}
         />

@@ -83,7 +83,7 @@ function HostQuestionForm({ onSubmit }: { onSubmit: (q: QuestionPayload) => void
         type="text"
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder={qType === "binary" ? "Have you ever owned a pet?" : qType === "scale" ? "How much do you like coffee" : "What's your favorite season?"}
+        placeholder={qType === "binary" ? "Have you ever owned a pet?" : qType === "scale" ? "How much do you like coffee?" : "What's your favorite season?"}
         maxLength={60}
         className={`w-full px-3 py-2 rounded-lg bg-[#0f2660] border border-[#2a4a8a] text-white text-sm placeholder:italic placeholder:${t.textFaint} outline-none focus:border-[#7862FF] mb-2`}
       />

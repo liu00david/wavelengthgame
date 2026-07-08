@@ -1078,6 +1078,7 @@ export default class GameServer implements Party.Server {
       if (!player?.isHost) return;
       this.clearTimer();
       this.submittedQuestions = [];
+      this.hostQuestions = [];
       this.lobby.locked = false;
       this.lobby.N = this.lobby.players.length;
       this.game = {
