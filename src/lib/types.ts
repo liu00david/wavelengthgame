@@ -65,7 +65,7 @@ export type GameState = {
   paused: boolean;
   pausedTimeRemaining: number | null; // ms remaining when paused
   submittedQuestionCount: number;
-  mode: "game_questions" | "player_questions";
+  mode: "game_questions" | "player_questions" | "host_questions";
 };
 
 export type ServerMessage =
@@ -86,7 +86,7 @@ export type ClientMessage =
   | { type: "join"; nickname: string; isHost?: boolean; hostToken?: string }
   | { type: "rejoin"; nickname: string; hostToken?: string }
   | { type: "lock" }
-  | { type: "start_game"; numQuestions: number; phase1Time: number; phase2Time: number; mode: "game_questions" | "player_questions" }
+  | { type: "start_game"; numQuestions: number; phase1Time: number; phase2Time: number; mode: "game_questions" | "player_questions" | "host_questions"; hostPrompts?: Prompt[] }
   | { type: "submit_answer"; answer: string | number }
   | { type: "submit_prediction"; prediction: string | number; doubleDown: boolean }
   | { type: "next_round" } // host only
@@ -102,4 +102,4 @@ export type ClientMessage =
   | { type: "resume_timer" } // host only — resume current phase timer
   | { type: "submit_question"; text: string; questionType: "binary" | "multiple_choice" | "scale"; options?: string[]; labelLow?: string; labelHigh?: string }
   | { type: "delete_question"; id: string } // host only
-  | { type: "begin_game" }; // host only — start countdown after question_submission phase
+  | { type: "begin_game"; shuffle?: boolean }; // host only — start countdown after question_submission phase

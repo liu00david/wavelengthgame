@@ -83,7 +83,7 @@ function HostQuestionForm({ onSubmit }: { onSubmit: (q: QuestionPayload) => void
         type="text"
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder={qType === "binary" ? "Have you drank soda today?" : qType === "scale" ? "How much do you like EDM?" : "What's your favorite pizza topping?"}
+        placeholder={qType === "binary" ? "Have you ever owned a pet?" : qType === "scale" ? "How much do you like coffee" : "What's your favorite season?"}
         maxLength={60}
         className={`w-full px-3 py-2 rounded-lg bg-[#0f2660] border border-[#2a4a8a] text-white text-sm placeholder:italic placeholder:${t.textFaint} outline-none focus:border-[#7862FF] mb-2`}
       />
@@ -277,6 +277,7 @@ function HostGameContent() {
   const seenRoundsRef = useRef<Set<number>>(new Set());
   const collectedQuestionsRef = useRef<CollectedQuestion[]>([]);
   const [collectedCount, setCollectedCount] = useState(0);
+  const [randomizePlayerOrder, setRandomizePlayerOrder] = useState(false);
   const [isDuplicateTab, setIsDuplicateTab] = useState(false);
 
   const { sendMsg, lobbyState, gameState } = useParty(
@@ -340,11 +341,6 @@ function HostGameContent() {
 
   function closeMenu() { setMenuState("closed"); }
 
-  function handleSkipQuestion() {
-    sendMsg({ type: "skip_question" });
-    closeMenu();
-  }
-
   function handleKickPlayer(nickname: string) {
     sendMsg({ type: "kick_player", nickname });
     closeMenu();
@@ -394,7 +390,6 @@ function HostGameContent() {
     ended: "Game Over",
   };
 
-  const canSkip = phase === "phase1" || phase === "phase2";
   const answeredCount = gameState?.answeredCount ?? 0;
 
   // Timer bar: smooth, red under 5s
@@ -507,10 +502,19 @@ function HostGameContent() {
               ))}
             </div>
 
+            <div className="flex items-center gap-3 mt-4 mb-3 px-1">
+              <button
+                onClick={() => setRandomizePlayerOrder((v) => !v)}
+                className={`w-10 h-6 rounded-full transition-colors relative shrink-0 ${randomizePlayerOrder ? "bg-[#7862FF]" : "bg-[#2a4a8a]"}`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${randomizePlayerOrder ? "translate-x-4" : "translate-x-0"}`} />
+              </button>
+              <span className={`${t.textMuted} text-sm`}>Randomize question order</span>
+            </div>
             <button
-              onClick={() => sendMsg({ type: "begin_game" })}
+              onClick={() => sendMsg({ type: "begin_game", shuffle: randomizePlayerOrder })}
               disabled={collectedCount < (gameState?.totalRounds ?? 0)}
-              className={`w-full py-4 rounded-2xl ${t.btnYellow} text-xl font-black mt-4 disabled:opacity-40`}
+              className={`w-full py-4 rounded-2xl ${t.btnYellow} text-xl font-black disabled:opacity-40`}
             >
               {collectedCount >= (gameState?.totalRounds ?? 0) ? "Start Game! →" : `Need ${(gameState?.totalRounds ?? 0) - collectedCount} more question${(gameState?.totalRounds ?? 0) - collectedCount === 1 ? "" : "s"}`}
             </button>

@@ -45,14 +45,14 @@ type GameState = {
   paused: boolean;
   pausedTimeRemaining: number | null; // ms remaining when paused
   submittedQuestionCount: number;
-  mode: "game_questions" | "player_questions";
+  mode: "game_questions" | "player_questions" | "host_questions";
 };
 
 type ClientMessage =
   | { type: "join"; nickname: string; isHost?: boolean; hostToken?: string }
   | { type: "rejoin"; nickname: string; hostToken?: string }
   | { type: "lock" }
-  | { type: "start_game"; numQuestions: number; phase1Time: number; phase2Time: number; mode: "game_questions" | "player_questions" }
+  | { type: "start_game"; numQuestions: number; phase1Time: number; phase2Time: number; mode: "game_questions" | "player_questions" | "host_questions"; hostPrompts?: Prompt[] }
   | { type: "submit_answer"; answer: string | number }
   | { type: "submit_prediction"; prediction: string | number; doubleDown: boolean }
   | { type: "next_round" }
@@ -68,7 +68,7 @@ type ClientMessage =
   | { type: "resume_timer" }
   | { type: "submit_question"; text: string; questionType: "binary" | "multiple_choice" | "scale"; options?: string[]; labelLow?: string; labelHigh?: string }
   | { type: "delete_question"; id: string }
-  | { type: "begin_game" };
+  | { type: "begin_game"; shuffle?: boolean };
 
 
 function shuffleArray<T>(arr: T[]): T[] {
@@ -217,6 +217,7 @@ export default class GameServer implements Party.Server {
     mode: "game_questions",
   };
   private submittedQuestions: (Prompt & { submittedBy: string })[] = [];
+  private hostQuestions: Prompt[] = [];
   private prompts: Prompt[] = [];
   private phase1Answers: Map<string, string | number> = new Map();
   private phase2Predictions: Map<string, string | number> = new Map();
@@ -491,6 +492,22 @@ export default class GameServer implements Party.Server {
       const { error: questionsError } = await supabase.from("custom_questions").insert(questionRows);
       if (questionsError) console.error("[supabase] custom_questions insert error:", questionsError);
     }
+
+    if (this.game.mode === "host_questions" && this.hostQuestions.length > 0) {
+      const questionRows = this.hostQuestions.map((q) => ({
+        game_id: gameId,
+        submitted_by: this.hostName,
+        text: q.text,
+        question_type: q.type,
+        options: q.options ?? null,
+        label_low: q.labelLow ?? null,
+        label_high: q.labelHigh ?? null,
+        created_at: new Date().toISOString(),
+      }));
+
+      const { error: questionsError } = await supabase.from("custom_questions").insert(questionRows);
+      if (questionsError) console.error("[supabase] custom_questions insert error:", questionsError);
+    }
   }
 
   private async deactivateRoom() {
@@ -716,12 +733,51 @@ export default class GameServer implements Party.Server {
       if (this.game.phase !== "lobby") return;
 
       const playerCount = this.lobby.players.filter((p) => !p.isHost).length;
-      const totalRounds = Math.min(msg.numQuestions, PROMPTS.length);
       const phase1Duration = Math.max(10, Math.min(60, msg.phase1Time));
       const phase2Duration = Math.max(10, Math.min(60, msg.phase2Time));
       const mode = msg.mode ?? "game_questions";
 
+      if (mode === "host_questions") {
+        const prompts = (msg.hostPrompts ?? []).slice(0, msg.numQuestions);
+        if (prompts.length !== msg.numQuestions) return; // tamper guard
+        this.hostQuestions = prompts;
+        this.prompts = prompts;
+        const totalRounds = prompts.length;
+        this.totalScores.clear();
+        this.roundResults = [];
+        this.gameStartedAt = Date.now();
+        this.lobby.players
+          .filter((p) => !p.isHost)
+          .forEach((p) => this.totalScores.set(p.nickname, 0));
+        this.game = {
+          phase: "countdown",
+          round: 1,
+          totalRounds,
+          prompt: null,
+          phaseEndsAt: null,
+          phase1Duration,
+          phase2Duration,
+          roundResult: null,
+          leaderboard: [],
+          N: playerCount,
+          phase1AnsweredCount: 0,
+          phase1AnsweredNicknames: [],
+          answeredCount: 0,
+          answeredNicknames: [],
+          doubleDownUsed: [],
+          paused: false,
+          pausedTimeRemaining: null,
+          submittedQuestionCount: 0,
+          mode: "host_questions",
+        };
+        this.broadcastGame();
+        this.clearTimer();
+        this.phaseTimer = setTimeout(() => this.startPhase1(), 13600);
+        return;
+      }
+
       if (mode === "player_questions") {
+        const totalRounds = Math.min(msg.numQuestions, PROMPTS.length);
         this.submittedQuestions = [];
         this.totalScores.clear();
         this.roundResults = [];
@@ -752,6 +808,7 @@ export default class GameServer implements Party.Server {
         return;
       }
 
+      const totalRounds = Math.min(msg.numQuestions, PROMPTS.length);
       this.prompts = getPromptsForGame(totalRounds);
       this.totalScores.clear();
       this.roundResults = [];
@@ -850,7 +907,8 @@ export default class GameServer implements Party.Server {
       if (this.game.phase !== "question_submission") return;
       if (this.submittedQuestions.length < this.game.totalRounds) return;
 
-      this.prompts = shuffleArray(this.submittedQuestions).slice(0, this.game.totalRounds);
+      const ordered = msg.shuffle ? shuffleArray(this.submittedQuestions) : [...this.submittedQuestions];
+      this.prompts = ordered.slice(0, this.game.totalRounds);
       this.totalScores.clear();
       this.lobby.players
         .filter((p) => !p.isHost)
@@ -959,6 +1017,7 @@ export default class GameServer implements Party.Server {
       this.hasHost = false;
       this.clearTimer();
       this.submittedQuestions = [];
+      this.hostQuestions = [];
       // Reset state so room appears gone
       this.lobby = { players: [], locked: false, N: 0, disconnectedNicknames: [] };
       this.game = {
@@ -981,6 +1040,7 @@ export default class GameServer implements Party.Server {
       const phase1Duration = Math.max(10, Math.min(60, msg.phase1Time));
       const phase2Duration = Math.max(10, Math.min(60, msg.phase2Time));
       this.prompts = getPromptsForGame(totalRounds);
+      this.hostQuestions = [];
       this.totalScores.clear();
       this.roundResults = [];
       this.gameStartedAt = Date.now();
@@ -1155,6 +1215,7 @@ export default class GameServer implements Party.Server {
         this.hasHost = false;
         this.clearTimer();
         this.submittedQuestions = [];
+        this.hostQuestions = [];
         this.lobby = { players: [], locked: false, N: 0, disconnectedNicknames: [] };
         this.game = {
           phase: "lobby", round: 0, totalRounds: 10,

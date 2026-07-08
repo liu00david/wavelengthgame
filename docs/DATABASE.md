@@ -27,7 +27,7 @@ One row written when the last round ends and the game transitions to the `ended`
 | `duration_seconds` | Difference between the two |
 | `player_count` | Number of non-host players at game end |
 | `total_rounds` | How many rounds were played |
-| `mode` | `game_questions` or `player_questions` |
+| `mode` | `game_questions`, `player_questions`, or `host_questions` |
 | `final_scores` | JSON array of `{nickname, emoji, total, rank}` for all players |
 
 ---
@@ -63,7 +63,10 @@ One row per round, written at the same moment as the `games` row (end of game), 
 ---
 
 ### `custom_questions`
-Only written when `mode = player_questions`. One row per question submitted by players during the question submission phase. Written at the same time as `games` and `game_rounds` at game end. Foreign key references `games.id`.
+Written when `mode = player_questions` or `mode = host_questions`. One row per question. Written at the same time as `games` and `game_rounds` at game end. Foreign key references `games.id`.
+
+- **player_questions**: `submitted_by` is the player's nickname; questions are collected during the question submission phase before the game starts.
+- **host_questions**: `submitted_by` is the host's name; questions are entered in the lobby before Lock & Start and sent with the `start_game` message.
 
 | Column | Value |
 |---|---|
@@ -93,7 +96,7 @@ Each round plays out (phase1 → phase2 → phase3)
 Last round ends (phase3 of final round)
   → INSERT games (1 row)
   → INSERT game_rounds (N rows, one per round, batched)
-  → INSERT custom_questions (if player_questions mode, one per submitted question)
+  → INSERT custom_questions (if player_questions or host_questions mode, one per question)
 ```
 
 All game writes happen in a single async burst at the end — they are non-blocking and do not affect gameplay if they fail (errors are logged server-side).

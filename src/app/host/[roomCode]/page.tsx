@@ -6,7 +6,16 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useParty } from "@/lib/useParty";
 import { t, resolveAvatarColor, resolveEmoji } from "@/lib/theme";
-import type { Player } from "@/lib/types";
+import type { Player, Prompt } from "@/lib/types";
+
+function shuffleArray<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 function PlayerAvatar({ player, disconnected }: { player: Player; disconnected: boolean }) {
   const color = resolveAvatarColor(player.nickname, player.emoji);
@@ -57,6 +66,319 @@ function SettingRow({ label, value, options, onChange }: {
   );
 }
 
+// ---- CSV parsing ----
+
+type ParsedRow = { ok: true; prompt: Prompt } | { ok: false; line: number; error: string };
+
+function parseCSV(raw: string): ParsedRow[] {
+  const lines = raw.split("\n").map((l) => l.trim()).filter(Boolean);
+  return lines.map((line, idx) => {
+    const lineNum = idx + 1;
+    // Split on comma but not within quoted fields
+    const cols = line.split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
+    const type = cols[0]?.toLowerCase();
+
+    if (type === "binary") {
+      const text = cols[1];
+      if (!text || text.length === 0) return { ok: false as const, line: lineNum, error: `Row ${lineNum}: missing question text` };
+      if (text.length > 60) return { ok: false as const, line: lineNum, error: `Row ${lineNum}: question too long (max 60 chars)` };
+      return { ok: true as const, prompt: { id: `hq_${Date.now()}_${lineNum}`, text, type: "binary" } };
+    }
+
+    if (type === "scale") {
+      const text = cols[1];
+      if (!text || text.length === 0) return { ok: false as const, line: lineNum, error: `Row ${lineNum}: missing question text` };
+      if (text.length > 60) return { ok: false as const, line: lineNum, error: `Row ${lineNum}: question too long (max 60 chars)` };
+      const labelLow = cols[6]?.trim() || undefined;
+      const labelHigh = cols[7]?.trim() || undefined;
+      return { ok: true as const, prompt: { id: `hq_${Date.now()}_${lineNum}`, text, type: "scale", ...(labelLow ? { labelLow } : {}), ...(labelHigh ? { labelHigh } : {}) } };
+    }
+
+    if (type === "mc" || type === "multiple_choice") {
+      const text = cols[1];
+      if (!text || text.length === 0) return { ok: false as const, line: lineNum, error: `Row ${lineNum}: missing question text` };
+      if (text.length > 60) return { ok: false as const, line: lineNum, error: `Row ${lineNum}: question too long (max 60 chars)` };
+      const options = [cols[2], cols[3], cols[4], cols[5]].filter((o) => o && o.trim().length > 0);
+      if (options.length < 2) return { ok: false as const, line: lineNum, error: `Row ${lineNum}: multiple choice needs at least 2 options (cols 3–6)` };
+      const dupes = options.filter((o, i) => options.indexOf(o) !== i);
+      if (dupes.length > 0) return { ok: false as const, line: lineNum, error: `Row ${lineNum}: duplicate options "${dupes[0]}"` };
+      return { ok: true as const, prompt: { id: `hq_${Date.now()}_${lineNum}`, text, type: "multiple_choice", options } };
+    }
+
+    return { ok: false as const, line: lineNum, error: `Row ${lineNum}: unknown type "${cols[0]}" — use binary, scale, or mc` };
+  });
+}
+
+// ---- Form for a single question ----
+
+function SingleQuestionForm({ onAdd }: { onAdd: (p: Prompt) => void }) {
+  const [qType, setQType] = useState<"binary" | "multiple_choice" | "scale">("binary");
+  const [text, setText] = useState("");
+  const [options, setOptions] = useState<string[]>(["", ""]);
+  const [labelLow, setLabelLow] = useState("");
+  const [labelHigh, setLabelHigh] = useState("");
+
+  function handleAdd() {
+    const trimmed = text.trim();
+    if (!trimmed || trimmed.length > 60) return;
+    if (qType === "multiple_choice" && (options.length < 2 || options.some((o) => !o.trim()))) return;
+
+    const id = `hq_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const prompt: Prompt = { id, text: trimmed, type: qType };
+    if (qType === "multiple_choice") prompt.options = options.map((o) => o.trim());
+    if (qType === "scale") {
+      if (labelLow.trim()) prompt.labelLow = labelLow.trim();
+      if (labelHigh.trim()) prompt.labelHigh = labelHigh.trim();
+    }
+    onAdd(prompt);
+    setText("");
+    setOptions(["", ""]);
+    setLabelLow("");
+    setLabelHigh("");
+  }
+
+  const trimmedOptions = options.map((o) => o.trim());
+  const hasDupe = qType === "multiple_choice" && trimmedOptions.some((o, i) => o.length > 0 && trimmedOptions.indexOf(o) !== i);
+  const isValid = text.trim().length > 0 && text.trim().length <= 60 &&
+    (qType !== "multiple_choice" || (options.length >= 2 && options.every((o) => o.trim().length > 0) && !hasDupe));
+
+  const inputCls = `w-full px-3 py-2 rounded-lg bg-[#0f2660] border border-[#2a4a8a] text-white text-sm placeholder:italic placeholder:text-[#4a6a9a] outline-none focus:border-[#7862FF]`;
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex gap-2">
+        {(["binary", "scale", "multiple_choice"] as const).map((type) => (
+          <button key={type} onClick={() => setQType(type)}
+            className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${qType === type ? "bg-[#7862FF] text-white" : `${t.btnGhost} ${t.textMuted}`}`}>
+            {type === "binary" ? "Yes/No" : type === "scale" ? "Scale" : "Multi"}
+          </button>
+        ))}
+      </div>
+
+      <input type="text" value={text} onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && isValid && handleAdd()}
+        placeholder={qType === "binary" ? "e.g. Can you swim?" : qType === "scale" ? "e.g. How much do you like EDM?" : "e.g. Best pizza topping?"}
+        maxLength={60}
+        className={inputCls + (text.trim().length > 60 ? " border-[#c94f7a]" : "")}
+      />
+      {text.trim().length > 60 && <p className="text-[#c94f7a] text-xs">Max 60 characters</p>}
+
+      {qType === "scale" && (
+        <div className="grid grid-cols-2 gap-2">
+          <input type="text" value={labelLow} onChange={(e) => setLabelLow(e.target.value)}
+            placeholder="Label for 1 (optional)" maxLength={10} className={inputCls} />
+          <input type="text" value={labelHigh} onChange={(e) => setLabelHigh(e.target.value)}
+            placeholder="Label for 10 (optional)" maxLength={10} className={inputCls} />
+        </div>
+      )}
+
+      {qType === "multiple_choice" && (
+        <div className="flex flex-col gap-1.5">
+          {options.map((opt, i) => {
+            const isDupe = opt.trim().length > 0 && trimmedOptions.indexOf(opt.trim()) !== i;
+            return (
+              <div key={i} className="flex items-center gap-2">
+                <span className={`${t.textMuted} text-sm font-bold w-4 shrink-0`}>{String.fromCharCode(65 + i)}</span>
+                <input type="text" value={opt}
+                  onChange={(e) => { const n = [...options]; n[i] = e.target.value; setOptions(n); }}
+                  placeholder={["e.g. Pepperoni", "Mushrooms", "Pineapple", "Plain"][i]}
+                  maxLength={25}
+                  className={`flex-1 px-3 py-2 rounded-lg bg-[#0f2660] border text-white text-sm placeholder:italic placeholder:text-[#4a6a9a] outline-none focus:border-[#7862FF] ${isDupe ? "border-[#c94f7a]" : "border-[#2a4a8a]"}`}
+                />
+              </div>
+            );
+          })}
+          {hasDupe && <p className="text-[#c94f7a] text-xs">Duplicate options</p>}
+          <div className="flex justify-between mt-0.5">
+            {options.length < 4
+              ? <button onClick={() => setOptions([...options, ""])} className={`${t.textMuted} hover:text-white text-xs font-bold`}>+ Add option {String.fromCharCode(65 + options.length)}</button>
+              : <span />}
+            {options.length > 2 && (
+              <button onClick={() => setOptions(options.slice(0, -1))} className={`${t.textMuted} hover:text-[#c94f7a] text-xs font-bold`}>− Remove {String.fromCharCode(64 + options.length)}</button>
+            )}
+          </div>
+        </div>
+      )}
+
+      <button onClick={handleAdd} disabled={!isValid}
+        className={`w-full py-2 rounded-lg ${t.btnPrimary} text-sm font-bold disabled:opacity-40`}>
+        Add Question
+      </button>
+    </div>
+  );
+}
+
+// ---- CSV paste panel ----
+
+function CSVPanel({ slots, onAdd }: { slots: number; onAdd: (prompts: Prompt[]) => void }) {
+  const [raw, setRaw] = useState("");
+  const [errors, setErrors] = useState<string[]>([]);
+  const [preview, setPreview] = useState<Prompt[]>([]);
+  const [overflowCount, setOverflowCount] = useState(0);
+
+  const TEMPLATE = `binary,Can you swim?
+scale,How spicy do you like food?,,,,,Mild,Nuclear
+mc,Best pizza topping?,Pepperoni,Mushrooms,Pineapple,Plain`;
+
+  function handleParse() {
+    if (!raw.trim()) return;
+    const results = parseCSV(raw);
+    const errs = results.filter((r): r is Extract<ParsedRow, { ok: false }> => !r.ok).map((r) => r.error);
+    const ok = results.filter((r): r is Extract<ParsedRow, { ok: true }> => r.ok).map((r) => r.prompt);
+    setErrors(errs);
+    setPreview(ok);
+    setOverflowCount(0);
+  }
+
+  function handleImport() {
+    if (preview.length === 0) return;
+    const toImport = preview.slice(0, slots);
+    const dropped = preview.length - toImport.length;
+    onAdd(toImport);
+    setOverflowCount(dropped);
+    setRaw("");
+    setPreview([]);
+    setErrors([]);
+  }
+
+  const importDisabled = preview.length === 0;
+  const importLabel = preview.length > 0
+    ? `Import (${Math.min(preview.length, slots)} of ${preview.length})`
+    : "Import";
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div>
+        <p className={`${t.textMuted} text-xs mb-1`}>Format: <code className="text-[#4dd9d2]">type, text, opt1, opt2, opt3, opt4, labelLow, labelHigh</code></p>
+        <p className={`${t.textFaint} text-xs`}>Types: <code>binary</code> · <code>scale</code> · <code>mc</code></p>
+      </div>
+      <button onClick={() => setRaw(TEMPLATE)}
+        className={`self-start text-xs ${t.textMuted} hover:text-white underline underline-offset-2`}>
+        Load example
+      </button>
+      <textarea
+        value={raw}
+        onChange={(e) => { setRaw(e.target.value); setPreview([]); setErrors([]); setOverflowCount(0); }}
+        placeholder={"binary,Can you swim?\nscale,How spicy do you like food?,,,,,Mild,Nuclear\nmc,Best pizza topping?,Pepperoni,Mushrooms,Pineapple,Plain"}
+        rows={6}
+        className={`w-full px-3 py-2 rounded-lg bg-[#0f2660] border border-[#2a4a8a] text-white text-sm font-mono placeholder:text-[#4a6a9a] outline-none focus:border-[#7862FF] resize-none`}
+      />
+      {errors.length > 0 && (
+        <div className="bg-[#9a3558]/20 border border-[#9a3558]/40 rounded-lg p-3 flex flex-col gap-1">
+          {errors.map((e, i) => <p key={i} className="text-[#c94f7a] text-xs">{e}</p>)}
+        </div>
+      )}
+      {preview.length > 0 && (
+        <div className="bg-[#1a3580]/40 border border-[#2a4a8a] rounded-lg p-3">
+          <p className={`${t.textMuted} text-xs mb-2`}>{preview.length} question{preview.length !== 1 ? "s" : ""} parsed</p>
+          {preview.map((p, i) => (
+            <p key={i} className={`text-xs truncate ${i >= slots ? "text-[#4a6a9a] line-through" : "text-white"}`}>
+              <span className={`${t.textMuted} mr-1`}>{i + 1}.</span>{p.text}
+              <span className={`${t.textFaint} ml-1`}>({p.type})</span>
+            </p>
+          ))}
+          {preview.length > slots && (
+            <p className={`${t.textYellow} text-xs mt-2`}>
+              {preview.length - slots} question{preview.length - slots !== 1 ? "s" : ""} will be discarded — only {slots} slot{slots !== 1 ? "s" : ""} remaining
+            </p>
+          )}
+        </div>
+      )}
+      {overflowCount > 0 && (
+        <p className={`${t.textYellow} text-xs`}>
+          {overflowCount} question{overflowCount !== 1 ? "s" : ""} discarded — queue was full
+        </p>
+      )}
+      <div className="flex gap-2">
+        <button onClick={handleParse} disabled={!raw.trim()}
+          className={`flex-1 py-2 rounded-lg ${t.btnGhost} text-sm font-bold disabled:opacity-40`}>
+          Validate
+        </button>
+        <div className="flex-1 flex flex-col gap-1">
+          <button onClick={handleImport} disabled={importDisabled}
+            className={`w-full py-2 rounded-lg ${t.btnPrimary} text-sm font-bold disabled:opacity-40`}>
+            {importLabel}
+          </button>
+          {importDisabled && raw.trim() && preview.length === 0 && (
+            <p className={`${t.textYellow} text-xs text-center`}>Validate first</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---- Host question panel (wraps form + CSV + queue) ----
+
+function HostQuestionPanel({ needed, questions, onAdd, onDelete }: {
+  needed: number;
+  questions: Prompt[];
+  onAdd: (prompts: Prompt[]) => void;
+  onDelete: (id: string) => void;
+}) {
+  const [tab, setTab] = useState<"form" | "csv">("form");
+
+  const typeLabel: Record<string, string> = { binary: "Y/N", scale: "Scale", multiple_choice: "MC" };
+
+  return (
+    <div className={`${t.bgSurface} rounded-2xl border ${t.borderSurface} shadow-xl p-6 mb-4`}>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className={`${t.textMuted} text-sm uppercase tracking-widest`}>Your Questions</h3>
+        <span className={`text-sm font-bold font-mono ${questions.length >= needed ? "text-green-400" : t.textYellow}`}>
+          {questions.length} / {needed}
+        </span>
+      </div>
+
+      {/* Queue */}
+      {questions.length > 0 && (
+        <div className="flex flex-col gap-1.5 mb-4">
+          {questions.map((q, i) => (
+            <div key={q.id} className="flex items-start gap-2 bg-[#0f2660] rounded-lg px-3 py-2">
+              <span className={`${t.textFaint} text-xs font-mono w-5 shrink-0 mt-0.5`}>{i + 1}.</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-white text-sm truncate">{q.text}</p>
+                {q.type === "multiple_choice" && q.options && (
+                  <p className={`${t.textFaint} text-xs truncate`}>{q.options.join(" · ")}</p>
+                )}
+                {q.type === "scale" && (q.labelLow || q.labelHigh) && (
+                  <p className={`${t.textFaint} text-xs`}>{q.labelLow || "1"} → {q.labelHigh || "10"}</p>
+                )}
+              </div>
+              <span className={`${t.textFaint} text-xs font-bold shrink-0 mt-0.5`}>{typeLabel[q.type]}</span>
+              <button onClick={() => onDelete(q.id)} className={`${t.textMuted} hover:text-[#c94f7a] text-base leading-none shrink-0`}>×</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {questions.length < needed && (
+        <>
+          {/* Tab switcher */}
+          <div className="flex gap-2 mb-4">
+            <button onClick={() => setTab("form")}
+              className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${tab === "form" ? "bg-[#7862FF] text-white" : `${t.btnGhost} ${t.textMuted}`}`}>
+              Form
+            </button>
+            <button onClick={() => setTab("csv")}
+              className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all ${tab === "csv" ? "bg-[#7862FF] text-white" : `${t.btnGhost} ${t.textMuted}`}`}>
+              CSV Paste
+            </button>
+          </div>
+
+          {tab === "form"
+            ? <SingleQuestionForm onAdd={(p) => onAdd([p])} />
+            : <CSVPanel slots={needed - questions.length} onAdd={onAdd} />
+          }
+        </>
+      )}
+
+      {questions.length >= needed && (
+        <p className="text-green-400 text-sm font-semibold text-center">All {needed} questions ready!</p>
+      )}
+    </div>
+  );
+}
+
 function HostContent({ roomCode }: { roomCode: string }) {
   const router = useRouter();
 
@@ -64,7 +386,9 @@ function HostContent({ roomCode }: { roomCode: string }) {
   const [numQuestions, setNumQuestions] = useState(() => parseInt(typeof window !== "undefined" ? sessionStorage.getItem(`${roomCode}_numQ`) ?? "" : "") || 10);
   const [phase1Time, setPhase1Time] = useState(() => parseInt(typeof window !== "undefined" ? sessionStorage.getItem(`${roomCode}_p1t`) ?? "" : "") || 20);
   const [phase2Time, setPhase2Time] = useState(() => parseInt(typeof window !== "undefined" ? sessionStorage.getItem(`${roomCode}_p2t`) ?? "" : "") || 30);
-  const [gameMode, setGameMode] = useState<"game_questions" | "player_questions">(() => (typeof window !== "undefined" ? sessionStorage.getItem(`${roomCode}_mode`) : null) as "game_questions" | "player_questions" ?? "game_questions");
+  const [gameMode, setGameMode] = useState<"game_questions" | "player_questions" | "host_questions">(() => (typeof window !== "undefined" ? sessionStorage.getItem(`${roomCode}_mode`) : null) as "game_questions" | "player_questions" | "host_questions" ?? "game_questions");
+  const [hostPrompts, setHostPrompts] = useState<Prompt[]>([]);
+  const [randomizeHostOrder, setRandomizeHostOrder] = useState(false);
 
   const [isDuplicateTab, setIsDuplicateTab] = useState(false);
 
@@ -143,14 +467,37 @@ function HostContent({ roomCode }: { roomCode: string }) {
   }
 
   function handleLock() {
+    if (gameMode === "host_questions" && hostPrompts.length < numQuestions) return;
     sessionStorage.setItem(`${roomCode}_numQ`, String(numQuestions));
     sessionStorage.setItem(`${roomCode}_p1t`, String(phase1Time));
     sessionStorage.setItem(`${roomCode}_p2t`, String(phase2Time));
     sessionStorage.setItem(`${roomCode}_mode`, gameMode);
     sessionStorage.setItem(`${roomCode}_started`, "1");
     sendMsg({ type: "lock" });
-    sendMsg({ type: "start_game", numQuestions, phase1Time, phase2Time, mode: gameMode });
+    sendMsg({
+      type: "start_game",
+      numQuestions,
+      phase1Time,
+      phase2Time,
+      mode: gameMode,
+      ...(gameMode === "host_questions" ? {
+        hostPrompts: randomizeHostOrder
+          ? shuffleArray(hostPrompts.slice(0, numQuestions))
+          : hostPrompts.slice(0, numQuestions),
+      } : {}),
+    });
     router.push(`/host/${roomCode}/game`);
+  }
+
+  function handleAddHostPrompts(prompts: Prompt[]) {
+    setHostPrompts((prev) => {
+      const combined = [...prev, ...prompts];
+      return combined.slice(0, numQuestions);
+    });
+  }
+
+  function handleDeleteHostPrompt(id: string) {
+    setHostPrompts((prev) => prev.filter((p) => p.id !== id));
   }
 
   function handleKick(nickname: string) {
@@ -308,7 +655,7 @@ function HostContent({ roomCode }: { roomCode: string }) {
               label="Questions"
               value={numQuestions}
               options={QUESTION_OPTIONS}
-              onChange={setNumQuestions}
+              onChange={(v) => { setNumQuestions(v); setHostPrompts((prev) => prev.slice(0, v)); }}
             />
             <SettingRow
               label="Answer time"
@@ -345,18 +692,62 @@ function HostContent({ roomCode }: { roomCode: string }) {
                 >
                   Players
                 </button>
+                <button
+                  onClick={() => setGameMode("host_questions")}
+                  className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
+                    gameMode === "host_questions"
+                      ? "bg-[#7862FF] text-white"
+                      : `${t.btnGhost} ${t.textMuted}`
+                  }`}
+                >
+                  Host
+                </button>
               </div>
             </div>
           </div>
         </div>
 
-        <button onClick={handleLock} disabled={nonHostPlayers.length < 2}
-          className={`w-full py-4 rounded-2xl ${t.btnYellow} text-xl shadow-xl ${t.btnPrimaryDisabled}`}>
-          Lock & Start Game
-        </button>
-        {nonHostPlayers.length < 2 && (
-          <p className={`${t.textFaint} text-sm text-center mt-2`}>Need at least 2 players to start</p>
+        {gameMode === "host_questions" && (
+          <>
+            <div className="flex items-center gap-3 mb-3 px-1">
+              <button
+                onClick={() => setRandomizeHostOrder((v) => !v)}
+                className={`w-10 h-6 rounded-full transition-colors relative shrink-0 ${randomizeHostOrder ? "bg-[#7862FF]" : "bg-[#2a4a8a]"}`}
+              >
+                <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${randomizeHostOrder ? "translate-x-4" : "translate-x-0"}`} />
+              </button>
+              <span className={`${t.textMuted} text-sm`}>Randomize question order</span>
+            </div>
+            <HostQuestionPanel
+              needed={numQuestions}
+              questions={hostPrompts}
+              onAdd={handleAddHostPrompts}
+              onDelete={handleDeleteHostPrompt}
+            />
+          </>
         )}
+
+        {(() => {
+          const notEnoughPlayers = nonHostPlayers.length < 2;
+          const notEnoughHostQs = gameMode === "host_questions" && hostPrompts.length < numQuestions;
+          const disabled = notEnoughPlayers || notEnoughHostQs;
+          return (
+            <>
+              <button onClick={handleLock} disabled={disabled}
+                className={`w-full py-4 rounded-2xl ${t.btnYellow} text-xl shadow-xl ${t.btnPrimaryDisabled}`}>
+                Lock & Start Game
+              </button>
+              {notEnoughPlayers && (
+                <p className={`${t.textFaint} text-sm text-center mt-2`}>Need at least 2 players to start</p>
+              )}
+              {!notEnoughPlayers && notEnoughHostQs && (
+                <p className={`${t.textFaint} text-sm text-center mt-2`}>
+                  Add {numQuestions - hostPrompts.length} more question{numQuestions - hostPrompts.length !== 1 ? "s" : ""} to start
+                </p>
+              )}
+            </>
+          );
+        })()}
       </div>
     </main>
   );
