@@ -11,6 +11,7 @@ A real-time party game about reading the room. Players answer questions, then pr
 | Frontend | Next.js (App Router), React |
 | Styling | Tailwind CSS v4 |
 | Real-time | PartyKit (WebSocket server) |
+| Database | Supabase (Postgres) |
 | Frontend deploy | Vercel |
 | Server deploy | partykit.dev |
 
@@ -23,11 +24,9 @@ src/
   app/
     page.tsx                        # Landing page — host or join
     layout.tsx                      # Root layout, metadata
-    opengraph-image.tsx             # OG image for social sharing
-    globals.css                     # Global styles + keyframe animations
-    how-to-play/page.tsx            # How to play guide
+    register/page.tsx               # Host registration — name entry, room code generation
     host/[roomCode]/
-      page.tsx                      # Host lobby — settings, player list
+      page.tsx                      # Host lobby — settings, player list, question prep
       game/page.tsx                 # Host game controls (skip, pause, advance)
       summary/page.tsx              # Post-game summary for host
     play/[roomCode]/
@@ -36,16 +35,24 @@ src/
     tv/[roomCode]/
       page.tsx                      # TV lobby screen (QR code, player list)
       game/page.tsx                 # TV display screen (questions, results, podium)
-    api/room/[code]/route.ts        # REST endpoint — check if room exists
+    api/
+      register/route.ts             # POST — create host record, generate room code
+      room/[code]/route.ts          # GET — check room existence (Supabase + PartyKit)
+      room/[code]/deactivate/route.ts  # POST — mark room inactive in Supabase
   lib/
     types.ts                        # Shared TypeScript types (GameState, PlayerScore, etc.)
+    prompts.ts                      # Question banks (General, Coworkers, Hot Seat) + metadata
     theme.ts                        # Design tokens (colors, bg classes, button variants)
     useParty.ts                     # PartyKit WebSocket hook
+    supabase.ts                     # Supabase client (service role, server-only)
 party/
-  index.ts                          # PartyKit server — all game logic
+  index.ts                          # PartyKit server — all game logic + Supabase writes
 docs/
   CURRENT_IMPLEMENTATION.md        # This file
+  DATABASE.md                      # Supabase table schemas and write timeline
   FUTURE_FEATURES.md               # Planned features
+  GAME_DESIGN.md                   # Game design notes
+  SOUNDS.md                        # Audio notes
 ```
 
 ---
@@ -55,6 +62,7 @@ docs/
 | URL | Who sees it |
 |-----|------------|
 | `/` | Landing — host or join a game |
+| `/register` | Host — enter name, get room code |
 | `/host/[roomCode]` | Host — lobby settings and player management |
 | `/host/[roomCode]/game` | Host — in-game controls (skip, pause, kick, advance) |
 | `/host/[roomCode]/summary` | Host — post-game breakdown per round |
@@ -69,14 +77,14 @@ docs/
 ## Game Phases
 
 ```
-lobby → question_submission (optional) → countdown → phase1 → phase2 → phase3 → leaderboard → ... → ended
+lobby → [question_submission] → countdown → phase1 → phase2 → phase3 → leaderboard → … → ended
 ```
 
 | Phase | Description |
 |-------|-------------|
 | `lobby` | Players join, host configures settings |
-| `question_submission` | Players submit their own questions (player mode only) |
-| `countdown` | 3-slide rules animation + 3-2-1 countdown (~18s) |
+| `question_submission` | Players submit questions (player mode only) |
+| `countdown` | 3-slide rules animation + 3-2-1 countdown (~14s) |
 | `phase1` | Answer the question (hidden from others) |
 | `phase2` | Predict the group's result |
 | `phase3` | Reveal + scoring |
@@ -93,16 +101,40 @@ lobby → question_submission (optional) → countdown → phase1 → phase2 →
 | `multiple_choice` | Pick one of 2–4 options | Which option was most popular? |
 | `scale` | Drag a slider (1–10) | What was the group average? (0.1 step) |
 
-Question character limits: 60 chars for question text, 25 chars per choice.
+Question character limits: 60 chars for question text, 25 chars per MC option.
 
 ---
 
 ## Question Modes
 
-- **Game Questions** — drawn from the built-in bank (~116 questions), shuffled each game. Mix of binary, multiple choice, and scale.
-- **Player Questions** — players submit their own questions before the game starts. Host can delete submissions. Game begins once enough are collected (≥ round count). Questions are shuffled before play.
+Three modes, selected per game in the lobby:
 
-Question bank lives in `party/index.ts` → `PROMPTS` array.
+| Mode | Description |
+|------|-------------|
+| **Game** | Built-in question bank, shuffled each game. Host picks a category. |
+| **Players** | Players submit questions during a collection phase before the game. Host can delete, choose shuffle order, then begin. |
+| **Host** | Host enters all questions in the lobby before locking — via a form or CSV paste. Host can reorder (or randomize) before starting. |
+
+### Question Banks (Game mode)
+
+| Bank | Questions | Vibe |
+|------|-----------|------|
+| General | ~212 | Mixed — relationships, preferences, would-you-rather |
+| Coworkers | ~37 | Work-safe, office-friendly |
+| Hot Seat | ~57 | Spicy, party-appropriate |
+
+Banks live in `src/lib/prompts.ts` as `PROMPTS_BY_BANK`. `BANK_META` holds display labels, emojis, and descriptions.
+
+### CSV Format (Host mode)
+
+```
+type,text,opt1,opt2,opt3,opt4,labelLow,labelHigh
+binary,Can you swim?
+scale,How spicy do you like food?,,,,,Mild,Nuclear
+mc,Best pizza topping?,Pepperoni,Mushrooms,Pineapple,Plain
+```
+
+Types: `binary`, `scale`, `mc`. Validate before import; overflow rows are discarded with a warning.
 
 ---
 
@@ -126,65 +158,53 @@ Off by 2.0 or more = 0 points. Steep quadratic drop.
 Rarer winning answers score higher. Ties: any tied winner counts as correct.
 
 ### Double Down
-One use per game per player, enabled in Phase 2 before submitting:
+One use per game per player, submitted in Phase 2:
 - Correct → **2× base score**
 - Wrong → **0 points**
 
 ---
 
+## Database (Supabase)
+
+Four tables. All writes are non-blocking and happen at game end. See `docs/DATABASE.md` for full schema.
+
+| Table | When written |
+|-------|-------------|
+| `hosts` | On registration (before game) |
+| `games` | At game end |
+| `game_rounds` | At game end (batched) |
+| `custom_questions` | At game end — player mode and host mode only |
+
+`hosts` rows are swept to `active: false` after 24 hours on the next registration call.
+
+---
+
+## Auth / Session Model
+
+No traditional auth. Security is token-based:
+
+- **Host token** — 32-char random string generated at registration, stored in `localStorage` and in Supabase `hosts.host_token`. Required to join as host or rejoin after disconnect.
+- **Room code** — 4-letter consonant code, checked for active uniqueness before generation.
+- **Player session** — nickname + room code stored in `localStorage`. Rejoin is allowed within a 10-minute grace window after disconnect.
+- **Duplicate tab detection** — `BroadcastChannel` ping/pong on player page; server-side connection check on host page.
+
+---
+
 ## Server (`party/index.ts`)
 
-The PartyKit server handles all game state. Key responsibilities:
+The PartyKit server owns all game state in memory. Key responsibilities:
 
-- Room lifecycle: create, lock, disband, play again
+- Room lifecycle: join, rejoin, lock, disband, play again
+- Host token validation via Supabase on join and rejoin
 - Phase transitions with server-side timers (phase1, phase2 auto-advance)
-- Storing `phase1Answers: Map<string, string|number>` and `phase2Predictions: Map<string, string|number>`
+- Storing `phase1Answers` and `phase2Predictions` per player
 - Computing `actualResult` and per-player `scores` at end of phase2
-- Building `leaderboard: PlayerScore[]` with `total`, `roundScore`, `rank`
-- Saving `RoundResult` per round for the summary page
+- Building `leaderboard` with `total`, `roundScore`, `rank`
 - Player kick, pause/resume timer, skip question
-- Question submission management (player mode)
-- Broadcasting `GameState` to all connections after every state change
-
----
-
-## TV Screen Highlights (`tv/[roomCode]/game/page.tsx`)
-
-The TV is the shared display — ~1100 lines, contains all visual components:
-
-- `AnswerBar` — animated horizontal bar with winner ✔ / loser ✗ icons; separate `barHeight` props for binary vs MC
-- `ScaleBar` — animated gradient fill for scale results
-- `Phase3View` — results reveal per question type
-- `LeaderboardView` — animated rank-shuffle: shows previous order first, then slides rows to new positions after 2s, with count-up animation
-- `LeaderboardRow` — absolutely positioned row with CSS `translateY` transition
-- `GameOverIntro` — "GAME OVER" → "Who figured out the consensus?" slide sequence
-- `TVPodiumSlot` — podium with fireworks/sparks canvas animation
-- `Fireworks` — canvas-based spark bursts, continuous left/right
-- `CountdownOverlay` — 3-slide rules animation before game start
-- `FloatingQuestionMarks` — animated background elements during question submission phase
-- `CircleTimer` — SVG countdown ring, turns red at ≤5s
-
----
-
-## Player Screen Highlights (`play/[roomCode]/game/page.tsx`)
-
-Mobile-first player interface:
-
-- `Phase1View` — question + answer input per type (binary buttons, MC option list, scale slider)
-- `Phase2View` — prediction input + Double Down toggle
-- `Phase3View` — score reveal, round points, rank delta (hidden on final round to preserve suspense)
-- `DoubleDownToggle` — yellow border active state, one-use enforcement
-- `CountdownScreen` — mirrored rules slides synced to TV countdown
-
----
-
-## Host Screen Highlights (`host/[roomCode]/game/page.tsx`)
-
-- Live game status (phase, answered count, timer)
-- Skip, Pause/Resume, Kick player controls
-- Advance phase buttons (Phase 3 → leaderboard, leaderboard → next round)
-- Final round button: "Go to game summary!" instead of next round
-- Question submission form (player mode): binary, scale, or multiple choice with 2–4 options
+- Question submission management (player mode), question deletion (host)
+- 10-minute rejoin grace period: disconnected players stay in lobby as greyed-out; host disconnect broadcasts `host_disconnected` to players
+- Deactivating room in Supabase on explicit disband or host timeout
+- Saving game data to Supabase at game end
 
 ---
 
@@ -197,7 +217,7 @@ All design tokens in one place. Key colors:
 | `bgPage` | `#081c48` | Page background |
 | `bgSurface` | `bg-[#0d1e54]` | Card background |
 | `textYellow` | `text-[#f6dc53]` | Titles, CTAs |
-| `textTeal` / `textCyan` | `#25a59f` / `#4dd9d2` | YES, success |
+| `textCyan` | `#4dd9d2` | YES, success |
 | `textRed` | `text-[#e03060]` | NO, danger |
 | `textPrimary` | `text-[#7862FF]` | Purple accent |
 | `textMuted` | `text-[#6b80b8]` | Secondary text |
@@ -206,6 +226,7 @@ All design tokens in one place. Key colors:
 
 ## State Persistence
 
-- `sessionStorage` — settings (numQuestions, phase1Time, phase2Time, gameMode) and summary data are saved per room code and restored on next game start
-- No database — all state is ephemeral in PartyKit server memory
-- No auth — nicknames are the only identity; emoji avatars assigned client-side
+- `localStorage` — host name, host token, host session (room code), player session (room code + nickname)
+- `sessionStorage` — game settings (numQuestions, timings, mode) saved on lock, restored on next game
+- Supabase — host records and completed game data
+- PartyKit server memory — all live game state (lost on server restart)

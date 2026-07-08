@@ -1,3 +1,5 @@
+import type { QuestionBank } from "./prompts";
+export type { QuestionBank };
 export type Player = { id: string; nickname: string; isHost: boolean; emoji?: string };
 
 export type LobbyState = {
@@ -66,6 +68,7 @@ export type GameState = {
   pausedTimeRemaining: number | null; // ms remaining when paused
   submittedQuestionCount: number;
   mode: "game_questions" | "player_questions" | "host_questions";
+  questionBank: QuestionBank;
 };
 
 export type ServerMessage =
@@ -86,7 +89,7 @@ export type ClientMessage =
   | { type: "join"; nickname: string; isHost?: boolean; hostToken?: string }
   | { type: "rejoin"; nickname: string; hostToken?: string }
   | { type: "lock" }
-  | { type: "start_game"; numQuestions: number; phase1Time: number; phase2Time: number; mode: "game_questions" | "player_questions" | "host_questions"; hostPrompts?: Prompt[] }
+  | { type: "start_game"; numQuestions: number; phase1Time: number; phase2Time: number; mode: "game_questions" | "player_questions" | "host_questions"; hostPrompts?: Prompt[]; questionBank?: QuestionBank }
   | { type: "submit_answer"; answer: string | number }
   | { type: "submit_prediction"; prediction: string | number; doubleDown: boolean }
   | { type: "next_round" } // host only

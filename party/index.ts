@@ -1,6 +1,7 @@
 import type * as Party from "partykit/server";
 import { createClient } from "@supabase/supabase-js";
-import { PROMPTS, getPromptsForGame } from "../src/lib/prompts";
+import { PROMPTS_BY_BANK, getPromptsForGame } from "../src/lib/prompts";
+import type { QuestionBank } from "../src/lib/prompts";
 import type { Prompt, PromptType } from "../src/lib/prompts";
 
 type Player = { id: string; nickname: string; isHost: boolean; emoji?: string };
@@ -46,13 +47,14 @@ type GameState = {
   pausedTimeRemaining: number | null; // ms remaining when paused
   submittedQuestionCount: number;
   mode: "game_questions" | "player_questions" | "host_questions";
+  questionBank: QuestionBank;
 };
 
 type ClientMessage =
   | { type: "join"; nickname: string; isHost?: boolean; hostToken?: string }
   | { type: "rejoin"; nickname: string; hostToken?: string }
   | { type: "lock" }
-  | { type: "start_game"; numQuestions: number; phase1Time: number; phase2Time: number; mode: "game_questions" | "player_questions" | "host_questions"; hostPrompts?: Prompt[] }
+  | { type: "start_game"; numQuestions: number; phase1Time: number; phase2Time: number; mode: "game_questions" | "player_questions" | "host_questions"; hostPrompts?: Prompt[]; questionBank?: QuestionBank }
   | { type: "submit_answer"; answer: string | number }
   | { type: "submit_prediction"; prediction: string | number; doubleDown: boolean }
   | { type: "next_round" }
@@ -215,6 +217,7 @@ export default class GameServer implements Party.Server {
     pausedTimeRemaining: null,
     submittedQuestionCount: 0,
     mode: "game_questions",
+    questionBank: "general",
   };
   private submittedQuestions: (Prompt & { submittedBy: string })[] = [];
   private hostQuestions: Prompt[] = [];
@@ -769,6 +772,7 @@ export default class GameServer implements Party.Server {
           pausedTimeRemaining: null,
           submittedQuestionCount: 0,
           mode: "host_questions",
+          questionBank: "general",
         };
         this.broadcastGame();
         this.clearTimer();
@@ -777,7 +781,7 @@ export default class GameServer implements Party.Server {
       }
 
       if (mode === "player_questions") {
-        const totalRounds = Math.min(msg.numQuestions, PROMPTS.length);
+        const totalRounds = Math.min(msg.numQuestions, PROMPTS_BY_BANK["general"].length);
         this.submittedQuestions = [];
         this.totalScores.clear();
         this.roundResults = [];
@@ -803,13 +807,15 @@ export default class GameServer implements Party.Server {
           pausedTimeRemaining: null,
           submittedQuestionCount: 0,
           mode: "player_questions",
+          questionBank: "general",
         };
         this.broadcastGame();
         return;
       }
 
-      const totalRounds = Math.min(msg.numQuestions, PROMPTS.length);
-      this.prompts = getPromptsForGame(totalRounds);
+      const questionBank = msg.questionBank ?? "general";
+      const totalRounds = Math.min(msg.numQuestions, PROMPTS_BY_BANK[questionBank].length);
+      this.prompts = getPromptsForGame(totalRounds, questionBank);
       this.totalScores.clear();
       this.roundResults = [];
       this.gameStartedAt = Date.now();
@@ -838,6 +844,7 @@ export default class GameServer implements Party.Server {
         pausedTimeRemaining: null,
         submittedQuestionCount: 0,
         mode: "game_questions",
+        questionBank,
       };
       this.broadcastGame();
 
@@ -1024,7 +1031,7 @@ export default class GameServer implements Party.Server {
         phase: "lobby", round: 0, totalRounds: 10,
         prompt: null, phaseEndsAt: null, phase1Duration: 25, phase2Duration: 20,
         roundResult: null, leaderboard: [], N: 0, phase1AnsweredCount: 0, phase1AnsweredNicknames: [], answeredCount: 0, answeredNicknames: [], doubleDownUsed: [], paused: false, pausedTimeRemaining: null,
-        submittedQuestionCount: 0, mode: "game_questions",
+        submittedQuestionCount: 0, mode: "game_questions", questionBank: "general",
       };
       this.room.broadcast(JSON.stringify({ type: "disbanded" }));
       return;
@@ -1036,10 +1043,11 @@ export default class GameServer implements Party.Server {
       if (this.game.phase !== "ended") return;
 
       const playerCount = this.lobby.players.filter((p) => !p.isHost).length;
-      const totalRounds = Math.min(msg.numQuestions, PROMPTS.length);
+      const questionBank = this.game.questionBank;
+      const totalRounds = Math.min(msg.numQuestions, PROMPTS_BY_BANK[questionBank].length);
       const phase1Duration = Math.max(10, Math.min(60, msg.phase1Time));
       const phase2Duration = Math.max(10, Math.min(60, msg.phase2Time));
-      this.prompts = getPromptsForGame(totalRounds);
+      this.prompts = getPromptsForGame(totalRounds, questionBank);
       this.hostQuestions = [];
       this.totalScores.clear();
       this.roundResults = [];
@@ -1068,6 +1076,7 @@ export default class GameServer implements Party.Server {
         pausedTimeRemaining: null,
         submittedQuestionCount: 0,
         mode: "game_questions",
+        questionBank,
       };
       this.startPhase1();
       return;
@@ -1085,7 +1094,7 @@ export default class GameServer implements Party.Server {
         phase: "lobby", round: 0, totalRounds: 10,
         prompt: null, phaseEndsAt: null, phase1Duration: 25, phase2Duration: 20,
         roundResult: null, leaderboard: [], N: 0, phase1AnsweredCount: 0, phase1AnsweredNicknames: [], answeredCount: 0, answeredNicknames: [], doubleDownUsed: [], paused: false, pausedTimeRemaining: null,
-        submittedQuestionCount: 0, mode: "game_questions",
+        submittedQuestionCount: 0, mode: "game_questions", questionBank: "general",
       };
       this.broadcastLobby();
       this.room.broadcast(JSON.stringify({ type: "game", game: this.game }));
@@ -1222,7 +1231,7 @@ export default class GameServer implements Party.Server {
           phase: "lobby", round: 0, totalRounds: 10,
           prompt: null, phaseEndsAt: null, phase1Duration: 25, phase2Duration: 20,
           roundResult: null, leaderboard: [], N: 0, phase1AnsweredCount: 0, phase1AnsweredNicknames: [], answeredCount: 0, answeredNicknames: [], doubleDownUsed: [], paused: false, pausedTimeRemaining: null,
-          submittedQuestionCount: 0, mode: "game_questions",
+          submittedQuestionCount: 0, mode: "game_questions", questionBank: "general",
         };
         this.room.broadcast(JSON.stringify({ type: "disbanded" }));
         this.deactivateRoom().catch((e) => console.error("[supabase] deactivate failed:", e));

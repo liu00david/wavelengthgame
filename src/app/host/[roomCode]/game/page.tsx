@@ -96,7 +96,7 @@ function HostQuestionForm({ onSubmit }: { onSubmit: (q: QuestionPayload) => void
             value={labelLow}
             onChange={(e) => setLabelLow(e.target.value)}
             placeholder="Not at all"
-            maxLength={10}
+            maxLength={15}
             className={`w-full px-3 py-2 rounded-lg bg-[#0f2660] border border-[#2a4a8a] text-white text-sm placeholder:italic placeholder:${t.textFaint} outline-none focus:border-[#7862FF]`}
           />
           <input
@@ -104,7 +104,7 @@ function HostQuestionForm({ onSubmit }: { onSubmit: (q: QuestionPayload) => void
             value={labelHigh}
             onChange={(e) => setLabelHigh(e.target.value)}
             placeholder="My favorite"
-            maxLength={10}
+            maxLength={15}
             className={`w-full px-3 py-2 rounded-lg bg-[#0f2660] border border-[#2a4a8a] text-white text-sm placeholder:italic placeholder:${t.textFaint} outline-none focus:border-[#7862FF]`}
           />
         </div>

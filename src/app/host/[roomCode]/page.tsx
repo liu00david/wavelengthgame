@@ -6,7 +6,8 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useParty } from "@/lib/useParty";
 import { t, resolveAvatarColor, resolveEmoji } from "@/lib/theme";
-import type { Player, Prompt } from "@/lib/types";
+import type { Player, Prompt, QuestionBank } from "@/lib/types";
+import { BANK_META } from "@/lib/prompts";
 
 function shuffleArray<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -93,6 +94,8 @@ function parseCSV(raw: string): ParsedRow[] {
       if (text.length > 60) return { ok: false as const, line: lineNum, error: `Row ${lineNum}: question too long (max 60 chars)` };
       const labelLow = cols[6]?.trim() || undefined;
       const labelHigh = cols[7]?.trim() || undefined;
+      if (labelLow && labelLow.length > 15) return { ok: false as const, line: lineNum, error: `Row ${lineNum}: low label too long (max 15 chars) — "${labelLow}"` };
+      if (labelHigh && labelHigh.length > 15) return { ok: false as const, line: lineNum, error: `Row ${lineNum}: high label too long (max 15 chars) — "${labelHigh}"` };
       return { ok: true as const, prompt: { id, text, type: "scale", ...(labelLow ? { labelLow } : {}), ...(labelHigh ? { labelHigh } : {}) } };
     }
 
@@ -102,6 +105,8 @@ function parseCSV(raw: string): ParsedRow[] {
       if (text.length > 60) return { ok: false as const, line: lineNum, error: `Row ${lineNum}: question too long (max 60 chars)` };
       const options = [cols[2], cols[3], cols[4], cols[5]].filter((o) => o && o.trim().length > 0);
       if (options.length < 2) return { ok: false as const, line: lineNum, error: `Row ${lineNum}: multiple choice needs at least 2 options (cols 3–6)` };
+      const longOpt = options.find((o) => o.length > 25);
+      if (longOpt) return { ok: false as const, line: lineNum, error: `Row ${lineNum}: option too long (max 25 chars) — "${longOpt}"` };
       const dupes = options.filter((o, i) => options.indexOf(o) !== i);
       if (dupes.length > 0) return { ok: false as const, line: lineNum, error: `Row ${lineNum}: duplicate options "${dupes[0]}"` };
       return { ok: true as const, prompt: { id, text, type: "multiple_choice", options } };
@@ -168,9 +173,9 @@ function SingleQuestionForm({ onAdd }: { onAdd: (p: Prompt) => void }) {
       {qType === "scale" && (
         <div className="grid grid-cols-2 gap-2">
           <input type="text" value={labelLow} onChange={(e) => setLabelLow(e.target.value)}
-            placeholder="Label for 1 (optional)" maxLength={10} className={inputCls} />
+            placeholder="Label for 1 (optional)" maxLength={15} className={inputCls} />
           <input type="text" value={labelHigh} onChange={(e) => setLabelHigh(e.target.value)}
-            placeholder="Label for 10 (optional)" maxLength={10} className={inputCls} />
+            placeholder="Label for 10 (optional)" maxLength={15} className={inputCls} />
         </div>
       )}
 
@@ -386,6 +391,7 @@ function HostContent({ roomCode }: { roomCode: string }) {
   const [gameMode, setGameMode] = useState<"game_questions" | "player_questions" | "host_questions">(() => (typeof window !== "undefined" ? sessionStorage.getItem(`${roomCode}_mode`) : null) as "game_questions" | "player_questions" | "host_questions" ?? "game_questions");
   const [hostPrompts, setHostPrompts] = useState<Prompt[]>([]);
   const [randomizeHostOrder, setRandomizeHostOrder] = useState(false);
+  const [questionBank, setQuestionBank] = useState<QuestionBank>("general");
 
   const [isDuplicateTab, setIsDuplicateTab] = useState(false);
 
@@ -477,6 +483,7 @@ function HostContent({ roomCode }: { roomCode: string }) {
       phase1Time,
       phase2Time,
       mode: gameMode,
+      ...(gameMode === "game_questions" ? { questionBank } : {}),
       ...(gameMode === "host_questions" ? {
         hostPrompts: randomizeHostOrder
           ? shuffleArray(hostPrompts.slice(0, numQuestions))
@@ -669,38 +676,38 @@ function HostContent({ roomCode }: { roomCode: string }) {
             <div className="flex items-center gap-3">
               <span className="text-white text-sm font-medium whitespace-nowrap w-24 shrink-0">Questions by</span>
               <div className="flex gap-1.5 flex-1">
-                <button
-                  onClick={() => setGameMode("game_questions")}
-                  className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
-                    gameMode === "game_questions"
-                      ? "bg-[#7862FF] text-white"
-                      : `${t.btnGhost} ${t.textMuted}`
-                  }`}
-                >
-                  Game
-                </button>
-                <button
-                  onClick={() => setGameMode("player_questions")}
-                  className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
-                    gameMode === "player_questions"
-                      ? "bg-[#7862FF] text-white"
-                      : `${t.btnGhost} ${t.textMuted}`
-                  }`}
-                >
-                  Players
-                </button>
-                <button
-                  onClick={() => setGameMode("host_questions")}
-                  className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
-                    gameMode === "host_questions"
-                      ? "bg-[#7862FF] text-white"
-                      : `${t.btnGhost} ${t.textMuted}`
-                  }`}
-                >
-                  Host
-                </button>
+                {(["game_questions", "player_questions", "host_questions"] as const).map((mode) => {
+                  const label = mode === "game_questions" ? "Game" : mode === "player_questions" ? "Players" : "Host";
+                  return (
+                    <button key={mode} onClick={() => setGameMode(mode)}
+                      className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${gameMode === mode ? "bg-[#7862FF] text-white" : `${t.btnGhost} ${t.textMuted}`}`}>
+                      {label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
+            <p className={`${t.textFaint} text-xs pl-[6.5rem]`}>
+              {gameMode === "game_questions" && "Random questions from the built-in library"}
+              {gameMode === "player_questions" && "Players submit questions before the game starts"}
+              {gameMode === "host_questions" && "You enter all questions below before locking"}
+            </p>
+            {gameMode === "game_questions" && (
+              <div className="flex items-center gap-3">
+                <span className={`${t.textMuted} text-sm font-medium whitespace-nowrap w-24 shrink-0`}>Category</span>
+                <div className="flex gap-1.5 flex-1">
+                  {(["general", "coworkers", "hotseat"] as const).map((bank) => {
+                    const meta = BANK_META[bank];
+                    return (
+                      <button key={bank} onClick={() => setQuestionBank(bank)}
+                        className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${questionBank === bank ? "bg-[#7862FF] text-white" : `${t.btnGhost} ${t.textMuted}`}`}>
+                        {meta.emoji} {meta.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

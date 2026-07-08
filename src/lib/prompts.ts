@@ -8,7 +8,15 @@ export type Prompt = {
   labelHigh?: string;
 };
 
-export const PROMPTS: Prompt[] = [
+export type QuestionBank = "general" | "coworkers" | "hotseat";
+
+export const BANK_META: Record<QuestionBank, { label: string; emoji: string; description: string }> = {
+  general:   { label: "General",   emoji: "🎲", description: "A mix of everything" },
+  coworkers: { label: "Coworkers", emoji: "💼", description: "Work-safe, office-friendly" },
+  hotseat:   { label: "Hot Seat",  emoji: "🌶️", description: "Spicy — not for the faint of heart" },
+};
+
+const GENERAL_PROMPTS: Prompt[] = [
   // Binary
   { id: "b1",  text: "Are you the best driver in this room?", type: "binary" },
   { id: "b2",  text: "Are you the best singer in this room?", type: "binary" },
@@ -229,8 +237,125 @@ export const PROMPTS: Prompt[] = [
   { id: "s56", text: "How emotionally available are you right now?", type: "scale", labelLow: "Closed Off", labelHigh: "Wide Open" },
 ];
 
-export function getPromptsForGame(n: number): Prompt[] {
-  const shuffled = [...PROMPTS];
+const COWORKERS_PROMPTS: Prompt[] = [
+  // Binary
+  { id: "cb1",  text: "Are you currently wearing sweatpants under your desk?", type: "binary" },
+  { id: "cb2",  text: "Do you listen to music while working?", type: "binary" },
+  { id: "cb3",  text: "Have you ever taken a meeting from your bed?", type: "binary" },
+  { id: "cb4",  text: "Have you ever eaten someone else's food from the communal fridge?", type: "binary" },
+  { id: "cb5",  text: "Do you keep your camera on for every single call?", type: "binary" },
+  { id: "cb6",  text: "Have you ever pretended your Wi-Fi cut out to leave a meeting early?", type: "binary" },
+  { id: "cb7",  text: "Do you have a designated 'work spot' that you will fight someone for?", type: "binary" },
+  { id: "cb8",  text: "Have you ever responded 'Thanks!' to a message that did not require a response?", type: "binary" },
+  { id: "cb9",  text: "Do you look at yourself more than the other person during a video call?", type: "binary" },
+  { id: "cb10", text: "Have you ever sent a message about someone to the chat that they were currently in?", type: "binary" },
+  { id: "cb11", text: "Have you ever nodded along in a meeting when you had absolutely no idea what was being discussed?", type: "binary" },
+  { id: "cb12", text: "Do you block out fake focus time on your calendar just to get a break?", type: "binary" },
+  { id: "cb13", text: "Have you ever blamed a late deliverable on a 'technical glitch' that didn't exist?", type: "binary" },
+  { id: "cb14", text: "Do you clear your browser history at the end of every workday?", type: "binary" },
+  { id: "cb15", text: "Have you ever muted a group chat because the notifications were stressing you out?", type: "binary" },
+
+  // Multiple Choice
+  { id: "cmc1",  text: "What is your biggest coworking pet peeve?", type: "multiple_choice", options: ["Loud typers", "People taking calls in the open space", "Microwave fish re-heaters", "The person who takes the last coffee and doesn't brew more"] },
+  { id: "cmc2",  text: "What is your actual productivity window?", type: "multiple_choice", options: ["5 AM - 9 AM", "9 AM - 12 PM", "2 PM - 5 PM", "11 PM - 2 AM"] },
+  { id: "cmc3",  text: "Pick your afternoon slump cure.", type: "multiple_choice", options: ["A third coffee", "An aggressive stretch session", "Scrolling social media for 20 mins", "Staring blankly at a spreadsheet"] },
+  { id: "cmc4",  text: "How do your unread notifications look?", type: "multiple_choice", options: ["Inbox Zero always", "A casual 20-50", "Thousands (I use search)", "I have badges turned off"] },
+  { id: "cmc5",  text: "What is your primary fuel source?", type: "multiple_choice", options: ["Iced Americano", "Matcha Latte", "Diet Coke / Energy Drinks", "Pure anxiety and water"] },
+  { id: "cmc6",  text: "What is your go-to response style on chat?", type: "multiple_choice", options: ["Paragraphs of detailed context", "Strictly emojis and GIFs", "One-word answers (Ack, Done, Cool)", "Leaving people on 'Read' for 4 hours"] },
+  { id: "cmc7",  text: "If you could automate one part of your job completely, what would it be?", type: "multiple_choice", options: ["Answering emails/chats", "Filling out timesheets/expense reports", "Sitting through status update meetings", "Building slide decks or spreadsheets"] },
+  { id: "cmc8",  text: "What kind of virtual background user are you?", type: "multiple_choice", options: ["The real, unfiltered room", "The standard professional blur", "A tropical beach or space station", "Camera permanently off anyway"] },
+
+  // Would You Rather (2 options)
+  { id: "cwyr1", text: "Would you rather have your microphone stuck on mute or your camera stuck on?", type: "multiple_choice", options: ["Microphone stuck on mute", "Camera stuck on"] },
+  { id: "cwyr2", text: "Would you rather work from a buzzing café with bad Wi-Fi or a silent room with perfect Wi-Fi?", type: "multiple_choice", options: ["Buzzing café / Bad Wi-Fi", "Silent room / Perfect Wi-Fi"] },
+  { id: "cwyr3", text: "Would you rather accidentally reply-all to a company email or message your boss a meme meant for your best friend?", type: "multiple_choice", options: ["Reply-all to company email", "Meme to your boss"] },
+  { id: "cwyr4", text: "Would you rather always be 5 minutes late to video calls or 15 minutes early?", type: "multiple_choice", options: ["5 minutes late", "15 minutes early"] },
+  { id: "cwyr5", text: "Would you rather work with a giant external monitor but a terrible chair, or a luxury ergonomic chair but just a laptop screen?", type: "multiple_choice", options: ["Great monitor / Bad chair", "Great chair / Laptop screen"] },
+  { id: "cwyr6", text: "Would you rather always have your screen shared by accident or always leave your mic unmuted while chewing?", type: "multiple_choice", options: ["Accidental screen share", "Hot mic while chewing"] },
+  { id: "cwyr7", text: "Would you rather work a 4-day week with 10-hour days or a 5-day week with 6-hour days?", type: "multiple_choice", options: ["4 days / 10 hours", "5 days / 6 hours"] },
+
+  // Scale
+  { id: "cs1", text: "How aggressively do you type when you are stressed?", type: "scale", labelLow: "Feather Touch", labelHigh: "Jackhammer" },
+  { id: "cs2", text: "How chaotic is your desktop screen right now?", type: "scale", labelLow: "Pristine", labelHigh: "File_Final_v2.pdf" },
+  { id: "cs3", text: "Rate your ability to tolerate small talk at the coffee machine.", type: "scale", labelLow: "Don't Look At Me", labelHigh: "Chief Networker" },
+  { id: "cs4", text: "How much of your daily communication is just using emojis?", type: "scale", labelLow: "Strictly Text", labelHigh: "👍🚀🔥 Only" },
+  { id: "cs5", text: "Rate your current level of imposter syndrome.", type: "scale", labelLow: "I Built This Place", labelHigh: "They'll Find Out Today" },
+  { id: "cs6", text: "How fast do you reply to urgent direct messages?", type: "scale", labelLow: "Sloth Mode", labelHigh: "Instant" },
+  { id: "cs7", text: "How much do you actually enjoy team-building icebreakers?", type: "scale", labelLow: "Pure Agony", labelHigh: "Favorite Activity" },
+];
+
+const HOTSEAT_PROMPTS: Prompt[] = [
+  // Binary
+  { id: "pb1",  text: "Have you ever made out with someone in this room?", type: "binary" },
+  { id: "pb2",  text: "Have you ever been arrested or held in a cop car?", type: "binary" },
+  { id: "pb3",  text: "Have you ever snooped through a host's medicine cabinet or bedroom while visiting?", type: "binary" },
+  { id: "pb4",  text: "Have you ever lied to get out of a date while you were actively on the date?", type: "binary" },
+  { id: "pb5",  text: "Have you ever gone home with someone purely because their house/apartment was nicer than yours?", type: "binary" },
+  { id: "pb6",  text: "Do you have a completely irrational enemy that you actively root against?", type: "binary" },
+  { id: "pb7",  text: "Have you ever forgotten the name of someone you were actively hooking up with?", type: "binary" },
+  { id: "pb8",  text: "Have you ever successfully talked your way out of a speeding ticket?", type: "binary" },
+  { id: "pb9",  text: "Have you ever been kicked out of a bar or venue?", type: "binary" },
+  { id: "pb10", text: "If you committed a crime, is there someone in this room who would help you hide the body?", type: "binary" },
+  { id: "pb11", text: "Have you ever stalked someone's location on Find My Friends to see if they were lying about their plans?", type: "binary" },
+  { id: "pb12", text: "Have you ever eaten food out of a trash can or off the floor (past the 5-second rule)?", type: "binary" },
+  { id: "pb13", text: "Have you ever been completely banned from a business, restaurant, or Uber?", type: "binary" },
+  { id: "pb14", text: "Do you have a fake social media account strictly used for spying/lurking?", type: "binary" },
+  { id: "pb15", text: "Have you ever lied about your birthday at a restaurant just to get free dessert?", type: "binary" },
+  { id: "pb16", text: "Have you ever accidentally sent a text complaining about someone *to* that exact person?", type: "binary" },
+  { id: "pb17", text: "Have you ever broken a bone doing something incredibly stupid while intoxicated?", type: "binary" },
+  { id: "pb18", text: "Have you ever ghosted an event you explicitly promised you would host or help organize?", type: "binary" },
+  { id: "pb19", text: "Do you talk to yourself out loud when you are entirely alone?", type: "binary" },
+  { id: "pb20", text: "Have you ever gatekept a restaurant, clothing brand, or song because you didn't want it to get 'too popular'?", type: "binary" },
+
+  // Multiple Choice
+  { id: "pmc1",  text: "What is your actual red flag when meeting someone new?", type: "multiple_choice", options: ["Too nice", "Phone obsessed", "Friends with exes", "No books"] },
+  { id: "pmc2",  text: "Where is the weirdest place you have ever fallen asleep?", type: "multiple_choice", options: ["Public transit", "Bathroom floor", "Concert/Club", "At my desk"] },
+  { id: "pmc3",  text: "What's your most chaotic party trick or habit?", type: "multiple_choice", options: ["Irish goodbye", "Bathroom therapist", "Stealing lighters", "Aux cord hijacker"] },
+  { id: "pmc4",  text: "How did your last major argument start?", type: "multiple_choice", options: ["Text tone", "Hangry delusion", "Real betrayal", "Dumb hypothetical"] },
+  { id: "pmc5",  text: "If you got a call at 3 AM to bail a friend out of jail, what is your reaction?", type: "multiple_choice", options: ["On my way", "Go with insults", "Morning problem", "Do Not Disturb"] },
+  { id: "pmc6",  text: "What is your actual criteria for unfriending or unfollowing someone?", type: "multiple_choice", options: ["Gym selfies", "Politics", "Cringe romance", "Random purges"] },
+  { id: "pmc7",  text: "What is your biggest minor financial regret?", type: "multiple_choice", options: ["Unused gym", "One-time outfit", "Forgot subscription", "Late-night UberEats"] },
+  { id: "pmc8",  text: "You are hosting a party and someone breaks an expensive item. What do you do?", type: "multiple_choice", options: ["Secretly resent them", "Demand Venmo", "Lie to comfort them", "Kick them out"] },
+  { id: "pmc9",  text: "What kind of dynamic do you usually bring to a group vacation?", type: "multiple_choice", options: ["Itinerary dictator", "Spreadsheet manager", "2 PM wild card", "Designated parent"] },
+  { id: "pmc10", text: "How do you handle a terribly awkward silence in a group?", type: "multiple_choice", options: ["Joke about it", "Look at phone", "Force random topic", "Stare and suffer"] },
+
+  // Would You Rather (2 options)
+  { id: "pwyr1",  text: "Would you rather have to tell everyone in this room your exact bank account balance or your last Google search?", type: "multiple_choice", options: ["Bank balance", "Google search"] },
+  { id: "pwyr2",  text: "Would you rather accidentally text your mom a screenshot of a conversation talking smack about her, or accidentally text your ex 'I miss you'?", type: "multiple_choice", options: ["Text mom", "Text ex"] },
+  { id: "pwyr3",  text: "Would you rather have your worst outfit choice of all time permanently pinned to your social profile, or have your cringiest middle school diary read out loud?", type: "multiple_choice", options: ["Worst outfit pinned", "Diary read aloud"] },
+  { id: "pwyr4",  text: "Would you rather deal with a hangover that lasts 2 full days or give up caffeine for a month?", type: "multiple_choice", options: ["2-day hangover", "No caffeine"] },
+  { id: "pwyr5",  text: "Would you rather your friends find your secret second social media account, or find your middle school YouTube channel?", type: "multiple_choice", options: ["Secret alt account", "MS YouTube channel"] },
+  { id: "pwyr6",  text: "Would you rather have your worst enemy manage your dating profile or your boss manage your financial budget?", type: "multiple_choice", options: ["Enemy manages dating", "Boss manages budget"] },
+  { id: "pwyr7",  text: "Would you rather have a permanent, unskippable 30-second ad play in your head every time you wake up, or have to announce your true thoughts out loud once a day?", type: "multiple_choice", options: ["Morning brain ads", "Daily truth reveal"] },
+  { id: "pwyr8",  text: "Would you rather always have a wet sock on one foot or have your phone permanently stuck at 8% battery?", type: "multiple_choice", options: ["Wet sock", "8% battery life"] },
+  { id: "pwyr9",  text: "Would you rather get a terrible tattoo chosen by the person sitting to your left, or let the person to your right send one text to anyone in your contacts?", type: "multiple_choice", options: ["Tattoo from left", "Text from right"] },
+  { id: "pwyr10", text: "Would you rather always talk like a 1920s gangster or always have to dress like a medieval peasant?", type: "multiple_choice", options: ["Gangster voice", "Peasant clothes"] },
+
+  // Scale
+  { id: "ps1",  text: "How much of a liability are you after three drinks?", type: "scale", labelLow: "DD Energy", labelHigh: "Needs a Handler" },
+  { id: "ps2",  text: "Rate your baseline level of pettiness when someone minorly inconveniences you.", type: "scale", labelLow: "Water Off A Duck", labelHigh: "Plotted Revenge" },
+  { id: "ps3",  text: "How much do you actually like the people in this room right now?", type: "scale", labelLow: "Tolerating It", labelHigh: "Obsessed With Them" },
+  { id: "ps4",  text: "Rate your ability to fake being completely sober when talking to an authority figure.", type: "scale", labelLow: "Instant Panic", labelHigh: "Oscar Performance" },
+  { id: "ps5",  text: "How close are you to throwing your phone into the ocean and moving to a cabin?", type: "scale", labelLow: "Love Modern Life", labelHigh: "Bags Are Packed" },
+  { id: "ps6",  text: "How much of a hypochondriac are you when you get a minor headache?", type: "scale", labelLow: "Just Dehydrated", labelHigh: "3 Days To Live" },
+  { id: "ps7",  text: "Rate your baseline level of road rage or walking rage (slow walkers).", type: "scale", labelLow: "Zen Master", labelHigh: "Unadulterated Fury" },
+  { id: "ps8",  text: "How dramatic is your storytelling style?", type: "scale", labelLow: "Just The Facts", labelHigh: "Full Cinematic Reenactment" },
+  { id: "ps9",  text: "Rate your ability to tolerate bad music at a social gathering.", type: "scale", labelLow: "I'll Leave Early", labelHigh: "Vibe To Anything" },
+  { id: "ps10", text: "How much do you filter your actual personality depending on who you are talking to?", type: "scale", labelLow: "What You See", labelHigh: "Shape-Shifting Mirror" },
+];
+
+export const PROMPTS_BY_BANK: Record<QuestionBank, Prompt[]> = {
+  general:   GENERAL_PROMPTS,
+  coworkers: COWORKERS_PROMPTS,
+  hotseat:   HOTSEAT_PROMPTS,
+};
+
+// Legacy export — used by play_again which doesn't carry a bank selection
+export const PROMPTS = GENERAL_PROMPTS;
+
+export function getPromptsForGame(n: number, bank: QuestionBank = "general"): Prompt[] {
+  const pool = PROMPTS_BY_BANK[bank];
+  const shuffled = [...pool];
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
